@@ -5,6 +5,28 @@ import { supabase } from '../../utils/supabase'
 
 type Mode = 'sign_in' | 'sign_up'
 
+const PURPLE = '#6A1B9A'
+
+/** Shared input styles — focus ring colour applied via inline style on focus */
+function AuthInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
+  const [focused, setFocused] = useState(false)
+
+  return (
+    <input
+      {...props}
+      onFocus={(e) => { setFocused(true); props.onFocus?.(e) }}
+      onBlur={(e)  => { setFocused(false); props.onBlur?.(e) }}
+      className="rounded-xl border bg-slate-950 px-4 py-2.5 text-slate-100 placeholder:text-slate-600 focus:outline-none transition"
+      style={{
+        borderColor: focused ? PURPLE : undefined,
+        boxShadow:   focused ? `0 0 0 2px ${PURPLE}40` : undefined,
+        // fallback border colour when not focused
+        ...(focused ? {} : { borderColor: 'rgb(51 65 85)' /* slate-700 */ }),
+      }}
+    />
+  )
+}
+
 export function LoginPage() {
   const { session, loading } = useAuth()
   const navigate = useNavigate()
@@ -62,11 +84,11 @@ export function LoginPage() {
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <div className="flex flex-col gap-1">
+          <div className="flex flex-col gap-1 mt-4">
             <label htmlFor="email" className="text-sm text-slate-300">
               Email
             </label>
-            <input
+            <AuthInput
               id="email"
               type="email"
               autoComplete="email"
@@ -74,7 +96,6 @@ export function LoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@example.com"
-              className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-2.5 text-slate-100 placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition"
             />
           </div>
 
@@ -82,7 +103,7 @@ export function LoginPage() {
             <label htmlFor="password" className="text-sm text-slate-300">
               Password
             </label>
-            <input
+            <AuthInput
               id="password"
               type="password"
               autoComplete={mode === 'sign_in' ? 'current-password' : 'new-password'}
@@ -90,7 +111,6 @@ export function LoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
-              className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-2.5 text-slate-100 placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition"
             />
           </div>
 
@@ -101,7 +121,7 @@ export function LoginPage() {
             </p>
           )}
           {info && (
-            <p role="status" className="rounded-xl bg-emerald-500/10 border border-emerald-500/30 px-4 py-2.5 text-sm text-emerald-400">
+            <p role="status" className="rounded-xl bg-purple-500/10 border border-purple-500/30 px-4 py-2.5 text-sm text-purple-300">
               {info}
             </p>
           )}
@@ -109,7 +129,8 @@ export function LoginPage() {
           <button
             type="submit"
             disabled={submitting}
-            className="mt-2 rounded-full bg-emerald-500 px-6 py-3 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="mt-2 mb-4 rounded-full px-6 py-3 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{ backgroundColor: PURPLE }}
           >
             {submitting
               ? mode === 'sign_in' ? 'Signing in…' : 'Creating account…'
@@ -123,7 +144,8 @@ export function LoginPage() {
           <button
             type="button"
             onClick={() => { setMode(mode === 'sign_in' ? 'sign_up' : 'sign_in'); setError(null); setInfo(null) }}
-            className="text-emerald-400 hover:text-emerald-300 font-medium transition"
+            className="font-medium transition hover:opacity-80"
+            style={{ color: PURPLE }}
           >
             {mode === 'sign_in' ? 'Sign up' : 'Sign in'}
           </button>

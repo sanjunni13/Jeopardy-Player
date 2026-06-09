@@ -8,6 +8,7 @@ import {
   useNavigate,
 } from '@tanstack/react-router'
 import { AuthProvider, useAuth } from './auth'
+import { AuthenticatedLayout } from '../components/AuthenticatedLayout'
 import { HomePage } from './pages/HomePage'
 import { LoginPage } from './pages/LoginPage'
 import { UnauthorizedPage } from './pages/UnauthorizedPage'
@@ -31,23 +32,24 @@ function IndexRedirect() {
 
 /**
  * Shell wrapping all protected routes under /home.
- * Any unauthenticated request gets bounced to /401.
+ * - No session + was signed out  → /login
+ * - No session + never signed in → /401
  */
 function ProtectedShell() {
-  const { session, loading } = useAuth()
+  const { session, loading, signedOut } = useAuth()
   const navigate = useNavigate()
 
   useEffect(() => {
     if (!loading && !session) {
-      navigate({ to: '/401', replace: true })
+      navigate({ to: signedOut ? '/login' : '/401', replace: true })
     }
-  }, [loading, session, navigate])
+  }, [loading, session, signedOut, navigate])
 
   if (loading) {
     return <p className="p-6 text-slate-300">Checking authentication…</p>
   }
 
-  return session ? <Outlet /> : null
+  return session ? <AuthenticatedLayout /> : null
 }
 
 // ─── Route Tree ──────────────────────────────────────────────────────────────

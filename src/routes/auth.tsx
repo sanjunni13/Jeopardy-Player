@@ -5,6 +5,7 @@ import { supabase } from '../utils/supabase'
 interface AuthContextValue {
   session: Session | null
   loading: boolean
+  signedOut: boolean
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
@@ -12,6 +13,7 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined)
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
+  const [signedOut, setSignedOut] = useState(false)
 
   useEffect(() => {
     let mounted = true
@@ -22,8 +24,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(false)
     })
 
-    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!mounted) return
       setSession(session)
+      if (event === 'SIGNED_OUT') {
+        setSignedOut(true)
+      }
     })
 
     return () => {
@@ -33,7 +39,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   return (
-    <AuthContext.Provider value={{ session, loading }}>
+    <AuthContext.Provider value={{ session, loading, signedOut }}>
       {children}
     </AuthContext.Provider>
   )
