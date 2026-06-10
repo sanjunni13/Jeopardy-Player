@@ -1,0 +1,212 @@
+/* ─── Daily Double Screen ───────────────────────────────────────────────────── */
+
+.daily-double-overlay {
+  width: 100%;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: #001699;
+  user-select: none;
+}
+
+.daily-double-outline {
+  position: absolute;
+  border: 8px solid #FFD700;
+  inset: 0;
+  animation: outlineGrow 0.5s ease-out;
+  pointer-events: none;
+}
+
+@keyframes outlineGrow {
+  0% { transform: scale(0); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.daily-double-content {
+  text-align: center;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.daily-double-title {
+  font-family: 'Korinna', 'Swiss921', Arial, sans-serif;
+  font-size: 6rem;
+  font-weight: bold;
+  color: #FFD700;
+  text-transform: uppercase;
+  letter-spacing: 4px;
+  text-shadow: 
+    4px 4px 0 #001699,
+    -4px -4px 0 #001699,
+    4px -4px 0 #001699,
+    -4px 4px 0 #001699;
+  animation: dailyDoubleReveal 3s ease-out;
+  white-space: nowrap;
+}
+
+.daily-double-title.ready {
+  animation: dailyDoublePulse 2s ease-in-out infinite;
+}
+
+@keyframes dailyDoubleReveal {
+  0% { transform: scale(0.1); opacity: 0; }
+  15% { transform: scale(1.3); opacity: 1; }
+  30% { transform: scale(0.85); }
+  45% { transform: scale(1.15); }
+  60% { transform: scale(0.95); }
+  75% { transform: scale(1.05); }
+  90% { transform: scale(0.98); }
+  100% { transform: scale(1); }
+}
+
+@keyframes dailyDoublePulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+/* ── Player selection bar at bottom ── */
+.daily-double-players {
+  width: 100%;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  border-top: 2px solid rgba(255, 255, 255, 0.2);
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.daily-double-players-label {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.875rem;
+  font-family: 'Korinna', 'Swiss921', Arial, sans-serif;
+}
+
+.daily-double-players-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: center;
+}
+
+.daily-double-player-btn {
+  border-radius: 100px;
+  background-color: #c99f57;
+  padding: 10px 24px;
+  font-size: 1rem;
+  font-weight: bold;
+  color: #001699;
+  border: 0;
+  cursor: pointer;
+  transition: all 0.3s;
+  font-family: 'Korinna', 'Swiss921', Arial, sans-serif;
+}
+
+.daily-double-player-btn:hover {
+  background-color: #e0b96e;
+  transform: scale(1.1);
+  box-shadow: 0 0 15px rgba(201, 159, 87, 0.5);
+}
+
+.daily-double-player-btn:active {
+  background-color: #a88542;
+  transform: scale(0.95);
+}
+
+/* ── Wager input sub-screen ── */
+.dd-wager-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #001699;
+}
+
+.dd-wager-card {
+  max-width: 28rem;
+  width: 90%;
+  border-radius: 1.5rem;
+  background: rgba(0, 0, 0, 0.4);
+  border: 2px solid rgba(201, 159, 87, 0.5);
+  padding: 2.5rem;
+  text-align: center;
+}
+
+.dd-wager-title {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #c99f57;
+  font-family: 'Korinna', 'Swiss921', Arial, sans-serif;
+  margin-bottom: 0.5rem;
+}
+
+.dd-wager-player-name {
+  font-size: 1.125rem;
+  color: white;
+  font-family: 'Korinna', 'Swiss921', Arial, sans-serif;
+  margin-bottom: 0.5rem;
+}
+
+.dd-wager-info {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.875rem;
+  margin-bottom: 1.5rem;
+}
+
+.dd-wager-input {
+  width: 100%;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(201, 159, 87, 0.5);
+  background: rgba(0, 0, 0, 0.5);
+  padding: 0.75rem 1rem;
+  color: white;
+  font-size: 1.25rem;
+  font-weight: bold;
+  text-align: center;
+  font-family: 'Korinna', 'Swiss921', Arial, sans-serif;
+  margin-bottom: 0.5rem;
+}
+
+.dd-wager-input:focus {
+  border-color: #c99f57;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(201, 159, 87, 0.4);
+}
+
+.dd-wager-error {
+  color: rgb(251 113 133);
+  font-size: 0.875rem;
+  margin-bottom: 1rem;
+}
+
+.dd-wager-submit {
+  border-radius: 100px;
+  background-color: #c99f57;
+  padding: 12px 30px;
+  font-size: 1rem;
+  font-weight: bold;
+  margin-top: 1.5rem;
+  color: #001699;
+  border: 0;
+  cursor: pointer;
+  transition: all 0.3s;
+  font-family: 'Korinna', 'Swiss921', Arial, sans-serif;
+}
+
+.dd-wager-submit:hover {
+  background-color: #e0b96e;
+  transform: scale(1.05);
+}
+
+.dd-wager-submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}

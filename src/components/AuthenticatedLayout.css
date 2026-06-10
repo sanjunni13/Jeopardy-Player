@@ -1,0 +1,104 @@
+/* ─── Authenticated Layout ──────────────────────────────────────────────────── */
+
+.authenticated-layout {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: rgb(2 6 23); /* slate-950 */
+  color: rgb(241 245 249); /* slate-100 */
+}
+
+/* ── Header ── */
+.layout-header {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgb(30 41 59); /* slate-800 */
+  background: rgb(2 6 23 / 0.9); /* slate-950/90 */
+  backdrop-filter: blur(4px);
+  padding: 0.75rem 1.5rem;
+}
+
+.layout-brand {
+  font-size: 1.125rem;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  color: rgb(241 245 249); /* slate-100 */
+  font-family: 'Korinna', 'Swiss921', Arial, sans-serif;
+}
+
+/* ── Main content ── */
+.layout-main {
+  flex: 1;
+}
+
+/* ─── Logout header button (expanding pill) ────────────────────────────────── */
+
+.logout-header-btn {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  width: 45px;
+  height: 45px;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition-duration: 0.3s;
+  box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.199);
+  background-color: rgb(255, 65, 65);
+}
+
+.logout-header-sign {
+  width: 100%;
+  transition-duration: 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.logout-header-sign svg {
+  width: 17px;
+}
+
+.logout-header-sign svg path {
+  fill: white;
+}
+
+.logout-header-text {
+  position: absolute;
+  right: 0%;
+  width: 0%;
+  opacity: 0;
+  color: white;
+  font-size: 1em;
+  font-weight: 600;
+  transition-duration: 0.3s;
+}
+
+.logout-header-btn:hover {
+  width: 125px;
+  border-radius: 40px;
+  transition-duration: 0.3s;
+}
+
+.logout-header-btn:hover .logout-header-sign {
+  width: 30%;
+  transition-duration: 0.3s;
+  padding-left: 20px;
+}
+
+.logout-header-btn:hover .logout-header-text {
+  opacity: 1;
+  width: 70%;
+  transition-duration: 0.3s;
+  padding-right: 10px;
+}
+
+.logout-header-btn:active {
+  transform: translate(2px, 2px);
+}

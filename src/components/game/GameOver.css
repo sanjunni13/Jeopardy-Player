@@ -1,0 +1,150 @@
+/* ─── Game Over ─────────────────────────────────────────────────────────────── */
+
+.gameover-page {
+  padding: 2rem;
+}
+
+.gameover-card {
+  margin-left: auto;
+  margin-right: auto;
+  max-width: 32rem;
+  border-radius: 1.5rem;
+  border: 1px solid rgb(30 41 59); /* slate-800 */
+  background: rgb(15 23 42 / 0.95); /* slate-900/95 */
+  padding: 2.5rem;
+  box-shadow: 0 25px 50px -12px rgb(15 23 42 / 0.3);
+  animation: fadeInUp 0.6s ease-out both;
+}
+
+.gameover-title {
+  font-size: 3.2rem;
+  font-weight: bold;
+  letter-spacing: 2px;
+  color: #001699;
+  text-shadow: 2px 2px 0 #ffd700, 4px 4px 0 #001699;
+  font-family: 'Korinna', 'Swiss921', Arial, sans-serif;
+  margin-bottom: 3rem;
+}
+
+/* ── Winner ── */
+.gameover-winner {
+  margin-bottom: 2rem;
+}
+
+.gameover-winner-text {
+  font-size: 1.125rem;
+  color: #6A1B9A;
+  font-weight: 600;
+}
+
+.gameover-no-winner {
+  color: rgb(148 163 184); /* slate-400 */
+  margin-bottom: 1.5rem;
+}
+
+/* ── Standings ── */
+.gameover-standings {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 2rem;
+}
+
+.gameover-player {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-radius: 1rem;
+  border: 1px solid rgb(30 41 59); /* slate-800 */
+  background: rgb(2 6 23); /* slate-950 */
+  padding: 0.75rem 1rem;
+}
+
+.gameover-player-winner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-radius: 1rem;
+  border: 1px solid rgb(106 27 154 / 0.6); /* #6A1B9A/60 */
+  background: rgb(106 27 154 / 0.1); /* #6A1B9A/10 */
+  padding: 0.75rem 1rem;
+}
+
+.gameover-player-left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.gameover-player-rank {
+  color: rgb(100 116 139); /* slate-500 */
+  font-size: 0.875rem;
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  width: 1.5rem;
+}
+
+.gameover-player-name {
+  font-weight: 500;
+  color: rgb(241 245 249); /* slate-100 */
+}
+
+.gameover-player-name-winner {
+  font-weight: 500;
+  color: #6A1B9A;
+}
+
+.gameover-trophy {
+  font-size: 0.875rem;
+}
+
+.gameover-score {
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  font-weight: 600;
+  color: rgb(241 245 249); /* slate-100 */
+}
+
+.gameover-score-negative {
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  font-weight: 600;
+  color: rgb(251 113 133); /* rose-400 */
+}
+
+/* ── Back button — matches Upload a Game button animation ── */
+.gameover-back-btn {
+  width: 80%;
+  border-radius: 100px;
+  background-color: #6A1B9A;
+  padding: 12.5px 30px;
+  font-size: 0.875rem;
+  font-weight: bold;
+  color: white;
+  border: 0;
+  cursor: pointer;
+  transition: all 0.5s;
+  -webkit-transition: all 0.5s;
+}
+
+.gameover-back-btn:hover {
+  background-color: #8E24AA;
+  box-shadow: 0 0 20px rgba(142, 36, 170, 0.3);
+  transform: scale(1.15);
+}
+
+.gameover-back-btn:active {
+  background-color: #4A148C;
+  transition: all 0.25s;
+  -webkit-transition: all 0.25s;
+  box-shadow: none;
+  transform: scale(0.98);
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

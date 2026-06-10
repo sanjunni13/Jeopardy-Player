@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { Link, useNavigate } from '@tanstack/react-router'
-import { useAuth } from '../auth'
+import { useAuth } from '../../hooks/useAuth'
 
 export function NotFoundPage() {
   const { session, loading } = useAuth()

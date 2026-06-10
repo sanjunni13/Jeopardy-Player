@@ -1,0 +1,384 @@
+/* ─── Final Jeopardy ────────────────────────────────────────────────────────── */
+
+/* ── Category phase ── */
+.fj-category-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  cursor: pointer;
+}
+
+.fj-category-content {
+  text-align: center;
+}
+
+.fj-category-label {
+  color: rgb(148 163 184); /* slate-400 */
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.75rem;
+}
+
+.fj-category-name {
+  font-size: 2.25rem;
+  font-weight: bold;
+  color: #6A1B9A;
+  font-family: 'Korinna', 'Swiss921', Arial, sans-serif;
+}
+
+.fj-category-hint {
+  color: rgb(100 116 139); /* slate-500 */
+  font-size: 0.875rem;
+  margin-top: 1.5rem;
+}
+
+/* ── Wager phase ── */
+.fj-wager-page {
+  padding: 2rem;
+}
+
+.fj-wager-card {
+  margin-left: auto;
+  margin-right: auto;
+  max-width: 32rem;
+  border-radius: 1.5rem;
+  border: 1px solid rgb(30 41 59); /* slate-800 */
+  background: rgb(15 23 42 / 0.95); /* slate-900/95 */
+  padding: 2.5rem;
+  box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+}
+
+.fj-wager-title {
+  font-size: 3.2rem;
+  font-weight: bold;
+  letter-spacing: 2px;
+  color: #001699;
+  text-shadow: 2px 2px 0 #ffd700, 4px 4px 0 #001699;
+  font-family: 'Korinna', 'Swiss921', Arial, sans-serif;
+  margin-bottom: 0.5rem;
+}
+
+.fj-wager-subtitle {
+  color: rgb(148 163 184); /* slate-400 */
+  font-size: 0.875rem;
+  margin-bottom: 1.5rem;
+}
+
+.fj-wager-category-name {
+  color: #6A1B9A;
+  font-weight: 600;
+}
+
+.fj-wager-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.fj-wager-player-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.25rem;
+}
+
+.fj-wager-player-label {
+  color: rgb(203 213 225); /* slate-300 */
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.fj-wager-player-info {
+  color: rgb(100 116 139); /* slate-500 */
+  font-size: 0.75rem;
+}
+
+.fj-wager-input {
+  width: 100%;
+  border-radius: 0.75rem;
+  border: 1px solid rgb(51 65 85); /* slate-700 */
+  background: rgb(2 6 23); /* slate-950 */
+  padding: 0.625rem 1rem;
+  color: rgb(241 245 249); /* slate-100 */
+  transition: all 0.2s;
+}
+
+.fj-wager-input:focus {
+  border-color: #6A1B9A;
+  outline: none;
+  box-shadow: 0 0 0 2px rgb(106 27 154 / 0.4);
+}
+
+.fj-wager-error {
+  color: rgb(251 113 133); /* rose-400 */
+  font-size: 0.75rem;
+  margin-top: 0.25rem;
+}
+
+.fj-reveal-btn {
+  width: 80%;
+  border-radius: 100px;
+  background-color: #6A1B9A;
+  padding: 12.5px 30px;
+  font-size: 0.875rem;
+  font-weight: bold;
+  color: white;
+  border: 0;
+  cursor: pointer;
+  transition: all 0.5s;
+  -webkit-transition: all 0.5s;
+}
+
+.fj-reveal-btn:hover:not(:disabled) {
+  background-color: #8E24AA;
+  box-shadow: 0 0 20px rgba(142, 36, 170, 0.3);
+  transform: scale(1.15);
+}
+
+.fj-reveal-btn:active:not(:disabled) {
+  background-color: #4A148C;
+  transition: all 0.25s;
+  -webkit-transition: all 0.25s;
+  box-shadow: none;
+  transform: scale(0.98);
+}
+
+.fj-reveal-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── Clue phase ── */
+.fj-clue-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  background-color: #001699;
+}
+
+.fj-clue-header {
+  padding: 1rem 1.5rem;
+  border-bottom: 2px solid rgba(0, 0, 0, 0.3);
+}
+
+.fj-clue-header-text {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.875rem;
+  font-family: 'Korinna', 'Swiss921', Arial, sans-serif;
+}
+
+.fj-clue-area {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  cursor: pointer;
+}
+
+.fj-clue-content {
+  max-width: 48rem;
+  text-align: center;
+}
+
+.fj-clue-text {
+  font-family: 'Korinna', 'Swiss921', Arial, sans-serif;
+  font-size: 2rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  color: white;
+  text-shadow: 2px 2px black;
+  line-height: 1.4;
+}
+
+@media (min-width: 768px) {
+  .fj-clue-text {
+    font-size: 3rem;
+  }
+}
+
+.fj-clue-answer {
+  font-family: 'Korinna', 'Swiss921', Arial, sans-serif;
+  font-size: 2rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  color: white;
+  text-shadow: 2px 2px black;
+  line-height: 1.4;
+}
+
+@media (min-width: 768px) {
+  .fj-clue-answer {
+    font-size: 3rem;
+  }
+}
+
+/* ── Scoring panel ── */
+.fj-scoring {
+  border-top: 2px solid rgba(0, 0, 0, 0.3);
+  background: rgba(0, 0, 0, 0.4);
+  padding: 1rem 1.5rem;
+}
+
+.fj-scoring-inner {
+  max-width: 48rem;
+  margin-left: auto;
+  margin-right: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.fj-player-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.fj-player-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.fj-player-name {
+  color: white;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fj-player-wager {
+  color: #c99f57;
+  font-size: 0.875rem;
+  flex-shrink: 0;
+  font-weight: 600;
+}
+
+.fj-player-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+/* ── Buttons reuse ClueScreen button styles ── */
+.fj-btn-correct {
+  border-radius: 9999px;
+  padding: 0.375rem 1rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  transition: all 0.2s;
+  border: 1px solid rgb(16 185 129 / 0.5);
+  color: rgb(52 211 153);
+  background: transparent;
+  cursor: pointer;
+}
+
+.fj-btn-correct:hover {
+  background: rgb(16 185 129 / 0.2);
+}
+
+.fj-btn-correct-active {
+  border-radius: 9999px;
+  padding: 0.375rem 1rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  transition: all 0.2s;
+  background: rgb(16 185 129);
+  color: white;
+  border: 1px solid transparent;
+  cursor: pointer;
+}
+
+.fj-btn-incorrect {
+  border-radius: 9999px;
+  padding: 0.375rem 1rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  transition: all 0.2s;
+  border: 1px solid rgb(244 63 94 / 0.5);
+  color: rgb(251 113 133);
+  background: transparent;
+  cursor: pointer;
+}
+
+.fj-btn-incorrect:hover {
+  background: rgb(244 63 94 / 0.2);
+}
+
+.fj-btn-incorrect-active {
+  border-radius: 9999px;
+  padding: 0.375rem 1rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  transition: all 0.2s;
+  background: rgb(244 63 94);
+  color: white;
+  border: 1px solid transparent;
+  cursor: pointer;
+}
+
+/* ── Finish button — matches Upload a Game button animation ── */
+.fj-finish-row {
+  max-width: 48rem;
+  margin-left: auto;
+  margin-right: auto;
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.fj-finish-btn {
+  width: 100%;
+  border-radius: 100px;
+  background-color: #6A1B9A;
+  padding: 12.5px 30px;
+  font-size: 0.875rem;
+  font-weight: bold;
+  color: white;
+  border: 0;
+  cursor: pointer;
+  transition: all 0.5s;
+  -webkit-transition: all 0.5s;
+}
+
+.fj-finish-btn:hover {
+  background-color: #8E24AA;
+  box-shadow: 0 0 20px rgba(142, 36, 170, 0.3);
+  transform: scale(1.15);
+}
+
+.fj-finish-btn:active {
+  background-color: #4A148C;
+  transition: all 0.25s;
+  -webkit-transition: all 0.25s;
+  box-shadow: none;
+  transform: scale(0.98);
+}
+
+.fj-finish-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+/* ── Hint bar ── */
+.fj-hint-bar {
+  padding: 0.75rem 1.5rem;
+  border-top: 2px solid rgba(0, 0, 0, 0.3);
+}
+
+.fj-hint-text {
+  text-align: center;
+  font-size: 0.875rem;
+  color: rgba(255, 255, 255, 0.5);
+}

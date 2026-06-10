@@ -1,5 +1,16 @@
 @import "tailwindcss";
 
+@font-face {
+  font-family: "Korinna";
+  src: url("../assets/fonts/korinna.ttf") format("truetype");
+  font-display: swap;
+}
+
+/* ─── Global: all clickable buttons show pointer cursor ───────────────────── */
+button:not(:disabled) {
+  cursor: pointer;
+}
+
 :root {
   --text: #6b6375;
   --text-h: #08060d;

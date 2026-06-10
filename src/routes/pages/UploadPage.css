@@ -1,0 +1,141 @@
+/* ─── Upload Page ──────────────────────────────────────────────────────────── */
+
+.upload-page {
+  padding: 2rem;
+}
+
+.upload-card {
+  margin-left: auto;
+  margin-right: auto;
+  max-width: 32rem;
+  border-radius: 1.5rem;
+  border: 1px solid rgb(30 41 59); /* slate-800 */
+  background: rgb(15 23 42 / 0.95); /* slate-900/95 */
+  padding: 2.5rem;
+  box-shadow: 0 25px 50px -12px rgb(15 23 42 / 0.3);
+  animation: fadeInUp 0.6s ease-out;
+  position: relative;
+}
+
+.upload-back-btn {
+  position: absolute;
+  top: 1.5rem;
+  left: 1.5rem;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: rgb(148 163 184); /* slate-400 */
+  transition: all 0.3s ease;
+  border-radius: 50%;
+}
+
+.upload-back-btn svg {
+  width: 20px;
+  height: 20px;
+}
+
+.upload-back-btn:hover {
+  color: rgb(241 245 249); /* slate-100 */
+  transform: scale(1.35);
+  filter: drop-shadow(0 0 6px rgba(148, 163, 184, 0.5));
+}
+
+.upload-title {
+  font-size: 1.875rem;
+  font-weight: bold;
+  margin-bottom: 2rem;
+  color: rgb(241 245 249); /* slate-100 */
+}
+
+.upload-description {
+  color: rgb(148 163 184); /* slate-400 */
+  margin-bottom: 2rem;
+  font-size: 0.875rem;
+}
+
+.upload-file-input {
+  display: none;
+}
+
+/* ─── Upload action button — matches Jeopardy repo animations ─────────────── */
+
+.upload-action-btn {
+  border-radius: 100px;
+  background-color: #6A1B9A;
+  padding: 12.5px 30px;
+  font-size: 0.875rem;
+  font-weight: bold;
+  color: white;
+  border: 0;
+  cursor: pointer;
+  transition: all 0.5s;
+  -webkit-transition: all 0.5s;
+}
+
+.upload-action-btn:hover:not(:disabled) {
+  background-color: #8E24AA;
+  box-shadow: 0 0 20px rgba(142, 36, 170, 0.3);
+  transform: scale(1.1);
+}
+
+.upload-action-btn:active:not(:disabled) {
+  background-color: #4A148C;
+  transition: all 0.25s;
+  -webkit-transition: all 0.25s;
+  box-shadow: none;
+  transform: scale(0.98);
+}
+
+.upload-action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.upload-btn-content {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* ─── Error display ────────────────────────────────────────────────────────── */
+
+.upload-error {
+  margin-top: 1rem;
+  border-radius: 0.75rem;
+  background: rgb(244 63 94 / 0.1); /* rose-500/10 */
+  border: 1px solid rgb(244 63 94 / 0.3); /* rose-500/30 */
+  padding: 0.625rem 1rem;
+  font-size: 0.875rem;
+  color: rgb(251 113 133); /* rose-400 */
+}
+
+/* ─── Spinner ──────────────────────────────────────────────────────────────── */
+
+.upload-spinner {
+  height: 1rem;
+  width: 1rem;
+  animation: spin 1s linear infinite;
+  color: white;
+}
+
+@keyframes spin {
+  100% { transform: rotate(360deg); }
+}
+
+/* ─── Fade in animation ────────────────────────────────────────────────────── */
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

@@ -1,0 +1,209 @@
+/* ─── Player Entry ──────────────────────────────────────────────────────────── */
+
+.player-entry-page {
+  padding: 2rem;
+}
+
+.player-entry-card {
+  margin-left: auto;
+  margin-right: auto;
+  max-width: 32rem;
+  border-radius: 1.5rem;
+  border: 1px solid rgb(30 41 59); /* slate-800 */
+  background: rgb(15 23 42 / 0.95); /* slate-900/95 */
+  padding: 2.5rem;
+  box-shadow: 0 25px 50px -12px rgb(15 23 42 / 0.3);
+  animation: fadeInUp 0.6s ease-out both;
+  position: relative;
+}
+
+.player-entry-back {
+  margin-bottom: 1.5rem;
+  font-size: 0.875rem;
+  color: rgb(148 163 184); /* slate-400 */
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  transition: color 0.2s;
+}
+
+.player-entry-back:hover {
+  color: rgb(226 232 240); /* slate-200 */
+}
+
+.player-entry-title {
+  font-size: 1.875rem;
+  font-weight: bold;
+  margin-bottom: 1.5rem;
+  color: rgb(241 245 249); /* slate-100 */
+}
+
+.player-entry-subtitle {
+  color: rgb(148 163 184); /* slate-400 */
+  margin-bottom: 1.5rem;
+  font-size: 0.875rem;
+}
+
+/* ── Player list ── */
+.player-list {
+  margin-bottom: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.player-list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-radius: 1rem;
+  border: 1px solid rgb(30 41 59); /* slate-800 */
+  background: rgb(2 6 23); /* slate-950 */
+  padding: 0.625rem 1rem;
+}
+
+.player-list-name {
+  color: rgb(241 245 249); /* slate-100 */
+  font-weight: 500;
+}
+
+.player-remove-btn {
+  border-radius: 9999px;
+  border: 1px solid rgb(51 65 85); /* slate-700 */
+  padding: 0.25rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: rgb(203 213 225); /* slate-300 */
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.player-remove-btn:hover {
+  border-color: rgb(244 63 94 / 0.6); /* rose-500/60 */
+  color: rgb(251 113 133); /* rose-400 */
+}
+
+/* ── Add player row ── */
+.player-add-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.player-input {
+  flex: 1;
+  border-radius: 0.75rem;
+  border: 1px solid rgb(51 65 85); /* slate-700 */
+  background: rgb(2 6 23); /* slate-950 */
+  padding: 0.625rem 1rem;
+  color: rgb(241 245 249); /* slate-100 */
+  transition: all 0.2s;
+}
+
+.player-input::placeholder {
+  color: rgb(71 85 105); /* slate-600 */
+}
+
+.player-input:focus {
+  border-color: #6A1B9A;
+  outline: none;
+  box-shadow: 0 0 0 2px rgb(106 27 154 / 0.4);
+}
+
+.player-input-error {
+  border-color: rgb(244 63 94); /* rose-500 */
+  box-shadow: 0 0 0 2px rgba(244, 63, 94, 0.25);
+}
+
+.player-input-error:focus {
+  border-color: rgb(244 63 94); /* stays red on focus */
+  box-shadow: 0 0 0 2px rgba(244, 63, 94, 0.25);
+}
+
+.player-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.player-add-btn {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: rgb(148 163 184); /* slate-400 */
+  transition: all 0.3s ease;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.player-add-btn svg {
+  width: 20px;
+  height: 20px;
+}
+
+.player-add-btn:hover:not(:disabled) {
+  color: rgb(241 245 249); /* slate-100 */
+  transform: scale(1.3);
+  filter: drop-shadow(0 0 6px rgba(106, 27, 154, 0.5));
+}
+
+.player-add-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+/* ── Error ── */
+.player-error {
+  margin-bottom: 1rem;
+  font-size: 0.875rem;
+  color: rgb(251 113 133); /* rose-400 */
+}
+
+/* ── Play button ── */
+.player-play-btn {
+  width: 100%;
+  border-radius: 9999px;
+  background: #6A1B9A;
+  margin-top: 1rem;
+  padding: 0.75rem 1.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: white;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.player-play-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  opacity: 0.9;
+}
+
+.player-play-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+/* ── Keyframes ── */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

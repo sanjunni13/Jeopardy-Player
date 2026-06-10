@@ -1,0 +1,158 @@
+// ─── Raw file shapes ────────────────────────────────────────────────────────
+
+export interface RawClue {
+  value: number;
+  clue: string;
+  solution: string;
+  dailyDouble?: boolean;
+  html?: boolean;
+}
+
+export interface RawCategory {
+  category: string;
+  clues: RawClue[];
+}
+
+export interface RawFinalRound {
+  category: string;
+  clue: string;
+  solution: string;
+  html?: boolean;
+}
+
+/** Top-level shape of an uploaded .json file */
+export interface GameFile {
+  game: Record<string, RawCategory[] | RawFinalRound>;
+}
+
+// ─── Normalised / runtime shapes ─────────────────────────────────────────────
+
+export type RoundName =
+  | 'single'
+  | 'double'
+  | 'triple'
+  | 'quadruple'
+  | 'quintuple'
+  | 'sextuple';
+
+export interface Clue {
+  value: number;
+  clue: string;
+  solution: string;
+  dailyDouble: boolean;
+  html: boolean;
+}
+
+export interface Category {
+  category: string;
+  clues: Clue[];
+}
+
+export interface FinalRound {
+  category: string;
+  clue: string;
+  solution: string;
+  html: boolean;
+}
+
+/** Game object after normalisation — always word-descriptor keys */
+export interface NormalizedGame {
+  rounds: Record<RoundName, Category[]>;
+  final: FinalRound;
+  totalRounds: number;
+}
+
+// ─── Session types ────────────────────────────────────────────────────────────
+
+export interface Player {
+  name: string;
+  score: number;
+  correctCount: number;
+  incorrectCount: number;
+}
+
+/** Per-clue tracking */
+export interface ClueState {
+  chosen: boolean;
+  playerMarkings: Record<string, 'correct' | 'incorrect' | null>;
+}
+
+export interface GameSession {
+  game: NormalizedGame;
+  gameId: string;
+  players: Player[];
+  currentRoundIndex: number;
+  orderedRoundNames: RoundName[];
+  /** key: `${roundName}-${categoryIndex}-${clueIndex}` */
+  clueStates: Record<string, ClueState>;
+}
+
+export type GamePhase =
+  | 'player-entry'
+  | 'category-reveal'
+  | 'board'
+  | 'daily-double'
+  | 'daily-double-wager'
+  | 'clue'
+  | 'round-transition'
+  | 'final-jeopardy'
+  | 'game-over';
+
+export interface ActiveClue {
+  roundName: RoundName;
+  categoryIndex: number;
+  clueIndex: number;
+}
+
+// ─── Edge Function request / response shapes ─────────────────────────────────
+
+export interface SaveGameRequest {
+  gameName: string;
+  gameData: NormalizedGame;
+}
+
+export interface SaveGameSuccessResponse {
+  success: true;
+  id: string;
+}
+
+export interface SaveGameAlreadyExistsResponse {
+  error: string;
+  alreadyExists: true;
+}
+
+export interface SaveGameErrorResponse {
+  error: string;
+}
+
+export type SaveGameResponse =
+  | SaveGameSuccessResponse
+  | SaveGameAlreadyExistsResponse
+  | SaveGameErrorResponse;
+
+export interface UpdateStatsRequest {
+  gameId: string;
+  players: Array<{
+    name: string;
+    finalScore: number;
+    correctCount: number;
+    incorrectCount: number;
+    isWinner: boolean;
+  }>;
+  winnerNames: string[];
+}
+
+export interface UpdateStatsResponse {
+  success: boolean;
+  error?: string;
+}
+
+// ─── Utility result types ─────────────────────────────────────────────────────
+
+export type ValidationResult =
+  | { valid: true; raw: GameFile }
+  | { valid: false; error: string };
+
+export type NormalizeResult =
+  | { ok: true; game: NormalizedGame }
+  | { ok: false; error: string };

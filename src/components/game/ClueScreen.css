@@ -1,0 +1,213 @@
+/* ─── Clue Screen — Jeopardy TV style ───────────────────────────────────────── */
+
+.clue-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  background-color: #001699;
+}
+
+/* ── Header ── */
+.clue-header {
+  padding: 1rem 1.5rem;
+  border-bottom: 2px solid rgba(0, 0, 0, 0.3);
+}
+
+.clue-header-text {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.875rem;
+  font-family: 'Korinna', 'Swiss921', Arial, sans-serif;
+}
+
+/* ── Clue area ── */
+.clue-area {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  cursor: pointer;
+}
+
+.clue-content {
+  max-width: 48rem;
+  text-align: center;
+}
+
+.clue-text {
+  font-family: 'Korinna', 'Swiss921', Arial, sans-serif;
+  font-size: 2rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  color: white;
+  text-shadow: 2px 2px black;
+  line-height: 1.4;
+}
+
+@media (min-width: 768px) {
+  .clue-text {
+    font-size: 3rem;
+  }
+}
+
+.clue-answer {
+  font-family: 'Korinna', 'Swiss921', Arial, sans-serif;
+  font-size: 2rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  color: white;
+  text-shadow: 2px 2px black;
+  line-height: 1.4;
+}
+
+@media (min-width: 768px) {
+  .clue-answer {
+    font-size: 3rem;
+  }
+}
+
+/* ── Scoring panel ── */
+.clue-scoring {
+  border-top: 1px solid white;
+  background: rgba(0, 0, 0, 0.4);
+  padding: 1rem 1.5rem;
+}
+
+.clue-scoring-inner {
+  max-width: 48rem;
+  margin-left: auto;
+  margin-right: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.clue-player-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.clue-player-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.clue-player-name {
+  color: white;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.clue-player-value {
+  color: #c99f57;
+  font-size: 0.875rem;
+  flex-shrink: 0;
+  font-weight: 600;
+}
+
+.clue-player-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+/* ── Correct/Incorrect buttons ── */
+.clue-btn-correct {
+  border-radius: 9999px;
+  padding: 0.375rem 1rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  transition: all 0.2s;
+  border: 1px solid rgb(16 185 129 / 0.5);
+  color: rgb(52 211 153);
+  background: transparent;
+  cursor: pointer;
+}
+
+.clue-btn-correct:hover {
+  background: rgb(16 185 129 / 0.2);
+}
+
+.clue-btn-correct-active {
+  border-radius: 9999px;
+  padding: 0.375rem 1rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  transition: all 0.2s;
+  background: rgb(16 185 129);
+  color: white;
+  border: 1px solid transparent;
+  cursor: pointer;
+}
+
+.clue-btn-incorrect {
+  border-radius: 9999px;
+  padding: 0.375rem 1rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  transition: all 0.2s;
+  border: 1px solid rgb(244 63 94 / 0.5);
+  color: rgb(251 113 133);
+  background: transparent;
+  cursor: pointer;
+}
+
+.clue-btn-incorrect:hover {
+  background: rgb(244 63 94 / 0.2);
+}
+
+.clue-btn-incorrect-active {
+  border-radius: 9999px;
+  padding: 0.375rem 1rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  transition: all 0.2s;
+  background: rgb(244 63 94);
+  color: white;
+  border: 1px solid transparent;
+  cursor: pointer;
+}
+
+/* ── Return to board ── */
+.clue-return-row {
+  max-width: 48rem;
+  margin-left: auto;
+  margin-right: auto;
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.clue-return-btn {
+  font-size: 0.875rem;
+  color: rgba(255, 255, 255, 0.6);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  transition: color 0.2s;
+}
+
+.clue-return-btn:hover {
+  color: white;
+}
+
+/* ── Hint bar ── */
+.clue-hint-bar {
+  padding: 0.75rem 1.5rem;
+  border-top: 2px solid rgba(0, 0, 0, 0.3);
+}
+
+.clue-hint-text {
+  text-align: center;
+  font-size: 0.875rem;
+  color: rgba(255, 255, 255, 0.5);
+}
