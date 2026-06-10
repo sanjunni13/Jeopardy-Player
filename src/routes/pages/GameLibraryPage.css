@@ -1,0 +1,138 @@
+/* ─── Game Library Page ─────────────────────────────────────────────────────── */
+
+.library-page {
+  padding: 2rem;
+  min-height: calc(100vh - 80px);
+}
+
+.library-gradient-container {
+  max-width: 56rem;
+  margin: 0 auto;
+}
+
+.library-card {
+  margin-left: auto;
+  margin-right: auto;
+  max-width: 56rem;
+  border-radius: 1.5rem;
+  border: 1px solid rgb(30 41 59); /* slate-800 */
+  background: rgb(15 23 42 / 0.95); /* slate-900/95 */
+  padding: 2.5rem;
+  box-shadow: 0 25px 50px -12px rgb(15 23 42 / 0.3);
+  position: relative;
+}
+
+/* ─── Title ────────────────────────────────────────────────────────────────── */
+
+.library-title {
+  font-size: 1.875rem;
+  font-weight: bold;
+  margin-bottom: 1.5rem;
+  color: rgb(241 245 249); /* slate-100 */
+  text-align: center;
+}
+
+.library-subtitle {
+  color: rgb(148 163 184); /* slate-400 */
+  margin-bottom: 2rem;
+  font-size: 1rem;
+  text-align: center;
+}
+
+/* ─── Loading state ────────────────────────────────────────────────────────── */
+
+.library-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 0;
+}
+
+.library-spinner {
+  height: 2.5rem;
+  width: 2.5rem;
+  animation: library-spin 1s linear infinite;
+  color: rgb(148 163 184); /* slate-400 */
+}
+
+@keyframes library-spin {
+  100% { transform: rotate(360deg); }
+}
+
+/* ─── Error state ──────────────────────────────────────────────────────────── */
+
+.library-error {
+  margin-top: 1rem;
+  border-radius: 0.75rem;
+  background: rgb(244 63 94 / 0.1); /* rose-500/10 */
+  border: 1px solid rgb(244 63 94 / 0.3); /* rose-500/30 */
+  padding: 1.25rem;
+  text-align: center;
+}
+
+.library-error-message {
+  font-size: 0.875rem;
+  color: rgb(251 113 133); /* rose-400 */
+  margin-bottom: 1rem;
+}
+
+.library-retry-btn {
+  border-radius: 100px;
+  background-color: #6A1B9A;
+  padding: 10px 24px;
+  font-size: 0.875rem;
+  font-weight: bold;
+  color: white;
+  border: 0;
+  cursor: pointer;
+  transition: all 0.5s;
+  -webkit-transition: all 0.5s;
+}
+
+.library-retry-btn:hover {
+  background-color: #8E24AA;
+  box-shadow: 0 0 20px rgba(142, 36, 170, 0.3);
+  transform: scale(1.1);
+}
+
+.library-retry-btn:active {
+  background-color: #4A148C;
+  transition: all 0.25s;
+  -webkit-transition: all 0.25s;
+  box-shadow: none;
+  transform: scale(0.98);
+}
+
+/* ─── Empty state ──────────────────────────────────────────────────────────── */
+
+.library-empty {
+  text-align: center;
+  padding: 2rem 0;
+}
+
+.library-empty-message {
+  color: rgb(148 163 184); /* slate-400 */
+  font-size: 1rem;
+  margin-bottom: 1rem;
+}
+
+.library-upload-link {
+  color: #CE93D8; /* purple-200 accent */
+  font-weight: 600;
+  font-size: 0.875rem;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: color 0.2s;
+}
+
+.library-upload-link:hover {
+  color: #E1BEE7;
+}
+
+/* ─── Game grid ────────────────────────────────────────────────────────────── */
+
+.library-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 1rem;
+}

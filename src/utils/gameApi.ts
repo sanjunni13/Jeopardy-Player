@@ -34,7 +34,7 @@ export async function saveGame(
     }
 
     // Upload to Storage
-    const storagePath = `${user.id}/${gameName}.json`;
+    const storagePath = `${user.email}/${gameName}.json`;
     const { data: uploadData, error: uploadErr } = await supabase.storage
       .from('games')
       .upload(storagePath, JSON.stringify(gameData), {

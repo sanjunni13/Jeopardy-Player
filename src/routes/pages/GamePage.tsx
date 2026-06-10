@@ -54,10 +54,10 @@ export function GamePage() {
   useEffect(() => {
     async function loadGame() {
       try {
-        // Get game name from games table
+        // Get game name and creator from games table
         const { data: gameRow, error: fetchErr } = await supabase
           .from('games')
-          .select('game_name')
+          .select('game_name, created_by')
           .eq('id', gameId)
           .single()
 
@@ -67,7 +67,7 @@ export function GamePage() {
           return
         }
 
-        // Get current user to build storage path
+        // Get current user to verify authentication
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) {
           setError('Not authenticated.')
@@ -75,8 +75,10 @@ export function GamePage() {
           return
         }
 
-        // Download game JSON from storage
-        const storagePath = `${user.id}/${gameRow.game_name}.json`
+        // Build storage path: if created_by is set, game is under that folder; otherwise it's at the root
+        const storagePath = gameRow.created_by
+          ? `${gameRow.created_by}/${gameRow.game_name}.json`
+          : `${gameRow.game_name}.json`
         const { data: fileData, error: downloadErr } = await supabase.storage
           .from('games')
           .download(storagePath)
@@ -321,7 +323,7 @@ export function GamePage() {
     return (
       <PlayerEntry
         onPlay={handlePlay}
-        onBack={() => window.history.back()}
+        onBack={() => navigate({ to: '/home/library' })}
       />
     )
   }

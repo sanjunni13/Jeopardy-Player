@@ -17,6 +17,13 @@ export function HomePage() {
         <div className="home-actions">
           <button
             type="button"
+            onClick={() => navigate({ to: '/home/library' })}
+            className="home-action-btn"
+          >
+            Play a Game
+          </button>
+          <button
+            type="button"
             onClick={() => navigate({ to: '/home/upload' })}
             className="home-action-btn"
           >
