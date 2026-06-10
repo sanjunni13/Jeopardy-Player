@@ -23,6 +23,7 @@ dist-ssr
 *.sln
 *.sw?
 
-# Other repos
+# Other folders
 /repos
 /.kiro
+/scripts
