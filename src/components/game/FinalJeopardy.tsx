@@ -92,11 +92,16 @@ export function FinalJeopardy({ finalRound, players, onComplete }: FinalJeopardy
     setLocalPlayers(prev_players => prev_players.map(p => {
       if (p.name !== playerName) return p
       let newScore = p.score
-      if (prev === 'correct') newScore -= wagerAmount
-      if (prev === 'incorrect') newScore += wagerAmount
-      if (result === 'correct') newScore += wagerAmount
-      if (result === 'incorrect') newScore -= wagerAmount
-      return { ...p, score: newScore }
+      let newCorrectFJ = p.correctFinalJeopardy
+      let newIncorrectFJ = p.incorrectFinalJeopardy
+
+      let newTotalEarned = p.totalEarned
+
+      if (prev === 'correct') { newScore -= wagerAmount; newCorrectFJ = 0; newTotalEarned -= wagerAmount }
+      if (prev === 'incorrect') { newScore += wagerAmount; newIncorrectFJ = 0 }
+      if (result === 'correct') { newScore += wagerAmount; newCorrectFJ = 1; newTotalEarned += wagerAmount }
+      if (result === 'incorrect') { newScore -= wagerAmount; newIncorrectFJ = 1 }
+      return { ...p, score: newScore, correctFinalJeopardy: newCorrectFJ, incorrectFinalJeopardy: newIncorrectFJ, totalEarned: newTotalEarned }
     }))
 
     setMarkings(prev => ({ ...prev, [playerName]: result }))

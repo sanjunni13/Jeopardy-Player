@@ -69,6 +69,11 @@ export interface Player {
   score: number;
   correctCount: number;
   incorrectCount: number;
+  correctDailyDoubles: number;
+  incorrectDailyDoubles: number;
+  correctFinalJeopardy: number;   // 0 or 1
+  incorrectFinalJeopardy: number; // 0 or 1
+  totalEarned: number;            // cumulative sum of all correct clue values (always positive)
 }
 
 /** Per-clue tracking */

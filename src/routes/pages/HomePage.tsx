@@ -1,4 +1,5 @@
 import { useNavigate } from '@tanstack/react-router'
+import { BackgroundGradient } from '../../components/ui/background-gradient'
 import './HomePage.css'
 
 export function HomePage() {
@@ -6,7 +7,10 @@ export function HomePage() {
 
   return (
     <div className="home-page">
-      <div className="home-card">
+      <BackgroundGradient
+        containerClassName="home-gradient-container"
+        className="home-card"
+      >
         <h1 className="home-title">Welcome!</h1>
         <p className="home-subtitle">How would you like to play today?</p>
 
@@ -19,7 +23,7 @@ export function HomePage() {
             Upload a Game
           </button>
         </div>
-      </div>
+      </BackgroundGradient>
     </div>
   )
 }

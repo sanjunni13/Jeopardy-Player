@@ -123,7 +123,7 @@ export async function updateGameStats(
 
       const { data: userRow, error: lookupErr } = await supabase
         .from('players')
-        .select('id, total_games_played, total_games_won, total_correct_answers, total_incorrect_answers, total_money_earned')
+        .select('id, total_games_played, total_games_won, total_correct_answers, total_incorrect_answers, total_money_earned, total_correct_daily_doubles, total_incorrect_daily_doubles, total_correct_final_jeopardies, total_incorrect_final_jeopardies, current_balance')
         .ilike('player_name', player.name)
         .maybeSingle();
 
@@ -133,14 +133,32 @@ export async function updateGameStats(
       }
 
       if (!userRow) {
-        // Not a registered user — skip silently
+        // Player doesn't exist — insert a new row
+        const isWinner = winnerNames.includes(player.name);
+
+        const { error: insertErr } = await supabase
+          .from('players')
+          .insert({
+            player_name: player.name,
+            total_games_played: 1,
+            total_games_won: isWinner ? 1 : 0,
+            total_correct_answers: player.correctCount ?? 0,
+            total_incorrect_answers: player.incorrectCount ?? 0,
+            total_correct_daily_doubles: player.correctDailyDoubles ?? 0,
+            total_incorrect_daily_doubles: player.incorrectDailyDoubles ?? 0,
+            total_correct_final_jeopardies: player.correctFinalJeopardy ?? 0,
+            total_incorrect_final_jeopardies: player.incorrectFinalJeopardy ?? 0,
+            current_balance: player.score,
+            total_money_earned: player.totalEarned ?? 0,
+          });
+
+        if (insertErr) {
+          errors.push(`Insert failed for '${player.name}': ${insertErr.message}`);
+        }
         continue;
       }
 
       const row = userRow as Record<string, unknown>;
-      const moneyDelta = typeof player.score === 'number' && player.score > 0
-        ? player.score
-        : 0;
 
       const isWinner = winnerNames.includes(player.name);
 
@@ -151,7 +169,12 @@ export async function updateGameStats(
           total_games_won: (row.total_games_won as number ?? 0) + (isWinner ? 1 : 0),
           total_correct_answers: (row.total_correct_answers as number ?? 0) + (player.correctCount ?? 0),
           total_incorrect_answers: (row.total_incorrect_answers as number ?? 0) + (player.incorrectCount ?? 0),
-          total_money_earned: (row.total_money_earned as number ?? 0) + moneyDelta,
+          total_correct_daily_doubles: (row.total_correct_daily_doubles as number ?? 0) + (player.correctDailyDoubles ?? 0),
+          total_incorrect_daily_doubles: (row.total_incorrect_daily_doubles as number ?? 0) + (player.incorrectDailyDoubles ?? 0),
+          total_correct_final_jeopardies: (row.total_correct_final_jeopardies as number ?? 0) + (player.correctFinalJeopardy ?? 0),
+          total_incorrect_final_jeopardies: (row.total_incorrect_final_jeopardies as number ?? 0) + (player.incorrectFinalJeopardy ?? 0),
+          current_balance: (row.current_balance as number ?? 0) + player.score,
+          total_money_earned: (row.total_money_earned as number ?? 0) + (player.totalEarned ?? 0),
         })
         .eq('id', row.id);
 

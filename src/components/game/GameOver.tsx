@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
+import confetti from 'canvas-confetti'
 import type { Player } from '../../types/game'
 import { updateGameStats } from '../../utils/gameApi'
 import { Toast } from '../Toast'
+import { BackgroundGradient } from '../ui/background-gradient'
 import './GameOver.css'
 
 interface GameOverProps {
@@ -13,12 +15,14 @@ interface GameOverProps {
 export function GameOver({ players, gameId, onBackToHome }: GameOverProps) {
   const [warningMessage, setWarningMessage] = useState<string | null>(null)
   const statsCalledRef = useRef(false)
+  const confettiFiredRef = useRef(false)
+  const canvasRef = useRef<HTMLCanvasElement>(null)
 
-  // Determine winners (highest score) — sorted highest to lowest (#21)
+  // Determine winners (highest score) — sorted highest to lowest
   const sortedPlayers = [...players].sort((a, b) => b.score - a.score)
   const highestScore = sortedPlayers[0]?.score ?? 0
   const winnerNames = sortedPlayers
-    .filter(p => p.score === highestScore && highestScore > 0)
+    .filter(p => p.score === highestScore)
     .map(p => p.name)
   const hasMultipleWinners = winnerNames.length > 1
 
@@ -36,9 +40,50 @@ export function GameOver({ players, gameId, onBackToHome }: GameOverProps) {
     })
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Fire confetti on mount using a canvas inside the overlay
+  useEffect(() => {
+    if (confettiFiredRef.current || !canvasRef.current) return
+    confettiFiredRef.current = true
+
+    const myConfetti = confetti.create(canvasRef.current, { resize: true })
+    const end = Date.now() + 3 * 1000
+    const colors = ['#6A1B9A', '#9C27B0', '#CE93D8', '#FFD700', '#E1BEE7']
+
+    const frame = () => {
+      if (Date.now() > end) return
+
+      myConfetti({
+        particleCount: 2,
+        angle: 60,
+        spread: 55,
+        startVelocity: 60,
+        origin: { x: 0, y: 0.5 },
+        colors,
+      })
+      myConfetti({
+        particleCount: 2,
+        angle: 120,
+        spread: 55,
+        startVelocity: 60,
+        origin: { x: 1, y: 0.5 },
+        colors,
+      })
+
+      requestAnimationFrame(frame)
+    }
+
+    setTimeout(frame, 500)
+  }, [])
+
   return (
     <div className="gameover-page">
-      <div className="gameover-card">
+      {/* Confetti canvas — rendered inside the overlay so it's visible */}
+      <canvas
+        ref={canvasRef}
+        style={{ position: 'fixed', inset: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 100 }}
+      />
+
+      <BackgroundGradient containerClassName="gameover-gradient-container" className="gameover-card">
         <h1 className="gameover-title">Game Over!</h1>
 
         {/* Winner announcement */}
@@ -54,10 +99,6 @@ export function GameOver({ players, gameId, onBackToHome }: GameOverProps) {
               </p>
             )}
           </div>
-        )}
-
-        {winnerNames.length === 0 && (
-          <p className="gameover-no-winner">No winner — all scores are zero or negative.</p>
         )}
 
         {/* Final standings */}
@@ -89,7 +130,7 @@ export function GameOver({ players, gameId, onBackToHome }: GameOverProps) {
           })}
         </ul>
 
-        {/* Back to home button — Fix #19: updated text */}
+        {/* Back to home button */}
         <button
           type="button"
           onClick={onBackToHome}
@@ -97,7 +138,7 @@ export function GameOver({ players, gameId, onBackToHome }: GameOverProps) {
         >
           Back to Home Page
         </button>
-      </div>
+      </BackgroundGradient>
 
       {/* Warning toast for failed stats update */}
       {warningMessage && (

@@ -4,6 +4,7 @@ import { validateGameFile } from '../../utils/gameValidator'
 import { normalizeGame } from '../../utils/gameNormalizer'
 import { saveGame } from '../../utils/gameApi'
 import { BackButton } from '../../components/BackButton'
+import { BackgroundGradient } from '../../components/ui/background-gradient'
 import './UploadPage.css'
 
 type Status = 'idle' | 'validating' | 'uploading' | 'error'
@@ -71,7 +72,7 @@ export function UploadPage() {
 
   return (
     <div className="upload-page">
-      <div className="upload-card">
+      <BackgroundGradient containerClassName="upload-gradient-container" className="upload-card">
         <BackButton onClick={() => window.history.back()} label="Go back" />
 
         <h1 className="upload-title">Upload a Game</h1>
@@ -110,7 +111,7 @@ export function UploadPage() {
         {errorMessage && (
           <p className="upload-error">{errorMessage}</p>
         )}
-      </div>
+      </BackgroundGradient>
     </div>
   )
 }

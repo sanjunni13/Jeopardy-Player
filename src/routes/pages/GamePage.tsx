@@ -198,16 +198,27 @@ export function GamePage() {
       let newScore = p.score
       let newCorrect = p.correctCount
       let newIncorrect = p.incorrectCount
+      let newCorrectDD = p.correctDailyDoubles
+      let newIncorrectDD = p.incorrectDailyDoubles
+      let newTotalEarned = p.totalEarned
 
       // Reverse previous marking
-      if (prev === 'correct') { newScore -= pointValue; newCorrect-- }
+      if (prev === 'correct') { newScore -= pointValue; newCorrect--; newTotalEarned -= pointValue }
       if (prev === 'incorrect') { newScore += pointValue; newIncorrect-- }
 
       // Apply new marking
-      if (result === 'correct') { newScore += pointValue; newCorrect++ }
+      if (result === 'correct') { newScore += pointValue; newCorrect++; newTotalEarned += pointValue }
       if (result === 'incorrect') { newScore -= pointValue; newIncorrect++ }
 
-      return { ...p, score: newScore, correctCount: newCorrect, incorrectCount: newIncorrect }
+      // Track Daily Double stats
+      if (clue.dailyDouble && playerName === ddSelectedPlayer) {
+        if (prev === 'correct') newCorrectDD--
+        if (prev === 'incorrect') newIncorrectDD--
+        if (result === 'correct') newCorrectDD++
+        if (result === 'incorrect') newIncorrectDD++
+      }
+
+      return { ...p, score: newScore, correctCount: newCorrect, incorrectCount: newIncorrect, correctDailyDoubles: newCorrectDD, incorrectDailyDoubles: newIncorrectDD, totalEarned: newTotalEarned }
     })
 
     // Update clue state markings

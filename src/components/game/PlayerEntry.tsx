@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { Player } from '../../types/game'
 import { BackButton } from '../BackButton'
 import { DeleteButton } from '../DeleteButton'
+import { BackgroundGradient } from '../ui/background-gradient'
 import './PlayerEntry.css'
 
 interface PlayerEntryProps {
@@ -32,7 +33,7 @@ export function PlayerEntry({ onPlay, onBack }: PlayerEntryProps) {
       return
     }
 
-    setPlayers([...players, { name: trimmed, score: 0, correctCount: 0, incorrectCount: 0 }])
+    setPlayers([...players, { name: trimmed, score: 0, correctCount: 0, incorrectCount: 0, correctDailyDoubles: 0, incorrectDailyDoubles: 0, correctFinalJeopardy: 0, incorrectFinalJeopardy: 0, totalEarned: 0 }])
     setInputValue('')
     setErrorMessage(null)
   }
@@ -57,7 +58,7 @@ export function PlayerEntry({ onPlay, onBack }: PlayerEntryProps) {
 
   return (
     <div className="player-entry-page">
-      <div className="player-entry-card">
+      <BackgroundGradient containerClassName="player-entry-gradient-container" className="player-entry-card">
         {/* Back navigation */}
         {onBack && (
           <BackButton onClick={onBack} label="Back" />
@@ -122,7 +123,7 @@ export function PlayerEntry({ onPlay, onBack }: PlayerEntryProps) {
         >
           Play
         </button>
-      </div>
+      </BackgroundGradient>
     </div>
   )
 }

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { Player } from '../../types/game'
 import './DailyDoubleScreen.css'
 
@@ -8,17 +8,17 @@ interface DailyDoubleScreenProps {
 }
 
 export function DailyDoubleScreen({ players, onPlayerSelect }: DailyDoubleScreenProps) {
-  const [soundPlayed, setSoundPlayed] = useState(false)
+  const soundPlayedRef = useRef(false)
   const [animationComplete, setAnimationComplete] = useState(false)
 
-  // Play Daily Double sound on mount
+  // Play Daily Double sound on mount (once)
   useEffect(() => {
-    if (!soundPlayed) {
+    if (!soundPlayedRef.current) {
+      soundPlayedRef.current = true
       const audio = new Audio('/sounds/dailydouble.mp3')
       audio.play().catch(() => { /* autoplay may be blocked */ })
-      setSoundPlayed(true)
     }
-  }, [soundPlayed])
+  }, [])
 
   // Set animation complete after 3 seconds (matches dailyDoubleReveal duration)
   useEffect(() => {
