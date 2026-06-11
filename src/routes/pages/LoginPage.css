@@ -20,6 +20,11 @@
   box-shadow: 0 25px 50px -12px rgb(15 23 42 / 0.3);
 }
 
+.login-gradient-container {
+  width: 100%;
+  max-width: 28rem;
+}
+
 .login-title {
   font-size: 1.875rem;
   font-weight: 600;

@@ -8,7 +8,7 @@ interface ClueScreenProps {
   players: Player[]
   wagers: Record<string, number> | null
   playerMarkings: Record<string, 'correct' | 'incorrect' | null>
-  onMark: (playerName: string, result: 'correct' | 'incorrect') => void
+  onMark: (playerName: string, result: 'correct' | 'incorrect' | null) => void
   onReturn: () => void
   ddPlayer?: string | null
 }
@@ -124,14 +124,14 @@ export function ClueScreen({
                 <div className="clue-player-actions">
                   <button
                     type="button"
-                    onClick={() => onMark(player.name, 'correct')}
+                    onClick={() => onMark(player.name, marking === 'correct' ? null : 'correct')}
                     className={marking === 'correct' ? 'clue-btn-correct-active' : 'clue-btn-correct'}
                   >
                     Correct
                   </button>
                   <button
                     type="button"
-                    onClick={() => onMark(player.name, 'incorrect')}
+                    onClick={() => onMark(player.name, marking === 'incorrect' ? null : 'incorrect')}
                     className={marking === 'incorrect' ? 'clue-btn-incorrect-active' : 'clue-btn-incorrect'}
                   >
                     Incorrect

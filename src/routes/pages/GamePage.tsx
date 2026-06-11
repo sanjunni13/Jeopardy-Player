@@ -178,7 +178,7 @@ export function GamePage() {
     setPhase('clue')
   }
 
-  function handleMark(playerName: string, result: 'correct' | 'incorrect') {
+  function handleMark(playerName: string, result: 'correct' | 'incorrect' | null) {
     if (!session || !activeClue) return
 
     const key = `${activeClue.roundName}-${activeClue.categoryIndex}-${activeClue.clueIndex}`
@@ -208,7 +208,7 @@ export function GamePage() {
       if (prev === 'correct') { newScore -= pointValue; newCorrect--; newTotalEarned -= pointValue }
       if (prev === 'incorrect') { newScore += pointValue; newIncorrect-- }
 
-      // Apply new marking
+      // Apply new marking (null means unmark — only reverse was needed)
       if (result === 'correct') { newScore += pointValue; newCorrect++; newTotalEarned += pointValue }
       if (result === 'incorrect') { newScore -= pointValue; newIncorrect++ }
 

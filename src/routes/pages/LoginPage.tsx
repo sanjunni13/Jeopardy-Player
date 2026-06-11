@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { useNavigate } from '@tanstack/react-router'
 import { supabase } from '../../utils/supabase'
+import { BackgroundGradient } from '../../components/ui/background-gradient'
 import './LoginPage.css'
 
 type Mode = 'sign_in' | 'sign_up'
@@ -77,7 +78,7 @@ export function LoginPage() {
 
   return (
     <main className="login-page">
-      <section className="login-card">
+      <BackgroundGradient containerClassName="login-gradient-container" className="login-card">
         <h1 className="login-title">
           {mode === 'sign_in' ? 'Sign in' : 'Create account'}
         </h1>
@@ -140,7 +141,7 @@ export function LoginPage() {
             {mode === 'sign_in' ? 'Sign up' : 'Sign in'}
           </button>
         </p>
-      </section>
+      </BackgroundGradient>
     </main>
   )
 }

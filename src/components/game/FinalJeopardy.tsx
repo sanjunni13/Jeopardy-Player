@@ -24,7 +24,9 @@ export function FinalJeopardy({ finalRound, players, onComplete }: FinalJeopardy
     players.forEach(p => { initial[p.name] = null })
     return initial
   })
-  const [localPlayers, setLocalPlayers] = useState<Player[]>(players)
+  const [localPlayers, setLocalPlayers] = useState<Player[]>(
+    () => [...players].sort((a, b) => b.score - a.score)
+  )
 
   // Keyboard handler
   useEffect(() => {
