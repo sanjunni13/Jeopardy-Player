@@ -16,8 +16,22 @@ interface GameRecord {
 
 type FetchStatus = 'loading' | 'success' | 'error'
 
+const EXCLUDED_GAMES = [
+  'customizable',
+  'double',
+  'short',
+  'triple',
+  'generated_game',
+  'sample',
+  'scraped_game',
+  'random_game',
+]
+
 async function loadGames() {
-  const { data, error } = await supabase.from('games').select('*')
+  const { data, error } = await supabase
+    .from('games')
+    .select('*')
+    .not('game_name', 'in', `(${EXCLUDED_GAMES.join(',')})`)
   if (error) throw error
   return (data ?? []) as GameRecord[]
 }
