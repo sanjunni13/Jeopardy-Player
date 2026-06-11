@@ -232,11 +232,9 @@ export function FinalJeopardy({ finalRound, players, onComplete }: FinalJeopardy
               const marking = markings[player.name]
 
               return (
-                <div key={player.name} className="fj-player-row">
-                  <div className="fj-player-info">
-                    <span className="fj-player-name">{player.name}</span>
-                    <span className="fj-player-wager">Wager: ${wagerAmount}</span>
-                  </div>
+                <div key={player.name} className="fj-player-card">
+                  <span className="fj-player-name">{player.name}</span>
+                  <span className="fj-player-wager">Wager: ${wagerAmount}</span>
                   <div className="fj-player-actions">
                     <button
                       type="button"

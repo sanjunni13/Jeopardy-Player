@@ -111,16 +111,10 @@ export function ClueScreen({
             return (
               <div
                 key={player.name}
-                className="clue-player-row"
+                className="clue-player-card"
               >
-                <div className="clue-player-info">
-                  <span className="clue-player-name">
-                    {player.name}
-                  </span>
-                  <span className="clue-player-value">
-                    ${pointValue}
-                  </span>
-                </div>
+                <span className="clue-player-name">{player.name}</span>
+                <span className="clue-player-value">${pointValue}</span>
                 <div className="clue-player-actions">
                   <button
                     type="button"
