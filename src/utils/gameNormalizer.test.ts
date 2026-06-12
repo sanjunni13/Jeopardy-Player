@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { normalizeGame } from './gameNormalizer';
-import { GameFile } from '../types/game';
+import type { GameFile } from '../types/game';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 

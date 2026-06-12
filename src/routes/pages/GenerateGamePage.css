@@ -1,0 +1,234 @@
+/* ─── Generate Game Page ────────────────────────────────────────────────────── */
+
+.generate-page {
+  background-color: rgb(2 6 23); /* slate-950 */
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.generate-card {
+  width: 100%;
+  max-width: 32rem;
+  border-radius: 1.5rem;
+  background-color: rgb(15 23 42); /* slate-900 */
+  border: 1px solid rgb(30 41 59); /* slate-800 */
+  padding: 2rem;
+}
+
+/* ─── Back button ──────────────────────────────────────────────────────────── */
+
+.generate-back-btn {
+  color: rgb(148 163 184); /* slate-400 */
+  background: none;
+  border: none;
+  cursor: pointer;
+  margin-bottom: 1rem;
+  font-size: 0.875rem;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0;
+  transition: color 0.2s;
+}
+
+.generate-back-btn:hover {
+  color: rgb(226 232 240); /* slate-200 */
+}
+
+/* ─── Title ────────────────────────────────────────────────────────────────── */
+
+.generate-title {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: rgb(241 245 249); /* slate-100 */
+  margin-bottom: 1.5rem;
+}
+
+/* ─── Tab bar ──────────────────────────────────────────────────────────────── */
+
+.generate-tab-bar {
+  display: flex;
+  border-bottom: 1px solid rgb(30 41 59); /* slate-800 */
+  margin-bottom: 1.5rem;
+}
+
+.generate-tab {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: color 0.2s, border-color 0.2s;
+  color: rgb(148 163 184); /* slate-400 */
+}
+
+.generate-tab:hover {
+  color: rgb(226 232 240); /* slate-200 */
+}
+
+.generate-tab.active {
+  color: rgb(241 245 249); /* slate-100 */
+  border-bottom-color: #6A1B9A;
+}
+
+/* ─── Tab content ──────────────────────────────────────────────────────────── */
+
+.generate-tab-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+/* ─── Form fields ──────────────────────────────────────────────────────────── */
+
+.generate-field-label {
+  display: block;
+  color: rgb(203 213 225); /* slate-300 */
+  font-size: 0.875rem;
+  margin-bottom: 0.25rem;
+}
+
+.generate-select {
+  width: 100%;
+  border: 1px solid rgb(51 65 85); /* slate-700 */
+  background-color: rgb(2 6 23); /* slate-950 */
+  color: rgb(241 245 249); /* slate-100 */
+  border-radius: 1rem;
+  padding: 0.75rem;
+  font-size: 0.875rem;
+}
+
+.generate-select:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px #6A1B9A;
+}
+
+.generate-textarea {
+  width: 100%;
+  border: 1px solid rgb(51 65 85); /* slate-700 */
+  background-color: rgb(2 6 23); /* slate-950 */
+  color: rgb(241 245 249); /* slate-100 */
+  border-radius: 1rem;
+  padding: 0.75rem;
+  font-size: 0.875rem;
+  resize: none;
+}
+
+.generate-textarea::placeholder {
+  color: rgb(100 116 139); /* slate-500 */
+}
+
+.generate-textarea:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px #6A1B9A;
+}
+
+.generate-textarea:disabled {
+  opacity: 0.5;
+}
+
+.generate-helper-text {
+  color: rgb(148 163 184); /* slate-400 */
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
+}
+
+/* ─── Primary action button ────────────────────────────────────────────────── */
+
+.generate-primary-btn {
+  width: 100%;
+  border-radius: 100px;
+  background-color: #6A1B9A;
+  color: white;
+  padding: 0.75rem 1.5rem;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  transition: background-color 0.2s;
+}
+
+.generate-primary-btn:hover:not(:disabled) {
+  background-color: #7B1FA2;
+}
+
+.generate-primary-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ─── Secondary action button (Update Archive Data) ────────────────────────── */
+
+.generate-secondary-btn {
+  width: 100%;
+  border-radius: 100px;
+  border: 1px solid rgb(51 65 85); /* slate-700 */
+  background: none;
+  color: rgb(203 213 225); /* slate-300 */
+  padding: 0.75rem 1.5rem;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  transition: background-color 0.2s;
+}
+
+.generate-secondary-btn:hover:not(:disabled) {
+  background-color: rgb(30 41 59); /* slate-800 */
+}
+
+.generate-secondary-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ─── Divider ──────────────────────────────────────────────────────────────── */
+
+.generate-divider {
+  border: none;
+  border-top: 1px solid rgb(30 41 59); /* slate-800 */
+}
+
+/* ─── Messages ─────────────────────────────────────────────────────────────── */
+
+.generate-error {
+  color: rgb(251 113 133); /* rose-400 */
+  font-size: 0.875rem;
+}
+
+.generate-success-message {
+  color: rgb(52 211 153); /* emerald-400 */
+  font-size: 0.875rem;
+}
+
+.generate-error-message {
+  color: rgb(251 113 133); /* rose-400 */
+  font-size: 0.875rem;
+}
+
+.generate-timestamp {
+  color: rgb(148 163 184); /* slate-400 */
+  font-size: 0.875rem;
+}
+
+/* ─── Spinner ──────────────────────────────────────────────────────────────── */
+
+.generate-spinner {
+  animation: generate-spin 1s linear infinite;
+  height: 1rem;
+  width: 1rem;
+}
+
+@keyframes generate-spin {
+  100% { transform: rotate(360deg); }
+}

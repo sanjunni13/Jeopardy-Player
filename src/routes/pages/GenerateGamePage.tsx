@@ -6,6 +6,7 @@ import {
   generateLabsGame,
   getArchiveLastUpdated,
 } from '../../utils/generateApi'
+import './GenerateGamePage.css'
 
 type ActiveTab = 'archive' | 'labs'
 
@@ -121,42 +122,43 @@ export function GenerateGamePage() {
     })
   }
 
+  function getUpdateMessageClass(): string {
+    if (!archiveState.updateMessage) return ''
+    const msg = archiveState.updateMessage.toLowerCase()
+    if (msg.includes('error') || msg.includes('fail')) {
+      return 'generate-error-message'
+    }
+    return 'generate-success-message'
+  }
+
   return (
-    <div className="bg-slate-950 min-h-screen flex items-center justify-center p-4">
-      <div className="w-full max-w-lg rounded-3xl bg-slate-900 border border-slate-800 p-8">
+    <div className="generate-page">
+      <div className="generate-card">
         {/* Back button */}
         <button
           type="button"
           onClick={() => navigate({ to: '/home' })}
-          className="text-slate-400 hover:text-slate-200 mb-4 text-sm flex items-center gap-1"
+          className="generate-back-btn"
         >
           ← Back
         </button>
 
         {/* Title */}
-        <h1 className="text-2xl font-bold text-slate-100 mb-6">Generate a Game</h1>
+        <h1 className="generate-title">Generate a Game</h1>
 
         {/* Tab bar */}
-        <div className="flex border-b border-slate-800 mb-6">
+        <div className="generate-tab-bar">
           <button
             type="button"
             onClick={() => setActiveTab('archive')}
-            className={`px-4 py-2 text-sm font-medium transition-colors ${
-              activeTab === 'archive'
-                ? 'text-slate-100 border-b-2 border-[#6A1B9A]'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
+            className={`generate-tab ${activeTab === 'archive' ? 'active' : ''}`}
           >
             J! Archive
           </button>
           <button
             type="button"
             onClick={() => setActiveTab('labs')}
-            className={`px-4 py-2 text-sm font-medium transition-colors ${
-              activeTab === 'labs'
-                ? 'text-slate-100 border-b-2 border-[#6A1B9A]'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
+            className={`generate-tab ${activeTab === 'labs' ? 'active' : ''}`}
           >
             JeopardyLabs
           </button>
@@ -164,16 +166,16 @@ export function GenerateGamePage() {
 
         {/* Archive Tab */}
         {activeTab === 'archive' && (
-          <div className="space-y-5">
+          <div className="generate-tab-content">
             {/* Number of Rounds */}
             <div>
-              <label className="block text-slate-300 text-sm mb-1">Number of Rounds</label>
+              <label className="generate-field-label">Number of Rounds</label>
               <select
                 value={archiveState.rounds}
                 onChange={(e) =>
                   setArchiveState((prev) => ({ ...prev, rounds: Number(e.target.value) }))
                 }
-                className="w-full border border-slate-700 bg-slate-950 text-slate-100 rounded-2xl p-3 focus:outline-none focus:ring-2 focus:ring-[#6A1B9A]"
+                className="generate-select"
               >
                 {[1, 2, 3, 4, 5, 6].map((n) => (
                   <option key={n} value={n}>{n}</option>
@@ -183,13 +185,13 @@ export function GenerateGamePage() {
 
             {/* Categories per Round */}
             <div>
-              <label className="block text-slate-300 text-sm mb-1">Categories per Round</label>
+              <label className="generate-field-label">Categories per Round</label>
               <select
                 value={archiveState.categoriesPerRound}
                 onChange={(e) =>
                   setArchiveState((prev) => ({ ...prev, categoriesPerRound: Number(e.target.value) }))
                 }
-                className="w-full border border-slate-700 bg-slate-950 text-slate-100 rounded-2xl p-3 focus:outline-none focus:ring-2 focus:ring-[#6A1B9A]"
+                className="generate-select"
               >
                 {[1, 2, 3, 4, 5, 6].map((n) => (
                   <option key={n} value={n}>{n}</option>
@@ -202,7 +204,7 @@ export function GenerateGamePage() {
               type="button"
               onClick={handleGenerateArchive}
               disabled={archiveState.loading}
-              className="w-full rounded-full bg-[#6A1B9A] text-white py-3 px-6 font-medium hover:bg-[#7B1FA2] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="generate-primary-btn"
             >
               {archiveState.loading && <Spinner />}
               {archiveState.loading ? 'Generating…' : 'Generate Game'}
@@ -210,18 +212,18 @@ export function GenerateGamePage() {
 
             {/* Error display */}
             {archiveState.error && (
-              <p className="text-rose-400 text-sm">{archiveState.error}</p>
+              <p className="generate-error">{archiveState.error}</p>
             )}
 
             {/* Divider */}
-            <hr className="border-slate-800" />
+            <hr className="generate-divider" />
 
             {/* Update Archive Data button */}
             <button
               type="button"
               onClick={handleUpdateArchive}
               disabled={archiveState.updateLoading || isRecentlyUpdated}
-              className="w-full rounded-full border border-slate-700 text-slate-300 py-3 px-6 font-medium hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="generate-secondary-btn"
             >
               {archiveState.updateLoading && <Spinner />}
               {archiveState.updateLoading
@@ -233,20 +235,13 @@ export function GenerateGamePage() {
 
             {/* Update message */}
             {archiveState.updateMessage && (
-              <p
-                className={`text-sm ${
-                  archiveState.updateMessage.toLowerCase().includes('error') ||
-                  archiveState.updateMessage.toLowerCase().includes('fail')
-                    ? 'text-rose-400'
-                    : 'text-emerald-400'
-                }`}
-              >
+              <p className={getUpdateMessageClass()}>
                 {archiveState.updateMessage}
               </p>
             )}
 
             {/* Last updated timestamp */}
-            <p className="text-slate-400 text-sm">
+            <p className="generate-timestamp">
               {archiveState.lastUpdated
                 ? `Last updated: ${formatDate(archiveState.lastUpdated)}`
                 : 'No archive data available'}
@@ -256,7 +251,7 @@ export function GenerateGamePage() {
 
         {/* Labs Tab */}
         {activeTab === 'labs' && (
-          <div className="space-y-5">
+          <div className="generate-tab-content">
             {/* Keywords textarea */}
             <div>
               <textarea
@@ -267,9 +262,9 @@ export function GenerateGamePage() {
                 disabled={labsState.loading}
                 placeholder="science, history, movies…"
                 rows={4}
-                className="w-full border border-slate-700 bg-slate-950 text-slate-100 rounded-2xl p-3 resize-none focus:outline-none focus:ring-2 focus:ring-[#6A1B9A] placeholder:text-slate-500 disabled:opacity-50"
+                className="generate-textarea"
               />
-              <p className="text-slate-400 text-sm mt-1">
+              <p className="generate-helper-text">
                 Enter keywords separated by commas, spaces, or newlines (max 10)
               </p>
             </div>
@@ -279,7 +274,7 @@ export function GenerateGamePage() {
               type="button"
               onClick={handleGenerateLabs}
               disabled={labsState.keywords.trim() === '' || labsState.loading}
-              className="w-full rounded-full bg-[#6A1B9A] text-white py-3 px-6 font-medium hover:bg-[#7B1FA2] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="generate-primary-btn"
             >
               {labsState.loading && <Spinner />}
               {labsState.loading ? 'Generating game… this may take a moment.' : 'Generate Game'}
@@ -287,7 +282,7 @@ export function GenerateGamePage() {
 
             {/* Error display */}
             {labsState.error && (
-              <p className="text-rose-400 text-sm">{labsState.error}</p>
+              <p className="generate-error">{labsState.error}</p>
             )}
           </div>
         )}
@@ -299,7 +294,7 @@ export function GenerateGamePage() {
 function Spinner() {
   return (
     <svg
-      className="animate-spin h-4 w-4"
+      className="generate-spinner"
       xmlns="http://www.w3.org/2000/svg"
       fill="none"
       viewBox="0 0 24 24"

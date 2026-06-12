@@ -4,15 +4,33 @@ import {
   createRouter,
   Outlet,
 } from '@tanstack/react-router'
+import { lazy, Suspense } from 'react'
 import { IndexRedirect, ProtectedShell } from './routeComponents'
-import { HomePage } from './pages/HomePage'
-import { LoginPage } from './pages/LoginPage'
-import { UnauthorizedPage } from './pages/UnauthorizedPage'
 import { NotFoundPage } from './pages/NotFoundPage'
-import { UploadPage } from './pages/UploadPage'
-import { GamePage } from './pages/GamePage'
-import { GameLibraryPage } from './pages/GameLibraryPage'
-import { GenerateGamePage } from './pages/GenerateGamePage'
+
+// ─── Lazy-loaded page components ─────────────────────────────────────────────
+
+const HomePage = lazy(() => import('./pages/HomePage').then(m => ({ default: m.HomePage })))
+const LoginPage = lazy(() => import('./pages/LoginPage').then(m => ({ default: m.LoginPage })))
+const UnauthorizedPage = lazy(() => import('./pages/UnauthorizedPage').then(m => ({ default: m.UnauthorizedPage })))
+const UploadPage = lazy(() => import('./pages/UploadPage').then(m => ({ default: m.UploadPage })))
+const GamePage = lazy(() => import('./pages/GamePage').then(m => ({ default: m.GamePage })))
+const GameLibraryPage = lazy(() => import('./pages/GameLibraryPage').then(m => ({ default: m.GameLibraryPage })))
+const GenerateGamePage = lazy(() => import('./pages/GenerateGamePage').then(m => ({ default: m.GenerateGamePage })))
+
+function LazyFallback() {
+  return <p className="p-6 text-slate-300">Loading…</p>
+}
+
+function withSuspense(Component: React.LazyExoticComponent<React.ComponentType>) {
+  return function SuspenseWrapper() {
+    return (
+      <Suspense fallback={<LazyFallback />}>
+        <Component />
+      </Suspense>
+    )
+  }
+}
 
 // ─── Route Tree ──────────────────────────────────────────────────────────────
 
@@ -29,7 +47,7 @@ const indexRoute = createRoute({
 const loginRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/login',
-  component: LoginPage,
+  component: withSuspense(LoginPage),
 })
 
 const protectedRoute = createRoute({
@@ -41,37 +59,37 @@ const protectedRoute = createRoute({
 const homeIndexRoute = createRoute({
   getParentRoute: () => protectedRoute,
   path: '/',
-  component: HomePage,
+  component: withSuspense(HomePage),
 })
 
 const uploadRoute = createRoute({
   getParentRoute: () => protectedRoute,
   path: '/upload',
-  component: UploadPage,
+  component: withSuspense(UploadPage),
 })
 
 const gameRoute = createRoute({
   getParentRoute: () => protectedRoute,
   path: '/game/$gameId',
-  component: GamePage,
+  component: withSuspense(GamePage),
 })
 
 const libraryRoute = createRoute({
   getParentRoute: () => protectedRoute,
   path: '/library',
-  component: GameLibraryPage,
+  component: withSuspense(GameLibraryPage),
 })
 
 const generateRoute = createRoute({
   getParentRoute: () => protectedRoute,
   path: '/generate',
-  component: GenerateGamePage,
+  component: withSuspense(GenerateGamePage),
 })
 
 const unauthorizedRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/401',
-  component: UnauthorizedPage,
+  component: withSuspense(UnauthorizedPage),
 })
 
 const catchAllRoute = createRoute({
