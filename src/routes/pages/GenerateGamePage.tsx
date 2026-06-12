@@ -1,15 +1,16 @@
 import { useState, useEffect, useMemo } from 'react'
-import { useNavigate } from '@tanstack/react-router'
+import { useNavigate, useBlocker } from '@tanstack/react-router'
 import {
   generateArchiveGame,
   updateArchiveData,
   generateLabsGame,
   getArchiveLastUpdated,
+  generateAiGame,
 } from '../../utils/generateApi'
 import { BackgroundGradient } from '../../components/ui/background-gradient'
 import './GenerateGamePage.css'
 
-type ActiveTab = 'archive' | 'labs'
+type ActiveTab = 'archive' | 'labs' | 'ai'
 
 interface ArchiveState {
   rounds: number
@@ -23,6 +24,16 @@ interface ArchiveState {
 
 interface LabsState {
   keywords: string
+  loading: boolean
+  error: string | null
+}
+
+interface AiState {
+  rounds: string
+  categoriesPerRound: string
+  difficulty: string
+  dailyDoublesPerRound: number
+  specialRequests: string
   loading: boolean
   error: string | null
 }
@@ -44,8 +55,24 @@ export function GenerateGamePage() {
     loading: false,
     error: null,
   })
+  const [aiState, setAiState] = useState<AiState>({
+    rounds: '',
+    categoriesPerRound: '',
+    difficulty: '',
+    dailyDoublesPerRound: 0,
+    specialRequests: '',
+    loading: false,
+    error: null,
+  })
 
   const [mountTime] = useState(() => Date.now())
+  const [toast, setToast] = useState<string | null>(null)
+
+  useBlocker({
+    shouldBlockFn: () => !window.confirm('Game generation is in progress. Are you sure you want to leave?'),
+    enableBeforeUnload: () => aiState.loading,
+    disabled: !aiState.loading,
+  })
 
   useEffect(() => {
     let cancelled = false
@@ -63,6 +90,8 @@ export function GenerateGamePage() {
     const fourteenDaysAgo = new Date(mountTime - 14 * 24 * 60 * 60 * 1000)
     return lastDate > fourteenDaysAgo
   }, [archiveState.lastUpdated, mountTime])
+
+  const isAiGenerateDisabled = aiState.rounds === '' || aiState.categoriesPerRound === '' || aiState.difficulty === '' || aiState.loading
 
   async function handleGenerateArchive() {
     setArchiveState((prev) => ({ ...prev, loading: true, error: null }))
@@ -113,6 +142,69 @@ export function GenerateGamePage() {
     }
   }
 
+  async function handleGenerateAi() {
+    setAiState((prev) => ({ ...prev, loading: true, error: null }))
+
+    const params = {
+      rounds: Number(aiState.rounds),
+      categoriesPerRound: Number(aiState.categoriesPerRound),
+      difficulty: aiState.difficulty as 'easy' | 'medium' | 'hard',
+      dailyDoublesPerRound: aiState.dailyDoublesPerRound,
+      specialRequests: aiState.specialRequests,
+    }
+
+    // First attempt
+    const response = await generateAiGame(params)
+
+    if ('success' in response) {
+      setAiState((prev) => ({ ...prev, loading: false }))
+      navigate({ to: '/home/game/$gameId', params: { gameId: response.id } })
+      return
+    }
+
+    // Handle 429 rate limit
+    if ('retryAfterSeconds' in response) {
+      const minutes = Math.ceil(response.retryAfterSeconds / 60)
+      setAiState((prev) => ({
+        ...prev,
+        loading: false,
+        error: `Rate limit exceeded. Please try again in ${minutes} minute${minutes !== 1 ? 's' : ''}.`,
+      }))
+      return
+    }
+
+    // First failure - show toast and retry
+    setToast('An error occurred, retrying...')
+    setTimeout(() => setToast(null), 3000)
+
+    // Retry with same params
+    const retryResponse = await generateAiGame(params)
+
+    if ('success' in retryResponse) {
+      setAiState((prev) => ({ ...prev, loading: false }))
+      navigate({ to: '/home/game/$gameId', params: { gameId: retryResponse.id } })
+      return
+    }
+
+    // Handle 429 on retry
+    if ('retryAfterSeconds' in retryResponse) {
+      const minutes = Math.ceil(retryResponse.retryAfterSeconds / 60)
+      setAiState((prev) => ({
+        ...prev,
+        loading: false,
+        error: `Rate limit exceeded. Please try again in ${minutes} minute${minutes !== 1 ? 's' : ''}.`,
+      }))
+      return
+    }
+
+    // Retry also failed
+    setAiState((prev) => ({
+      ...prev,
+      loading: false,
+      error: retryResponse.error || 'An unexpected error occurred.',
+    }))
+  }
+
   function formatDate(iso: string): string {
     return new Date(iso).toLocaleDateString(undefined, {
       year: 'numeric',
@@ -134,6 +226,12 @@ export function GenerateGamePage() {
 
   return (
     <div className="generate-page">
+      {/* Toast notification */}
+      {toast && (
+        <div className="generate-toast" role="status" aria-live="polite">
+          {toast}
+        </div>
+      )}
       <BackgroundGradient containerClassName="generate-gradient-container" className="generate-card">
         {/* Back button */}
         <button
@@ -162,6 +260,13 @@ export function GenerateGamePage() {
             className={`generate-tab ${activeTab === 'labs' ? 'active' : ''}`}
           >
             JeopardyLabs
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('ai')}
+            className={`generate-tab ${activeTab === 'ai' ? 'active' : ''}`}
+          >
+            AI Generation
           </button>
         </div>
 
@@ -284,6 +389,106 @@ export function GenerateGamePage() {
             {/* Error display */}
             {labsState.error && (
               <p className="generate-error">{labsState.error}</p>
+            )}
+          </div>
+        )}
+
+        {/* AI Generation Tab */}
+        {activeTab === 'ai' && (
+          <div className="generate-tab-content">
+            {/* Number of Rounds */}
+            <div>
+              <label className="generate-field-label">Number of Rounds</label>
+              <select
+                value={aiState.rounds}
+                onChange={(e) => setAiState((prev) => ({ ...prev, rounds: e.target.value }))}
+                disabled={aiState.loading}
+                className="generate-select"
+              >
+                <option value="" disabled>Select rounds…</option>
+                {[1, 2, 3, 4, 5, 6].map((n) => (
+                  <option key={n} value={String(n)}>{n}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Categories per Round */}
+            <div>
+              <label className="generate-field-label">Categories per Round</label>
+              <select
+                value={aiState.categoriesPerRound}
+                onChange={(e) => setAiState((prev) => ({ ...prev, categoriesPerRound: e.target.value }))}
+                disabled={aiState.loading}
+                className="generate-select"
+              >
+                <option value="" disabled>Select categories…</option>
+                {[1, 2, 3, 4, 5, 6].map((n) => (
+                  <option key={n} value={String(n)}>{n}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Difficulty */}
+            <div>
+              <label className="generate-field-label">Difficulty</label>
+              <select
+                value={aiState.difficulty}
+                onChange={(e) => setAiState((prev) => ({ ...prev, difficulty: e.target.value }))}
+                disabled={aiState.loading}
+                className="generate-select"
+              >
+                <option value="" disabled>Select difficulty…</option>
+                <option value="easy">Easy</option>
+                <option value="medium">Medium</option>
+                <option value="hard">Hard</option>
+              </select>
+            </div>
+
+            {/* Daily Doubles per Round */}
+            <div>
+              <label className="generate-field-label">Daily Doubles per Round</label>
+              <input
+                type="number"
+                value={aiState.dailyDoublesPerRound}
+                onChange={(e) => setAiState((prev) => ({ ...prev, dailyDoublesPerRound: Math.max(0, Math.min(Number(prev.categoriesPerRound) || 0, Number(e.target.value))) }))}
+                disabled={aiState.loading || aiState.rounds === '' || aiState.categoriesPerRound === '' || aiState.difficulty === ''}
+                min={0}
+                max={Number(aiState.categoriesPerRound) || 0}
+                className="generate-select"
+              />
+            </div>
+
+            {/* Special Requests */}
+            <div>
+              <label className="generate-field-label">Special Requests</label>
+              <textarea
+                value={aiState.specialRequests}
+                onChange={(e) => setAiState((prev) => ({ ...prev, specialRequests: e.target.value }))}
+                disabled={aiState.loading}
+                placeholder="Add keywords, themes, or custom instructions…"
+                maxLength={500}
+                rows={3}
+                className="generate-textarea"
+              />
+              <p className="generate-helper-text">
+                {aiState.specialRequests.length}/500 characters
+              </p>
+            </div>
+
+            {/* Generate Game button */}
+            <button
+              type="button"
+              onClick={handleGenerateAi}
+              disabled={isAiGenerateDisabled}
+              className="generate-primary-btn"
+            >
+              {aiState.loading && <Spinner />}
+              {aiState.loading ? 'Generating…' : 'Generate Game'}
+            </button>
+
+            {/* Error display */}
+            {aiState.error && (
+              <p className="generate-error">{aiState.error}</p>
             )}
           </div>
         )}

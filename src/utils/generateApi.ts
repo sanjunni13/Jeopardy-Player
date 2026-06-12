@@ -9,6 +9,11 @@ export interface GenerateErrorResponse {
   error: string
 }
 
+export interface RateLimitErrorResponse {
+  error: string
+  retryAfterSeconds: number
+}
+
 export interface UpdateArchiveResponse {
   success: true
   message: string
@@ -87,4 +92,34 @@ export async function getArchiveLastUpdated(): Promise<{ lastUpdated: string | n
   if (error || !data) return { lastUpdated: null }
   const json = JSON.parse(await data.text())
   return { lastUpdated: json.lastUpdated ?? null }
+}
+
+export interface GenerateAiGameParams {
+  rounds: number
+  categoriesPerRound: number
+  difficulty: 'easy' | 'medium' | 'hard'
+  dailyDoublesPerRound: number
+  specialRequests: string
+}
+
+export async function generateAiGame(
+  params: GenerateAiGameParams
+): Promise<GenerateResponse | GenerateErrorResponse | RateLimitErrorResponse> {
+  const { data: { session } } = await supabase.auth.getSession()
+  const token = session?.access_token
+  if (!token) return { error: 'Not authenticated' }
+
+  const res = await fetch(
+    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-ai-game`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(params),
+    }
+  )
+
+  return res.json()
 }
