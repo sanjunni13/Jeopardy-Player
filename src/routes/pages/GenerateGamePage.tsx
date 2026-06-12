@@ -6,6 +6,7 @@ import {
   generateLabsGame,
   getArchiveLastUpdated,
 } from '../../utils/generateApi'
+import { BackgroundGradient } from '../../components/ui/background-gradient'
 import './GenerateGamePage.css'
 
 type ActiveTab = 'archive' | 'labs'
@@ -133,7 +134,7 @@ export function GenerateGamePage() {
 
   return (
     <div className="generate-page">
-      <div className="generate-card">
+      <BackgroundGradient containerClassName="generate-gradient-container" className="generate-card">
         {/* Back button */}
         <button
           type="button"
@@ -260,7 +261,7 @@ export function GenerateGamePage() {
                   setLabsState((prev) => ({ ...prev, keywords: e.target.value }))
                 }
                 disabled={labsState.loading}
-                placeholder="science, history, movies…"
+                placeholder="Science, history, movies…"
                 rows={4}
                 className="generate-textarea"
               />
@@ -286,7 +287,7 @@ export function GenerateGamePage() {
             )}
           </div>
         )}
-      </div>
+      </BackgroundGradient>
     </div>
   )
 }
