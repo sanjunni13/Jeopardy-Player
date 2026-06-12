@@ -36,6 +36,13 @@ export function HomePage() {
           >
             Generate a Game
           </button>
+          <button
+            type="button"
+            onClick={() => navigate({ to: '/home/create' })}
+            className="home-action-btn"
+          >
+            Create a Game
+          </button>
         </div>
       </BackgroundGradient>
     </div>
