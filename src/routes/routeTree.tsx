@@ -12,6 +12,7 @@ import { NotFoundPage } from './pages/NotFoundPage'
 import { UploadPage } from './pages/UploadPage'
 import { GamePage } from './pages/GamePage'
 import { GameLibraryPage } from './pages/GameLibraryPage'
+import { GenerateGamePage } from './pages/GenerateGamePage'
 
 // ─── Route Tree ──────────────────────────────────────────────────────────────
 
@@ -61,6 +62,12 @@ const libraryRoute = createRoute({
   component: GameLibraryPage,
 })
 
+const generateRoute = createRoute({
+  getParentRoute: () => protectedRoute,
+  path: '/generate',
+  component: GenerateGamePage,
+})
+
 const unauthorizedRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/401',
@@ -81,6 +88,7 @@ const routeTree = rootRoute.addChildren([
     uploadRoute,
     gameRoute,
     libraryRoute,
+    generateRoute,
   ]),
   unauthorizedRoute,
   catchAllRoute,
