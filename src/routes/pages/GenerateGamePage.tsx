@@ -8,6 +8,7 @@ import {
   generateAiGame,
 } from '../../utils/generateApi'
 import { BackgroundGradient } from '../../components/ui/background-gradient'
+import { CloudSpinner } from '../../components/ui/CloudSpinner'
 import './GenerateGamePage.css'
 
 type ActiveTab = 'archive' | 'labs' | 'ai'
@@ -70,8 +71,8 @@ export function GenerateGamePage() {
 
   useBlocker({
     shouldBlockFn: () => !window.confirm('Game generation is in progress. Are you sure you want to leave?'),
-    enableBeforeUnload: () => aiState.loading,
-    disabled: !aiState.loading,
+    enableBeforeUnload: () => aiState.loading || archiveState.loading || labsState.loading,
+    disabled: !aiState.loading && !archiveState.loading && !labsState.loading,
   })
 
   useEffect(() => {
@@ -92,6 +93,8 @@ export function GenerateGamePage() {
   }, [archiveState.lastUpdated, mountTime])
 
   const isAiGenerateDisabled = aiState.rounds === '' || aiState.categoriesPerRound === '' || aiState.difficulty === '' || aiState.loading
+
+  const isGenerating = archiveState.loading || labsState.loading || aiState.loading
 
   async function handleGenerateArchive() {
     setArchiveState((prev) => ({ ...prev, loading: true, error: null }))
@@ -251,6 +254,7 @@ export function GenerateGamePage() {
             type="button"
             onClick={() => setActiveTab('archive')}
             className={`generate-tab ${activeTab === 'archive' ? 'active' : ''}`}
+            disabled={isGenerating}
           >
             J! Archive
           </button>
@@ -258,6 +262,7 @@ export function GenerateGamePage() {
             type="button"
             onClick={() => setActiveTab('labs')}
             className={`generate-tab ${activeTab === 'labs' ? 'active' : ''}`}
+            disabled={isGenerating}
           >
             JeopardyLabs
           </button>
@@ -265,13 +270,22 @@ export function GenerateGamePage() {
             type="button"
             onClick={() => setActiveTab('ai')}
             className={`generate-tab ${activeTab === 'ai' ? 'active' : ''}`}
+            disabled={isGenerating}
           >
             AI Generation
           </button>
         </div>
 
+        {/* Cloud Spinner Overlay */}
+        {isGenerating && (
+          <div className="generate-loading-overlay">
+            <CloudSpinner />
+            <p className="generate-loading-text">Generating your game…</p>
+          </div>
+        )}
+
         {/* Archive Tab */}
-        {activeTab === 'archive' && (
+        {activeTab === 'archive' && !isGenerating && (
           <div className="generate-tab-content">
             {/* Number of Rounds */}
             <div>
@@ -312,7 +326,6 @@ export function GenerateGamePage() {
               disabled={archiveState.loading}
               className="generate-primary-btn"
             >
-              {archiveState.loading && <Spinner />}
               {archiveState.loading ? 'Generating…' : 'Generate Game'}
             </button>
 
@@ -331,7 +344,6 @@ export function GenerateGamePage() {
               disabled={archiveState.updateLoading || isRecentlyUpdated}
               className="generate-secondary-btn"
             >
-              {archiveState.updateLoading && <Spinner />}
               {archiveState.updateLoading
                 ? 'Updating archive data…'
                 : isRecentlyUpdated
@@ -356,7 +368,7 @@ export function GenerateGamePage() {
         )}
 
         {/* Labs Tab */}
-        {activeTab === 'labs' && (
+        {activeTab === 'labs' && !isGenerating && (
           <div className="generate-tab-content">
             {/* Keywords textarea */}
             <div>
@@ -382,8 +394,7 @@ export function GenerateGamePage() {
               disabled={labsState.keywords.trim() === '' || labsState.loading}
               className="generate-primary-btn"
             >
-              {labsState.loading && <Spinner />}
-              {labsState.loading ? 'Generating game… this may take a moment.' : 'Generate Game'}
+              {labsState.loading ? 'Generating…' : 'Generate Game'}
             </button>
 
             {/* Error display */}
@@ -394,7 +405,7 @@ export function GenerateGamePage() {
         )}
 
         {/* AI Generation Tab */}
-        {activeTab === 'ai' && (
+        {activeTab === 'ai' && !isGenerating && (
           <div className="generate-tab-content">
             {/* Number of Rounds */}
             <div>
@@ -482,7 +493,6 @@ export function GenerateGamePage() {
               disabled={isAiGenerateDisabled}
               className="generate-primary-btn"
             >
-              {aiState.loading && <Spinner />}
               {aiState.loading ? 'Generating…' : 'Generate Game'}
             </button>
 
@@ -497,17 +507,3 @@ export function GenerateGamePage() {
   )
 }
 
-function Spinner() {
-  return (
-    <svg
-      className="generate-spinner"
-      xmlns="http://www.w3.org/2000/svg"
-      fill="none"
-      viewBox="0 0 24 24"
-      aria-hidden="true"
-    >
-      <circle opacity="0.25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-      <path opacity="0.75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
-    </svg>
-  )
-}
