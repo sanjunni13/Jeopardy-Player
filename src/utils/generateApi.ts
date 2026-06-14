@@ -14,17 +14,6 @@ export interface RateLimitErrorResponse {
   retryAfterSeconds: number
 }
 
-export interface UpdateArchiveResponse {
-  success: true
-  message: string
-  lastUpdated: string
-  isFullyComplete?: boolean
-  gamesScraped?: number
-  totalGames?: number
-  seasonsComplete?: number
-  totalSeasons?: number
-}
-
 export async function generateArchiveGame(
   rounds: number,
   categoriesPerRound: number
@@ -42,26 +31,6 @@ export async function generateArchiveGame(
         Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({ rounds, categoriesPerRound }),
-    }
-  )
-
-  return res.json()
-}
-
-export async function updateArchiveData(): Promise<UpdateArchiveResponse | GenerateErrorResponse> {
-  const { data: { session } } = await supabase.auth.getSession()
-  const token = session?.access_token
-  if (!token) return { error: 'Not authenticated' }
-
-  const res = await fetch(
-    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/update-archive-data`,
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({}),
     }
   )
 
@@ -88,15 +57,6 @@ export async function generateLabsGame(
   )
 
   return res.json()
-}
-
-export async function getArchiveLastUpdated(): Promise<{ lastUpdated: string | null }> {
-  const { data, error } = await supabase.storage
-    .from('data')
-    .download('category_analysis/last_updated.json')
-  if (error || !data) return { lastUpdated: null }
-  const json = JSON.parse(await data.text())
-  return { lastUpdated: json.lastUpdated ?? null }
 }
 
 export interface GenerateAiGameParams {

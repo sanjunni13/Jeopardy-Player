@@ -1,13 +1,10 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState } from 'react'
 import { useNavigate, useBlocker } from '@tanstack/react-router'
 import {
   generateArchiveGame,
-  updateArchiveData,
   generateLabsGame,
-  getArchiveLastUpdated,
   generateAiGame,
 } from '../../utils/generateApi'
-import { useAuth } from '../../hooks/useAuth'
 import { BackgroundGradient } from '../../components/ui/background-gradient'
 import { CloudSpinner } from '../../components/ui/CloudSpinner'
 import './GenerateGamePage.css'
@@ -19,10 +16,6 @@ interface ArchiveState {
   categoriesPerRound: number
   loading: boolean
   error: string | null
-  updateLoading: boolean
-  updateMessage: string | null
-  lastUpdated: string | null
-  isFullyComplete: boolean
 }
 
 interface LabsState {
@@ -43,18 +36,12 @@ interface AiState {
 
 export function GenerateGamePage() {
   const navigate = useNavigate()
-  const { session } = useAuth()
-  const isAdmin = session?.user?.email === import.meta.env.VITE_ARCHIVE_DATA_EMAIL
   const [activeTab, setActiveTab] = useState<ActiveTab>('archive')
   const [archiveState, setArchiveState] = useState<ArchiveState>({
     rounds: 2,
     categoriesPerRound: 6,
     loading: false,
     error: null,
-    updateLoading: false,
-    updateMessage: null,
-    lastUpdated: null,
-    isFullyComplete: false,
   })
   const [labsState, setLabsState] = useState<LabsState>({
     keywords: '',
@@ -71,36 +58,17 @@ export function GenerateGamePage() {
     error: null,
   })
 
-  const [mountTime] = useState(() => Date.now())
   const [toast, setToast] = useState<string | null>(null)
 
   useBlocker({
     shouldBlockFn: () => !window.confirm('An operation is in progress. Are you sure you want to leave?'),
-    enableBeforeUnload: () => aiState.loading || archiveState.loading || archiveState.updateLoading || labsState.loading,
-    disabled: !aiState.loading && !archiveState.loading && !archiveState.updateLoading && !labsState.loading,
+    enableBeforeUnload: () => aiState.loading || archiveState.loading || labsState.loading,
+    disabled: !aiState.loading && !archiveState.loading && !labsState.loading,
   })
-
-  useEffect(() => {
-    let cancelled = false
-    getArchiveLastUpdated().then((result) => {
-      if (!cancelled) {
-        setArchiveState((prev) => ({ ...prev, lastUpdated: result.lastUpdated }))
-      }
-    })
-    return () => { cancelled = true }
-  }, [])
-
-  const isRecentlyUpdated = useMemo(() => {
-    if (!archiveState.isFullyComplete || !archiveState.lastUpdated) return false
-    const lastDate = new Date(archiveState.lastUpdated)
-    const fourteenDaysAgo = new Date(mountTime - 14 * 24 * 60 * 60 * 1000)
-    return lastDate > fourteenDaysAgo
-  }, [archiveState.lastUpdated, archiveState.isFullyComplete, mountTime])
 
   const isAiGenerateDisabled = aiState.rounds === '' || aiState.categoriesPerRound === '' || aiState.difficulty === '' || aiState.loading
 
   const isGenerating = archiveState.loading || labsState.loading || aiState.loading
-  const isBusy = isGenerating || archiveState.updateLoading
 
   async function handleGenerateArchive() {
     setArchiveState((prev) => ({ ...prev, loading: true, error: null }))
@@ -109,26 +77,6 @@ export function GenerateGamePage() {
       navigate({ to: '/home/game/$gameId', params: { gameId: response.id } })
     } else {
       setArchiveState((prev) => ({ ...prev, error: response.error, loading: false }))
-    }
-  }
-
-  async function handleUpdateArchive() {
-    setArchiveState((prev) => ({ ...prev, updateLoading: true, updateMessage: null }))
-    const response = await updateArchiveData()
-    if ('success' in response) {
-      setArchiveState((prev) => ({
-        ...prev,
-        updateLoading: false,
-        updateMessage: response.message,
-        lastUpdated: response.lastUpdated,
-        isFullyComplete: response.isFullyComplete ?? false,
-      }))
-    } else {
-      setArchiveState((prev) => ({
-        ...prev,
-        updateLoading: false,
-        updateMessage: response.error,
-      }))
     }
   }
 
@@ -215,25 +163,6 @@ export function GenerateGamePage() {
     }))
   }
 
-  function formatDate(iso: string): string {
-    return new Date(iso).toLocaleDateString(undefined, {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    })
-  }
-
-  function getUpdateMessageClass(): string {
-    if (!archiveState.updateMessage) return ''
-    const msg = archiveState.updateMessage.toLowerCase()
-    if (msg.includes('error') || msg.includes('fail')) {
-      return 'generate-error-message'
-    }
-    return 'generate-success-message'
-  }
-
   return (
     <div className="generate-page">
       {/* Toast notification */}
@@ -248,7 +177,7 @@ export function GenerateGamePage() {
           type="button"
           onClick={() => navigate({ to: '/home' })}
           className="generate-back-btn"
-          disabled={isBusy}
+          disabled={isGenerating}
         >
           ← Back
         </button>
@@ -262,7 +191,7 @@ export function GenerateGamePage() {
             type="button"
             onClick={() => setActiveTab('archive')}
             className={`generate-tab ${activeTab === 'archive' ? 'active' : ''}`}
-            disabled={isBusy}
+            disabled={isGenerating}
           >
             J! Archive
           </button>
@@ -270,7 +199,7 @@ export function GenerateGamePage() {
             type="button"
             onClick={() => setActiveTab('labs')}
             className={`generate-tab ${activeTab === 'labs' ? 'active' : ''}`}
-            disabled={isBusy}
+            disabled={isGenerating}
           >
             JeopardyLabs
           </button>
@@ -278,7 +207,7 @@ export function GenerateGamePage() {
             type="button"
             onClick={() => setActiveTab('ai')}
             className={`generate-tab ${activeTab === 'ai' ? 'active' : ''}`}
-            disabled={isBusy}
+            disabled={isGenerating}
           >
             AI Generation
           </button>
@@ -342,38 +271,6 @@ export function GenerateGamePage() {
               <p className="generate-error">{archiveState.error}</p>
             )}
 
-            {/* Divider */}
-            {isAdmin && <hr className="generate-divider" />}
-
-            {/* Update Archive Data button */}
-            {isAdmin && (
-              <button
-                type="button"
-                onClick={handleUpdateArchive}
-                disabled={archiveState.updateLoading || isRecentlyUpdated}
-                className="generate-secondary-btn"
-              >
-                {archiveState.updateLoading
-                  ? 'Updating archive data…'
-                  : isRecentlyUpdated
-                    ? 'Data was recently updated'
-                    : 'Update Archive Data'}
-              </button>
-            )}
-
-            {/* Update message */}
-            {isAdmin && archiveState.updateMessage && (
-              <p className={getUpdateMessageClass()}>
-                {archiveState.updateMessage}
-              </p>
-            )}
-
-            {/* Last updated timestamp */}
-            <p className="generate-timestamp">
-              {archiveState.lastUpdated
-                ? `Last updated: ${formatDate(archiveState.lastUpdated)}`
-                : 'No archive data available'}
-            </p>
           </div>
         )}
 
