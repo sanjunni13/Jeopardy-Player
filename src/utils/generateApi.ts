@@ -18,6 +18,11 @@ export interface UpdateArchiveResponse {
   success: true
   message: string
   lastUpdated: string
+  isFullyComplete?: boolean
+  gamesScraped?: number
+  totalGames?: number
+  seasonsComplete?: number
+  totalSeasons?: number
 }
 
 export async function generateArchiveGame(
