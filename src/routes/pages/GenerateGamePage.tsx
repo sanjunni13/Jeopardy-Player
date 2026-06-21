@@ -301,7 +301,7 @@ export function GenerateGamePage() {
                 className="generate-textarea"
               />
               <p className="generate-helper-text">
-                Enter keywords separated by commas, spaces, or newlines (max 10)
+                Enter keywords separated by commas, spaces, or new lines (max 10)
               </p>
             </div>
 
