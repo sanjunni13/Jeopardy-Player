@@ -54,23 +54,38 @@ serve(async (req: Request) => {
       })
     }
 
-    // Download category data files
-    const [singleRes, doubleRes, finalRes] = await Promise.all([
-      supabase.storage.from('data').download('category_analysis/single_categories.json'),
-      supabase.storage.from('data').download('category_analysis/double_categories.json'),
-      supabase.storage.from('data').download('category_analysis/final_categories.json'),
-    ])
+    // Load category chunks - pick random chunks for each round type
+    async function loadRandomChunk(roundType: string): Promise<Record<string, { category_name: string; clues: Array<{ text: string; answer: string }> }> | null> {
+      // Load manifest to know how many chunks exist
+      const { data: manifestData, error: manifestError } = await supabase.storage
+        .from('data')
+        .download(`category_analysis/${roundType}_chunks_manifest.json`)
+      if (manifestError || !manifestData) return null
 
-    if (singleRes.error || !singleRes.data || doubleRes.error || !doubleRes.data || finalRes.error || !finalRes.data) {
-      return new Response(JSON.stringify({ error: 'Archive data not available. Please update the archive data first.' }), {
+      const manifest = JSON.parse(await manifestData.text())
+      const numChunks = manifest.chunks
+
+      // Pick a random chunk
+      const chunkIdx = Math.floor(Math.random() * numChunks)
+      const chunkPath = `category_analysis/${roundType}_chunk_${String(chunkIdx).padStart(3, '0')}.json`
+
+      const { data, error } = await supabase.storage.from('data').download(chunkPath)
+      if (error || !data) return null
+
+      return JSON.parse(await data.text())
+    }
+
+    // Load chunks for single, double, and final
+    const singleCategories = await loadRandomChunk('single')
+    const doubleCategories = await loadRandomChunk('double')
+    const finalCategories = await loadRandomChunk('final')
+
+    if (!singleCategories || !doubleCategories || !finalCategories) {
+      return new Response(JSON.stringify({ error: 'Archive data not available. Please run the category analysis script first.' }), {
         status: 422,
         headers: { ...CORS, 'Content-Type': 'application/json' },
       })
     }
-
-    const singleCategories = JSON.parse(await singleRes.data.text())
-    const doubleCategories = JSON.parse(await doubleRes.data.text())
-    const finalCategories = JSON.parse(await finalRes.data.text())
 
     // Build game rounds
     const gameRounds: Record<string, Array<{ category: string; clues: Array<{ value: number; clue: string; solution: string; dailyDouble: boolean; html: boolean }> }>> = {}
@@ -98,9 +113,8 @@ serve(async (req: Request) => {
       const categories = selectedKeys.map(key => {
         const categoryData = dataSource[key]
         const categoryName = categoryData.category_name || key
-        // Take first 5 clues from the first instance
-        const instance = categoryData.instances[0]
-        const rawClues = instance.clues.slice(0, 5)
+        // Slim format: clues are directly on the category object
+        const rawClues = categoryData.clues.slice(0, 5)
 
         const clues = rawClues.map((rawClue: { text?: string; clue?: string; answer?: string; solution?: string }, i: number) => ({
           value: n * (i + 1) * 200,
@@ -164,8 +178,7 @@ serve(async (req: Request) => {
     const finalKeys = Object.keys(finalCategories)
     const randomFinalKey = finalKeys[Math.floor(Math.random() * finalKeys.length)]
     const finalData = finalCategories[randomFinalKey]
-    const finalInstance = finalData.instances[0]
-    const finalClue = finalInstance.clues[0]
+    const finalClue = finalData.clues[0]
 
     const finalRound = {
       category: finalData.category_name || randomFinalKey,
