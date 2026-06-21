@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useNavigate, useBlocker } from '@tanstack/react-router'
 import {
   generateArchiveGame,
@@ -59,10 +59,17 @@ export function GenerateGamePage() {
   })
 
   const [toast, setToast] = useState<string | null>(null)
+  const navigatingAfterSuccess = useRef(false)
 
   useBlocker({
-    shouldBlockFn: () => !window.confirm('An operation is in progress. Are you sure you want to leave?'),
-    enableBeforeUnload: () => aiState.loading || archiveState.loading || labsState.loading,
+    shouldBlockFn: () => {
+      if (navigatingAfterSuccess.current) return false
+      return !window.confirm('An operation is in progress. Are you sure you want to leave?')
+    },
+    enableBeforeUnload: () => {
+      if (navigatingAfterSuccess.current) return false
+      return aiState.loading || archiveState.loading || labsState.loading
+    },
     disabled: !aiState.loading && !archiveState.loading && !labsState.loading,
   })
 
@@ -74,6 +81,7 @@ export function GenerateGamePage() {
     setArchiveState((prev) => ({ ...prev, loading: true, error: null }))
     const response = await generateArchiveGame(archiveState.rounds, archiveState.categoriesPerRound)
     if ('success' in response) {
+      navigatingAfterSuccess.current = true
       navigate({ to: '/home/game/$gameId', params: { gameId: response.id } })
     } else {
       setArchiveState((prev) => ({ ...prev, error: response.error, loading: false }))
@@ -94,6 +102,7 @@ export function GenerateGamePage() {
     setLabsState((prev) => ({ ...prev, loading: true, error: null }))
     const response = await generateLabsGame(parsedKeywords)
     if ('success' in response) {
+      navigatingAfterSuccess.current = true
       navigate({ to: '/home/game/$gameId', params: { gameId: response.id } })
     } else {
       setLabsState((prev) => ({ ...prev, error: response.error, loading: false }))
@@ -116,6 +125,7 @@ export function GenerateGamePage() {
 
     if ('success' in response) {
       setAiState((prev) => ({ ...prev, loading: false }))
+      navigatingAfterSuccess.current = true
       navigate({ to: '/home/game/$gameId', params: { gameId: response.id } })
       return
     }
@@ -140,6 +150,7 @@ export function GenerateGamePage() {
 
     if ('success' in retryResponse) {
       setAiState((prev) => ({ ...prev, loading: false }))
+      navigatingAfterSuccess.current = true
       navigate({ to: '/home/game/$gameId', params: { gameId: retryResponse.id } })
       return
     }

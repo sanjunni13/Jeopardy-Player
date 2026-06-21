@@ -222,6 +222,7 @@ serve(async (req: Request) => {
         times_played: 0,
         winners: [],
         created_by: user.email,
+        source: 'archive',
       })
       .select('id')
       .single()

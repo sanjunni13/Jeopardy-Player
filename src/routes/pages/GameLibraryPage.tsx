@@ -14,11 +14,13 @@ interface GameRecord {
   times_played: number
   winners: string[]
   created_by: string | null
+  source: string | null
 }
 
 interface Filters {
   rounds: number | null
   creator: string | null
+  source: string | null
 }
 
 type FetchStatus = 'loading' | 'success' | 'error'
@@ -49,7 +51,7 @@ export function GameLibraryPage() {
   const [status, setStatus] = useState<FetchStatus>('loading')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
-  const [filters, setFilters] = useState<Filters>({ rounds: null, creator: null })
+  const [filters, setFilters] = useState<Filters>({ rounds: null, creator: null, source: null })
   const [showFilters, setShowFilters] = useState(false)
 
   const fetchGames = useCallback(async () => {
@@ -95,6 +97,11 @@ export function GameLibraryPage() {
     [games]
   )
 
+  const sourceOptions = useMemo(() =>
+    [...new Set(games.map(g => g.source).filter((s): s is string => s != null))].sort(),
+    [games]
+  )
+
   // Filtered + searched games
   const filteredGames = useMemo(() => {
     let results = searchQuery.trim()
@@ -109,17 +116,21 @@ export function GameLibraryPage() {
       results = results.filter(g => g.created_by === filters.creator)
     }
 
+    if (filters.source != null) {
+      results = results.filter(g => g.source === filters.source)
+    }
+
     return results
   }, [games, searchQuery, filters, fuse])
 
-  const activeFilterCount = (filters.rounds != null ? 1 : 0) + (filters.creator != null ? 1 : 0)
+  const activeFilterCount = (filters.rounds != null ? 1 : 0) + (filters.creator != null ? 1 : 0) + (filters.source != null ? 1 : 0)
 
   function handleCardClick(id: string) {
     navigate({ to: '/home/game/$gameId', params: { gameId: id } })
   }
 
   function clearFilters() {
-    setFilters({ rounds: null, creator: null })
+    setFilters({ rounds: null, creator: null, source: null })
   }
 
   return (
@@ -194,6 +205,20 @@ export function GameLibraryPage() {
                 <option value="">All</option>
                 {creatorOptions.map(c => (
                   <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="library-filter-group">
+              <label className="library-filter-label">Source</label>
+              <select
+                className="library-filter-select"
+                value={filters.source ?? ''}
+                onChange={(e) => setFilters({ ...filters, source: e.target.value || null })}
+              >
+                <option value="">All</option>
+                {sourceOptions.map(s => (
+                  <option key={s} value={s}>{s === 'archive' ? 'J! Archive' : s === 'labs' ? 'JeopardyLabs' : s === 'ai' ? 'AI Generated' : s}</option>
                 ))}
               </select>
             </div>

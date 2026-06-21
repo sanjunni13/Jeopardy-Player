@@ -295,6 +295,7 @@ The "categories" array must contain exactly ${totalCategories} categories. Each 
         times_played: 0,
         winners: [],
         created_by: user.email,
+        source: 'ai',
       })
       .select('id')
       .single()
