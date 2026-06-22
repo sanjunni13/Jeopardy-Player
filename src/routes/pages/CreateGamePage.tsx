@@ -37,10 +37,21 @@ export function CreateGamePage() {
 
         <h1 className="create-title">Create a Game</h1>
 
+        <button
+          type="button"
+          onClick={() => navigate({ to: '/home/create/builder' })}
+          className="create-builder-btn"
+          aria-label="Open interactive game builder"
+        >
+          <span className="create-builder-btn-title">Build a Game</span>
+          <span className="create-builder-btn-desc">
+            Use our interactive game builder to create a custom Jeopardy game step by step.
+          </span>
+        </button>
+
         <div className="create-instructions">
           <p>
-            You can create a custom Jeopardy game by writing a JSON file that follows a specific structure.
-            Download the sample template below to get started, then edit it with your own categories and clues.
+            You can also create a custom Jeopardy game by writing a JSON file that follows a specific structure.
           </p>
           <p>The JSON file must have the following structure:</p>
           <ul>
@@ -65,20 +76,8 @@ export function CreateGamePage() {
           </ul>
         </div>
 
-        <button
-          type="button"
-          onClick={() => navigate({ to: '/home/create/builder' })}
-          className="create-builder-btn"
-          aria-label="Open interactive game builder"
-        >
-          <span className="create-builder-btn-title">Build a Game</span>
-          <span className="create-builder-btn-desc">
-            Use our interactive game builder to create a custom Jeopardy game step by step.
-          </span>
-        </button>
-
         <p className="create-download-desc">
-          If you would rather design a game on your own device, please press the button below to download a customizable template.
+          If you would rather design a game this way, please press the button below to download a customizable template.
         </p>
 
         <button
