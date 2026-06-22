@@ -5,6 +5,8 @@ import { normalizeGame } from '../../utils/gameNormalizer'
 import { saveGame } from '../../utils/gameApi'
 import { BackButton } from '../../components/BackButton'
 import { BackgroundGradient } from '../../components/ui/background-gradient'
+import { FAQCard } from '../../components/ui/FAQCard'
+import { uploadGameFAQ } from '../../data/faqData'
 import './UploadPage.css'
 
 type Status = 'idle' | 'validating' | 'uploading' | 'error'
@@ -112,6 +114,8 @@ export function UploadPage() {
           <p className="upload-error">{errorMessage}</p>
         )}
       </BackgroundGradient>
+
+      <FAQCard items={uploadGameFAQ} />
     </div>
   )
 }

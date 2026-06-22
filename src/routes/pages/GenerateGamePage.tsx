@@ -6,7 +6,10 @@ import {
   generateAiGame,
 } from '../../utils/generateApi'
 import { BackgroundGradient } from '../../components/ui/background-gradient'
+import { BackButton } from '../../components/BackButton'
 import { CloudSpinner } from '../../components/ui/CloudSpinner'
+import { FAQCard } from '../../components/ui/FAQCard'
+import { generateGameFAQ } from '../../data/faqData'
 import './GenerateGamePage.css'
 
 type ActiveTab = 'archive' | 'labs' | 'ai'
@@ -184,14 +187,7 @@ export function GenerateGamePage() {
       )}
       <BackgroundGradient containerClassName="generate-gradient-container" className="generate-card">
         {/* Back button */}
-        <button
-          type="button"
-          onClick={() => navigate({ to: '/home' })}
-          className="generate-back-btn"
-          disabled={isGenerating}
-        >
-          ← Back
-        </button>
+        <BackButton onClick={() => navigate({ to: '/home' })} label="Back to home" />
 
         {/* Title */}
         <h1 className="generate-title">Generate a Game</h1>
@@ -421,6 +417,8 @@ export function GenerateGamePage() {
           </div>
         )}
       </BackgroundGradient>
+
+      <FAQCard items={generateGameFAQ} />
     </div>
   )
 }

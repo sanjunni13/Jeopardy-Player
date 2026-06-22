@@ -5,6 +5,8 @@ import { supabase } from '../../utils/supabase'
 import { GameCard } from '../../components/game/GameCard'
 import { BackButton } from '../../components/BackButton'
 import { BackgroundGradient } from '../../components/ui/background-gradient'
+import { FAQCard } from '../../components/ui/FAQCard'
+import { gameLibraryFAQ } from '../../data/faqData'
 import './GameLibraryPage.css'
 
 interface GameRecord {
@@ -283,6 +285,8 @@ export function GameLibraryPage() {
           </div>
         )}
       </BackgroundGradient>
+
+      <FAQCard items={gameLibraryFAQ} />
     </div>
   )
 }

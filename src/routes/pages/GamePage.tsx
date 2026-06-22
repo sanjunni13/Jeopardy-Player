@@ -19,6 +19,9 @@ import { DailyDoubleWager } from '../../components/game/DailyDoubleWager'
 import { FinalJeopardy } from '../../components/game/FinalJeopardy'
 import { RoundTransition } from '../../components/game/RoundTransition'
 import { GameOver } from '../../components/game/GameOver'
+import { CheatSheetButton } from '../../components/game/CheatSheetButton'
+import { CheatSheet } from '../../components/game/CheatSheet'
+import { shouldShowCheatSheet } from '../../components/game/cheatSheetUtils'
 
 const ROUND_LABELS: Record<RoundName | 'final', string> = {
   single: 'Jeopardy!',
@@ -46,6 +49,10 @@ export function GamePage() {
   // Fix #11: Track whether categories have been revealed per round
   const [categoriesRevealed, setCategoriesRevealed] = useState<Record<number, boolean>>({})
 
+  // Game source for cheat sheet visibility
+  const [gameSource, setGameSource] = useState<string | null>(null)
+  const [cheatSheetOpen, setCheatSheetOpen] = useState(false)
+
   // Fix #7: Daily Double state
   const [ddSelectedPlayer, setDdSelectedPlayer] = useState<string | null>(null)
   const [ddWager, setDdWager] = useState<number | null>(null)
@@ -57,7 +64,7 @@ export function GamePage() {
         // Get game name and creator from games table
         const { data: gameRow, error: fetchErr } = await supabase
           .from('games')
-          .select('game_name, created_by')
+          .select('game_name, created_by, source')
           .eq('id', gameId)
           .single()
 
@@ -66,6 +73,9 @@ export function GamePage() {
           setLoading(false)
           return
         }
+
+        // Store game source for cheat sheet visibility
+        setGameSource(gameRow.source ?? null)
 
         // Get current user to verify authentication
         const { data: { user } } = await supabase.auth.getUser()
@@ -353,10 +363,22 @@ export function GamePage() {
 
   // Fix #2: Full-screen overlay for all active game phases (after player-entry)
   const gameContent = renderGamePhase()
+  const showCheatSheet = shouldShowCheatSheet(gameSource, phase)
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 50, background: 'black' }}>
       {gameContent}
+      {showCheatSheet && (
+        <CheatSheetButton onClick={() => setCheatSheetOpen(true)} />
+      )}
+      {showCheatSheet && (
+        <CheatSheet
+          game={session.game}
+          orderedRoundNames={session.orderedRoundNames}
+          isOpen={cheatSheetOpen}
+          onClose={() => setCheatSheetOpen(false)}
+        />
+      )}
     </div>
   )
 

@@ -2,6 +2,8 @@ import { useNavigate } from '@tanstack/react-router'
 import { sampleGame } from '../../assets/sampleGame'
 import { BackButton } from '../../components/BackButton'
 import { BackgroundGradient } from '../../components/ui/background-gradient'
+import { FAQCard } from '../../components/ui/FAQCard'
+import { createGameFAQ } from '../../data/faqData'
 import './CreateGamePage.css'
 
 export function CreateGamePage() {
@@ -80,6 +82,8 @@ export function CreateGamePage() {
           </p>
         </section>
       </BackgroundGradient>
+
+      <FAQCard items={createGameFAQ} />
     </div>
   )
 }
