@@ -195,7 +195,7 @@ The "categories" array must contain exactly ${totalCategories} categories. Each 
     let geminiResponse: Response
     try {
       geminiResponse = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${geminiApiKey}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -227,18 +227,20 @@ The "categories" array must contain exactly ${totalCategories} categories. Each 
       const geminiBody = await geminiResponse.json()
       const textContent = geminiBody?.candidates?.[0]?.content?.parts?.[0]?.text
       if (!textContent) {
-        return new Response(JSON.stringify({ error: 'AI generation failed. Please retry.' }), {
+        // Temporarily return more detail
+        return new Response(JSON.stringify({ error: 'AI generation failed. Please retry.', debug: JSON.stringify(geminiBody).slice(0, 500) }), {
           status: 502,
           headers: { ...CORS, 'Content-Type': 'application/json' },
         })
       }
       geminiData = JSON.parse(textContent)
-    } catch {
-      return new Response(JSON.stringify({ error: 'AI generation failed. Please retry.' }), {
+    } catch (e) {
+      return new Response(JSON.stringify({ error: 'AI generation failed. Please retry.', debug: String(e) }), {
         status: 502,
         headers: { ...CORS, 'Content-Type': 'application/json' },
       })
     }
+
 
     // Validate the parsed Gemini data against expected schema
     const validation = validateGeminiResponse(geminiData, totalCategories)
