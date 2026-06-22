@@ -33,6 +33,7 @@
 /* ─── Instructions section ─────────────────────────────────────────────────── */
 
 .create-instructions {
+  margin-top: 2rem;
   margin-bottom: 2rem;
 }
 
@@ -84,8 +85,16 @@
 
 .create-builder-btn:hover {
   border-color: rgb(129 140 248 / 0.6);
-  box-shadow: 0 0 24px rgba(99, 102, 241, 0.25);
+  animation: builderBtnGlow 2s infinite linear;
   transform: translateY(-2px);
+}
+
+@keyframes builderBtnGlow {
+  0% { box-shadow: -2px -2px 8px 1px #aa00ff, 2px 2px 8px 1px #3700ff; }
+  25% { box-shadow: -2px 2px 8px 1px #aa00ff, 2px -2px 8px 1px #3700ff; }
+  50% { box-shadow: 2px 2px 8px 1px #aa00ff, -2px -2px 8px 1px #3700ff; }
+  75% { box-shadow: 2px -2px 8px 1px #aa00ff, -2px 2px 8px 1px #3700ff; }
+  100% { box-shadow: -2px -2px 8px 1px #aa00ff, 2px 2px 8px 1px #3700ff; }
 }
 
 .create-builder-btn:active {

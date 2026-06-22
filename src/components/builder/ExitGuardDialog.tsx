@@ -1,5 +1,5 @@
 import { useEffect, useRef, useCallback } from 'react'
-import { Button } from '../ui/button'
+import '../LogoutDialog.css'
 
 interface ExitGuardDialogProps {
   isOpen: boolean
@@ -72,81 +72,76 @@ export function ExitGuardDialog({
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+    <div
+      className="logout-backdrop"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={DIALOG_TITLE_ID}
+      onClick={!isSaving ? onCancel : undefined}
+    >
       <div
         ref={dialogRef}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={DIALOG_TITLE_ID}
-        className="bg-card rounded-xl p-6 max-w-md w-full mx-4 shadow-lg border border-border"
+        className="logout-panel"
+        onClick={(e) => e.stopPropagation()}
       >
-        <h2
-          id={DIALOG_TITLE_ID}
-          className="text-lg font-semibold text-foreground mb-2"
-        >
-          Unsaved Changes
-        </h2>
-        <p className="text-sm text-muted-foreground mb-6">
-          You have unsaved changes. What would you like to do?
-        </p>
+        {isSaving ? (
+          <div className="logout-loading">
+            <svg
+              className="logout-spinner"
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            >
+              <circle className="logout-spinner-bg" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="logout-spinner-fg" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+            </svg>
+            <p className="logout-loading-text">Saving your changes...</p>
+          </div>
+        ) : (
+          <>
+            <h2 id={DIALOG_TITLE_ID} className="logout-title">
+              Unsaved Changes
+            </h2>
+            <p className="logout-message">
+              You have unsaved changes. What would you like to do?
+            </p>
 
-        {saveError && (
-          <p className="text-sm text-destructive mt-2 mb-4" role="alert">
-            {saveError}
-          </p>
-        )}
-
-        <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
-          <Button
-            variant="outline"
-            onClick={onCancel}
-            className="min-h-11"
-          >
-            Cancel
-          </Button>
-          <Button
-            variant="default"
-            onClick={onSaveAndExit}
-            disabled={isSaving}
-            className="min-h-11"
-          >
-            {isSaving ? (
-              <span className="flex items-center gap-2">
-                <svg
-                  className="animate-spin size-4"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  aria-hidden="true"
-                >
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                  />
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-                  />
-                </svg>
-                Saving…
-              </span>
-            ) : (
-              'Save and Exit'
+            {saveError && (
+              <p className="unfinished-library-modal-error" role="alert">
+                {saveError}
+              </p>
             )}
-          </Button>
-          <Button
-            variant="destructive"
-            onClick={onExitWithoutSaving}
-            className="min-h-11"
-          >
-            Exit Without Saving
-          </Button>
-        </div>
+
+            <div className="logout-actions">
+              <button
+                type="button"
+                onClick={onCancel}
+                className="logout-btn-cancel"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={onSaveAndExit}
+                className="logout-btn-confirm"
+                style={{ backgroundColor: 'rgb(99 102 241)' }}
+              >
+                Save and Exit
+              </button>
+            </div>
+            <div className="logout-actions" style={{ marginTop: '0.75rem' }}>
+              <button
+                type="button"
+                onClick={onExitWithoutSaving}
+                className="logout-btn-confirm"
+                style={{ flex: 'none', width: '100%' }}
+              >
+                Exit Without Saving
+              </button>
+            </div>
+          </>
+        )}
       </div>
     </div>
   )

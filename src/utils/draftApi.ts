@@ -19,15 +19,26 @@ export interface DraftMetadata {
   updated_at: string;
 }
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+async function getAuthUser() {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+  return { id: user.id, email: user.email ?? '' };
+}
+
 // ─── API Functions ────────────────────────────────────────────────────────────
 
 export async function createDraft(
   draft: BuilderDraft,
-  userEmail: string
+  _userEmail: string
 ): Promise<{ success: true; id: string } | { success: false; error: string }> {
   try {
+    const user = await getAuthUser();
+    if (!user) return { success: false, error: 'Not authenticated.' };
+
     const id = crypto.randomUUID();
-    const storagePath = `${userEmail}/drafts/${id}.json`;
+    const storagePath = `${user.email}/drafts/${id}.json`;
 
     // Upload JSON to Storage
     const { error: uploadErr } = await supabase.storage
@@ -41,13 +52,13 @@ export async function createDraft(
       return { success: false, error: `Storage upload failed: ${uploadErr.message}` };
     }
 
-    // Insert metadata row
+    // Insert metadata row — created_by is the user's UUID (matches auth.uid() in RLS)
     const { error: insertErr } = await supabase
       .from('drafts')
       .insert({
         id,
         game_name: draft.gameName,
-        created_by: userEmail,
+        created_by: user.id,
       });
 
     if (insertErr) {
@@ -65,10 +76,13 @@ export async function createDraft(
 export async function updateDraft(
   draftId: string,
   draft: BuilderDraft,
-  userEmail: string
+  _userEmail: string
 ): Promise<{ success: true } | { success: false; error: string }> {
   try {
-    const storagePath = `${userEmail}/drafts/${draftId}.json`;
+    const user = await getAuthUser();
+    if (!user) return { success: false, error: 'Not authenticated.' };
+
+    const storagePath = `${user.email}/drafts/${draftId}.json`;
 
     // Overwrite JSON in Storage (upsert: true)
     const { error: uploadErr } = await supabase.storage
@@ -89,12 +103,9 @@ export async function updateDraft(
         game_name: draft.gameName,
         updated_at: new Date().toISOString(),
       })
-      .eq('id', draftId)
-      .eq('created_by', userEmail);
+      .eq('id', draftId);
 
     if (updateErr) {
-      // Rollback: best-effort delete of the uploaded file
-      await supabase.storage.from('games').remove([storagePath]);
       return { success: false, error: `Database update failed: ${updateErr.message}` };
     }
 
@@ -106,10 +117,13 @@ export async function updateDraft(
 
 export async function loadDraft(
   draftId: string,
-  userEmail: string
+  _userEmail: string
 ): Promise<{ success: true; draft: BuilderDraft } | { success: false; error: string }> {
   try {
-    const storagePath = `${userEmail}/drafts/${draftId}.json`;
+    const user = await getAuthUser();
+    if (!user) return { success: false, error: 'Not authenticated.' };
+
+    const storagePath = `${user.email}/drafts/${draftId}.json`;
 
     const { data, error: downloadErr } = await supabase.storage
       .from('games')
@@ -130,10 +144,13 @@ export async function loadDraft(
 
 export async function deleteDraft(
   draftId: string,
-  userEmail: string
+  _userEmail: string
 ): Promise<{ success: true } | { success: false; error: string }> {
   try {
-    const storagePath = `${userEmail}/drafts/${draftId}.json`;
+    const user = await getAuthUser();
+    if (!user) return { success: false, error: 'Not authenticated.' };
+
+    const storagePath = `${user.email}/drafts/${draftId}.json`;
 
     // Delete JSON from Storage
     const { error: storageErr } = await supabase.storage
@@ -144,12 +161,11 @@ export async function deleteDraft(
       return { success: false, error: `Storage deletion failed: ${storageErr.message}` };
     }
 
-    // Delete metadata row from DB
+    // Delete metadata row from DB (RLS ensures only owner can delete)
     const { error: dbErr } = await supabase
       .from('drafts')
       .delete()
-      .eq('id', draftId)
-      .eq('created_by', userEmail);
+      .eq('id', draftId);
 
     if (dbErr) {
       return { success: false, error: `Database deletion failed: ${dbErr.message}` };
@@ -162,13 +178,13 @@ export async function deleteDraft(
 }
 
 export async function listDrafts(
-  userEmail: string
+  _userEmail: string
 ): Promise<{ success: true; drafts: DraftMetadata[] } | { success: false; error: string }> {
   try {
+    // RLS automatically scopes to the authenticated user's drafts via auth.uid()
     const { data, error } = await supabase
       .from('drafts')
       .select('id, game_name, created_by, created_at, updated_at')
-      .eq('created_by', userEmail)
       .order('updated_at', { ascending: false });
 
     if (error) {

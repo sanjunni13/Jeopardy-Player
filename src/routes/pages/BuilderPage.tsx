@@ -77,13 +77,6 @@ export function BuilderPage() {
     setExitGuardSaving(true)
     setExitGuardSaveError(null)
 
-    const valid = validateForSave()
-    if (!valid) {
-      setExitGuardSaving(false)
-      setExitGuardSaveError('Cannot save: fix format errors first.')
-      return
-    }
-
     const result = await save()
     setExitGuardSaving(false)
 
@@ -92,7 +85,7 @@ export function BuilderPage() {
     } else {
       setExitGuardSaveError(result.error ?? 'Save failed. Please try again.')
     }
-  }, [validateForSave, save, proceed])
+  }, [save, proceed])
 
   const handleExitWithoutSaving = useCallback(() => {
     setExitGuardSaveError(null)

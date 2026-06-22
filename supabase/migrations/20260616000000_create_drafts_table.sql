@@ -2,7 +2,7 @@
 CREATE TABLE public.drafts (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   game_name TEXT NOT NULL DEFAULT '',
-  created_by TEXT NOT NULL,
+  created_by UUID NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -10,22 +10,22 @@ CREATE TABLE public.drafts (
 -- Enable Row Level Security
 ALTER TABLE public.drafts ENABLE ROW LEVEL SECURITY;
 
--- RLS policies: scope all operations to the authenticated user's email
+-- RLS policies: scope all operations to the authenticated user's uid
 CREATE POLICY "Users can select their own drafts"
   ON public.drafts FOR SELECT
-  USING (created_by = auth.jwt() ->> 'email');
+  USING (created_by = auth.uid());
 
 CREATE POLICY "Users can insert their own drafts"
   ON public.drafts FOR INSERT
-  WITH CHECK (created_by = auth.jwt() ->> 'email');
+  WITH CHECK (created_by = auth.uid());
 
 CREATE POLICY "Users can update their own drafts"
   ON public.drafts FOR UPDATE
-  USING (created_by = auth.jwt() ->> 'email');
+  USING (created_by = auth.uid());
 
 CREATE POLICY "Users can delete their own drafts"
   ON public.drafts FOR DELETE
-  USING (created_by = auth.jwt() ->> 'email');
+  USING (created_by = auth.uid());
 
 -- Grant access to authenticated users
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.drafts TO authenticated;

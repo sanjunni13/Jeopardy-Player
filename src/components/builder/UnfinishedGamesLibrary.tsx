@@ -2,9 +2,10 @@ import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { listDrafts, deleteDraft } from '../../utils/draftApi'
 import type { DraftMetadata } from '../../utils/draftApi'
-import { Button } from '../ui/button'
 import { BackgroundGradient } from '../ui/background-gradient'
 import './UnfinishedGamesLibrary.css'
+import '../DeleteButton.css'
+import '../LogoutDialog.css'
 
 interface UnfinishedGamesLibraryProps {
   userEmail: string
@@ -177,7 +178,7 @@ export function UnfinishedGamesLibrary({ userEmail }: UnfinishedGamesLibraryProp
                 </button>
                 <button
                   type="button"
-                  className="unfinished-library-delete-btn"
+                  className="delete-button"
                   onClick={(e) => handleDeleteClick(e, draft)}
                   disabled={deletingId === draft.id}
                   aria-label={`Delete draft ${displayName}`}
@@ -186,17 +187,18 @@ export function UnfinishedGamesLibrary({ userEmail }: UnfinishedGamesLibraryProp
                     <span className="unfinished-library-delete-spinner" aria-hidden="true" />
                   ) : (
                     <svg
+                      className="trash-svg"
+                      viewBox="0 -10 64 74"
                       xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 20 20"
-                      fill="currentColor"
-                      className="unfinished-library-delete-icon"
                       aria-hidden="true"
                     >
-                      <path
-                        fillRule="evenodd"
-                        d="M8.75 1A2.75 2.75 0 006 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 10.23 1.482l.149-.022.841 10.518A2.75 2.75 0 007.596 19h4.807a2.75 2.75 0 002.742-2.53l.841-10.52.149.023a.75.75 0 00.23-1.482A41.03 41.03 0 0014 4.193V3.75A2.75 2.75 0 0011.25 1h-2.5zM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4zM8.58 7.72a.75.75 0 00-1.5.06l.3 7.5a.75.75 0 101.5-.06l-.3-7.5zm4.34.06a.75.75 0 10-1.5-.06l-.3 7.5a.75.75 0 101.5.06l.3-7.5z"
-                        clipRule="evenodd"
-                      />
+                      <g id="trash-can">
+                        <rect x="16" y="24" width="32" height="30" rx="3" ry="3" fill="#e74c3c" />
+                        <g style={{ transformOrigin: '12px 18px' }} id="lid-group">
+                          <rect x="12" y="12" width="40" height="6" rx="2" ry="2" fill="#c0392b" />
+                          <rect x="26" y="8" width="12" height="4" rx="2" ry="2" fill="#c0392b" />
+                        </g>
+                      </g>
                     </svg>
                   )}
                 </button>
@@ -209,50 +211,63 @@ export function UnfinishedGamesLibrary({ userEmail }: UnfinishedGamesLibraryProp
       {/* Delete confirmation modal */}
       {confirmDeleteDraft && (
         <div
-          className="unfinished-library-modal-overlay"
+          className="logout-backdrop"
           role="dialog"
           aria-modal="true"
           aria-labelledby="delete-modal-title"
+          onClick={deletingId !== confirmDeleteDraft.id ? handleCancelDelete : undefined}
         >
-          <div className="unfinished-library-modal">
-            <h3 id="delete-modal-title" className="unfinished-library-modal-title">
-              Delete Draft
-            </h3>
-            <p className="unfinished-library-modal-text">
-              Are you sure you want to delete{' '}
-              <strong>
-                {confirmDeleteDraft.game_name || 'Untitled'}
-              </strong>
-              ? This action cannot be undone.
-            </p>
-            {deleteError && (
-              <p className="unfinished-library-modal-error" role="alert">
-                {deleteError}
-              </p>
-            )}
-            <div className="unfinished-library-modal-actions">
-              <Button
-                variant="outline"
-                onClick={handleCancelDelete}
-                disabled={deletingId === confirmDeleteDraft.id}
-              >
-                Cancel
-              </Button>
-              <Button
-                variant="destructive"
-                onClick={handleConfirmDelete}
-                disabled={deletingId === confirmDeleteDraft.id}
-              >
-                {deletingId === confirmDeleteDraft.id ? (
-                  <>
-                    <span className="unfinished-library-delete-spinner" aria-hidden="true" />
-                    Deleting…
-                  </>
-                ) : (
-                  'Delete'
+          <div
+            className="logout-panel"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {deletingId === confirmDeleteDraft.id ? (
+              <div className="logout-loading">
+                <svg
+                  className="logout-spinner"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                >
+                  <circle className="logout-spinner-bg" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="logout-spinner-fg" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                </svg>
+                <p className="logout-loading-text">Deleting draft...</p>
+              </div>
+            ) : (
+              <>
+                <h2 id="delete-modal-title" className="logout-title">
+                  Delete Draft
+                </h2>
+                <p className="logout-message">
+                  Are you sure you want to delete{' '}
+                  <strong>{confirmDeleteDraft.game_name || 'Untitled'}</strong>?
+                  This action cannot be undone.
+                </p>
+                {deleteError && (
+                  <p className="unfinished-library-modal-error" role="alert">
+                    {deleteError}
+                  </p>
                 )}
-              </Button>
-            </div>
+                <div className="logout-actions">
+                  <button
+                    type="button"
+                    onClick={handleCancelDelete}
+                    className="logout-btn-cancel"
+                  >
+                    No, keep it
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleConfirmDelete}
+                    className="logout-btn-confirm"
+                  >
+                    Yes, delete
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
