@@ -49,7 +49,8 @@ export function GameBoard({
     if (allRevealed && onAllRevealed) {
       onAllRevealed()
     }
-  }, [allRevealed, onAllRevealed])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allRevealed])
 
   function handleRevealClick() {
     if (!allRevealed) {
