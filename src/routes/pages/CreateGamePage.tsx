@@ -1,13 +1,23 @@
+import { useState, useEffect } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { sampleGame } from '../../assets/sampleGame'
+import { supabase } from '../../utils/supabase'
 import { BackButton } from '../../components/BackButton'
 import { BackgroundGradient } from '../../components/ui/background-gradient'
+import { UnfinishedGamesLibrary } from '../../components/builder/UnfinishedGamesLibrary'
 import { FAQCard } from '../../components/ui/FAQCard'
 import { createGameFAQ } from '../../data/faqData'
 import './CreateGamePage.css'
 
 export function CreateGamePage() {
   const navigate = useNavigate()
+  const [userEmail, setUserEmail] = useState<string>('')
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      setUserEmail(data.user?.email ?? '')
+    })
+  }, [])
 
   function handleDownload() {
     const json = JSON.stringify(sampleGame, null, 2)
@@ -57,31 +67,31 @@ export function CreateGamePage() {
 
         <button
           type="button"
+          onClick={() => navigate({ to: '/home/create/builder' })}
+          className="create-builder-btn"
+          aria-label="Open interactive game builder"
+        >
+          <span className="create-builder-btn-title">Build a Game</span>
+          <span className="create-builder-btn-desc">
+            Use our interactive game builder to create a custom Jeopardy game step by step.
+          </span>
+        </button>
+
+        <p className="create-download-desc">
+          If you would rather design a game on your own device, please press the button below to download a customizable template.
+        </p>
+
+        <button
+          type="button"
           onClick={handleDownload}
           className="create-download-btn"
           aria-label="Download sample game JSON template"
         >
           Download Sample Template
         </button>
-
-        <section className="create-coming-soon">
-          <h2 className="create-coming-soon-title">Coming Soon</h2>
-          <p>
-            A full in-app game creator is on the way. In a future update, you'll be able to:
-          </p>
-          <ul>
-            <li>Set a game name</li>
-            <li>Choose the number of rounds (1–6)</li>
-            <li>Choose categories per round (1–6)</li>
-            <li>Enter category names</li>
-            <li>Enter clue/answer pairs with point values</li>
-            <li>Upload directly to your library or start playing immediately</li>
-          </ul>
-          <p>
-            In the meantime, users who want an automated approach can use "Generate a Game" from the home page.
-          </p>
-        </section>
       </BackgroundGradient>
+
+      {userEmail && <UnfinishedGamesLibrary userEmail={userEmail} />}
 
       <FAQCard items={createGameFAQ} />
     </div>

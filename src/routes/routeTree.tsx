@@ -18,6 +18,7 @@ const GamePage = lazy(() => import('./pages/GamePage').then(m => ({ default: m.G
 const GameLibraryPage = lazy(() => import('./pages/GameLibraryPage').then(m => ({ default: m.GameLibraryPage })))
 const GenerateGamePage = lazy(() => import('./pages/GenerateGamePage').then(m => ({ default: m.GenerateGamePage })))
 const CreateGamePage = lazy(() => import('./pages/CreateGamePage').then(m => ({ default: m.CreateGamePage })))
+const BuilderPage = lazy(() => import('./pages/BuilderPage').then(m => ({ default: m.BuilderPage })))
 
 function LazyFallback() {
   return <p className="p-6 text-slate-300">Loading…</p>
@@ -93,6 +94,18 @@ const createGameRoute = createRoute({
   component: withSuspense(CreateGamePage),
 })
 
+const builderNewRoute = createRoute({
+  getParentRoute: () => protectedRoute,
+  path: '/create/builder',
+  component: withSuspense(BuilderPage),
+})
+
+const builderResumeRoute = createRoute({
+  getParentRoute: () => protectedRoute,
+  path: '/create/builder/$draftId',
+  component: withSuspense(BuilderPage),
+})
+
 const unauthorizedRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/401',
@@ -112,6 +125,8 @@ const routeTree = rootRoute.addChildren([
     homeIndexRoute,
     uploadRoute,
     createGameRoute,
+    builderNewRoute,
+    builderResumeRoute,
     gameRoute,
     libraryRoute,
     generateRoute,

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import type { NormalizedGame, RoundName } from '../../types/game'
 import {
@@ -29,7 +29,10 @@ export function CheatSheet({
   const [container, setContainer] = useState<HTMLDivElement | null>(null)
   const windowRef = useRef<Window | null>(null)
   const onCloseRef = useRef(onClose)
-  onCloseRef.current = onClose
+
+  useEffect(() => {
+    onCloseRef.current = onClose
+  }, [onClose])
 
   useEffect(() => {
     if (!isOpen) {
@@ -38,7 +41,6 @@ export function CheatSheet({
         windowRef.current.close()
       }
       windowRef.current = null
-      setContainer(null)
       return
     }
 
@@ -79,7 +81,11 @@ export function CheatSheet({
     const div = popup.document.createElement('div')
     div.id = 'cheatsheet-root'
     popup.document.body.appendChild(div)
-    setContainer(div)
+
+    // Use requestAnimationFrame to defer setState out of the synchronous effect body
+    const rafId = requestAnimationFrame(() => {
+      setContainer(div)
+    })
 
     // Listen for the popup closing
     const checkClosed = setInterval(() => {
@@ -92,6 +98,7 @@ export function CheatSheet({
     }, 250)
 
     return () => {
+      cancelAnimationFrame(rafId)
       clearInterval(checkClosed)
     }
   }, [isOpen])
