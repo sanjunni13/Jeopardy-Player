@@ -100,33 +100,34 @@ async function scrapeGame(slug: string): Promise<ScrapedCategory[]> {
   const doc = new DOMParser().parseFromString(html, 'text/html')
   if (!doc) return []
 
-  const categories: ScrapedCategory[] = []
+  // Each cell-group contains a single clue with data-category on .cell-inner
+  const categoryMap = new Map<string, { clue: string; solution: string }[]>()
 
-  // Extract category names from .cat-cell elements
-  const catCells = doc.querySelectorAll('.cat-cell')
-  const catNames: string[] = []
-  for (let i = 0; i < catCells.length; i++) {
-    catNames.push((catCells[i].textContent || '').trim())
-  }
-
-  // Extract clues from .cell-group elements
   const cellGroups = doc.querySelectorAll('.cell-group')
   for (let i = 0; i < cellGroups.length; i++) {
-    const catName = catNames[i] || `Category ${i + 1}`
-    const clues: { clue: string; solution: string }[] = []
+    const cellInner = cellGroups[i].querySelector('.cell-inner')
+    if (!cellInner) continue
 
-    const answerEls = cellGroups[i].querySelectorAll('.answer')
-    const questionEls = cellGroups[i].querySelectorAll('.question')
+    const catName = (cellInner.getAttribute('data-category') || '').trim()
+    if (!catName) continue
 
-    for (let j = 0; j < answerEls.length; j++) {
-      const clueText = (answerEls[j].innerHTML || '').trim()
-      const solutionText = (questionEls[j]?.innerHTML || '').trim()
-      if (clueText && solutionText) {
-        clues.push({ clue: clueText, solution: solutionText })
+    const answerEl = cellGroups[i].querySelector('.front.answer')
+    const questionEl = cellGroups[i].querySelector('.back.question')
+
+    const clueText = (answerEl?.innerHTML || '').trim()
+    const solutionText = (questionEl?.innerHTML || '').trim()
+
+    if (clueText && solutionText) {
+      if (!categoryMap.has(catName)) {
+        categoryMap.set(catName, [])
       }
+      categoryMap.get(catName)!.push({ clue: clueText, solution: solutionText })
     }
+  }
 
-    categories.push({ category: catName, clues })
+  const categories: ScrapedCategory[] = []
+  for (const [category, clues] of categoryMap) {
+    categories.push({ category, clues })
   }
 
   return categories
