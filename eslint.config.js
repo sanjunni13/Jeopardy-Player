@@ -17,6 +17,7 @@ export default defineConfig([
     ],
     rules: {
       'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
     },
     languageOptions: {
       globals: globals.browser,
@@ -26,6 +27,12 @@ export default defineConfig([
     files: ['**/routeTree.tsx', '**/router.tsx', 'components/ui/button.tsx'],
     rules: {
       'react-refresh/only-export-components': 'off',
+    },
+  },
+  {
+    files: ['**/*.test.ts', '**/*.test.tsx', '**/*.property.test.ts'],
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'off',
     },
   },
 ])

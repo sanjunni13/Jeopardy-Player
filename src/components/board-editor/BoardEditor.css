@@ -1,0 +1,591 @@
+/* ─── Board Editor ───────────────────────────────────────────────────────────── */
+
+.board-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding: 1.5rem;
+  max-width: 90rem;
+  margin: 0 auto;
+  min-height: 100dvh;
+}
+
+/* ─── Loading & Error States ─────────────────────────────────────────────────── */
+
+.board-editor--loading,
+.board-editor--error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  min-height: 50vh;
+  color: rgb(148 163 184); /* slate-400 */
+  font-size: 0.9375rem;
+}
+
+.board-editor--error button {
+  border-radius: 100px;
+  background-color: #6a1b9a;
+  padding: 10px 20px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: white;
+  border: 0;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.board-editor--error button:hover {
+  background-color: #7b1fa2;
+  box-shadow: 0 0 20px rgba(142, 36, 170, 0.3);
+}
+
+.board-editor--error button:focus-visible {
+  outline: 2px solid #ce93d8;
+  outline-offset: 2px;
+}
+
+/* ─── Toolbar ────────────────────────────────────────────────────────────────── */
+
+.board-editor__toolbar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding: 0.75rem 1rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgb(30 41 59); /* slate-800 */
+  background: rgb(15 23 42 / 0.95); /* slate-900/95 */
+}
+
+.board-editor__autosave-status {
+  font-size: 0.8125rem;
+  color: rgb(148 163 184); /* slate-400 */
+  margin-left: auto;
+}
+
+.board-editor__autosave-warning {
+  font-size: 0.8125rem;
+  color: rgb(251 113 133); /* rose-400 */
+  margin-left: auto;
+}
+
+/* ─── Round Tabs ─────────────────────────────────────────────────────────────── */
+
+.board-editor__round-tabs {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  overflow-x: auto;
+  padding-bottom: 0.25rem;
+}
+
+.round-tab {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0.5rem 1rem;
+  border: 1px solid rgb(51 65 85); /* slate-700 */
+  border-radius: 0.5rem;
+  background: transparent;
+  color: rgb(148 163 184); /* slate-400 */
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.round-tab:hover {
+  background: rgb(30 41 59 / 0.6); /* slate-800/60 */
+  color: rgb(226 232 240); /* slate-200 */
+}
+
+.round-tab--active {
+  background: rgb(99 102 241 / 0.15); /* indigo-500/15 */
+  border-color: rgb(99 102 241); /* indigo-500 */
+  color: rgb(165 180 252); /* indigo-300 */
+  font-weight: 600;
+}
+
+.round-tab:focus-visible {
+  outline: 2px solid rgb(99 102 241); /* indigo-500 */
+  outline-offset: 2px;
+}
+
+/* ─── Board Grid ─────────────────────────────────────────────────────────────── */
+
+.board-grid {
+  border-radius: 1rem;
+  border: 1px solid rgb(30 41 59); /* slate-800 */
+  background: rgb(15 23 42 / 0.95); /* slate-900/95 */
+  padding: 1rem;
+  overflow-x: auto;
+}
+
+/* ─── Corner Cell (top-left empty cell) ──────────────────────────────────────── */
+
+.board-grid__corner-cell {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+/* ─── Category Header Cell ───────────────────────────────────────────────────── */
+
+.board-grid__header-cell {
+  min-width: 120px;
+  min-height: 44px;
+  padding: 0.5rem;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.board-grid__header-cell[data-dragging] {
+  opacity: 0.5;
+  transform: scale(0.98);
+}
+
+/* ─── Category Header (inner container) ──────────────────────────────────────── */
+
+.board-grid__category-header {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  background: rgb(30 41 59 / 0.6); /* slate-800/60 */
+  border: 1px solid rgb(51 65 85 / 0.5); /* slate-700/50 */
+  min-height: 44px;
+}
+
+/* ─── Drag Handle ────────────────────────────────────────────────────────────── */
+
+.board-grid__drag-handle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  min-height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: rgb(100 116 139); /* slate-500 */
+  font-size: 1rem;
+  cursor: grab;
+  transition: color 0.15s, background-color 0.15s;
+  flex-shrink: 0;
+  touch-action: none;
+}
+
+.board-grid__drag-handle:hover {
+  color: rgb(203 213 225); /* slate-300 */
+  background: rgb(51 65 85 / 0.5); /* slate-700/50 */
+}
+
+.board-grid__drag-handle:active {
+  cursor: grabbing;
+  color: rgb(165 180 252); /* indigo-300 */
+}
+
+.board-grid__drag-handle:focus-visible {
+  outline: 2px solid rgb(99 102 241); /* indigo-500 */
+  outline-offset: 1px;
+}
+
+/* ─── Category Name Input ────────────────────────────────────────────────────── */
+
+.board-grid__category-name-input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: rgb(241 245 249); /* slate-100 */
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-align: center;
+  transition: border-color 0.15s, background-color 0.15s;
+}
+
+.board-grid__category-name-input::placeholder {
+  color: rgb(100 116 139); /* slate-500 */
+  font-weight: 400;
+}
+
+.board-grid__category-name-input:hover {
+  border-color: rgb(51 65 85); /* slate-700 */
+}
+
+.board-grid__category-name-input:focus {
+  outline: none;
+  border-color: rgb(99 102 241); /* indigo-500 */
+  background: rgb(15 23 42 / 0.8); /* slate-900/80 */
+}
+
+/* ─── Options Menu Trigger (three-dot icon) ──────────────────────────────────── */
+
+.board-grid__options-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  min-height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: rgb(100 116 139); /* slate-500 */
+  font-size: 1.125rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: color 0.15s, background-color 0.15s;
+  flex-shrink: 0;
+}
+
+.board-grid__options-trigger:hover {
+  color: rgb(203 213 225); /* slate-300 */
+  background: rgb(51 65 85 / 0.5); /* slate-700/50 */
+}
+
+.board-grid__options-trigger:focus-visible {
+  outline: 2px solid rgb(99 102 241); /* indigo-500 */
+  outline-offset: 1px;
+}
+
+/* ─── Point Value Cell (left column) ─────────────────────────────────────────── */
+
+.board-grid__point-value-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+}
+
+/* ─── Point Value Label (clickable button) ───────────────────────────────────── */
+
+.board-grid__point-value-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 4px 8px;
+  border: none;
+  background: transparent;
+  color: var(--foreground, #e2e8f0);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background-color 0.15s ease, color 0.15s ease;
+  user-select: none;
+}
+
+.board-grid__point-value-label:hover {
+  background-color: var(--muted, rgba(255, 255, 255, 0.1));
+  color: var(--primary, #facc15);
+}
+
+.board-grid__point-value-label:focus-visible {
+  outline: 2px solid var(--ring, #6366f1);
+  outline-offset: 2px;
+}
+
+.board-grid__point-value-label:active {
+  transform: translateY(1px);
+}
+
+/* ─── Clue Cell Wrapper ──────────────────────────────────────────────────────── */
+
+.board-grid__clue-cell-wrapper {
+  display: flex;
+  align-items: stretch;
+}
+
+/* ─── Clue Cell (interactive button) ─────────────────────────────────────────── */
+
+.board-grid__clue-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  width: 100%;
+  min-width: 80px;
+  min-height: 56px;
+  padding: 0.5rem;
+  border: 1px solid rgb(51 65 85 / 0.5); /* slate-700/50 */
+  border-radius: 0.5rem;
+  background: rgb(30 41 59 / 0.4); /* slate-800/40 */
+  color: rgb(100 116 139); /* slate-500 — muted when empty */
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  gap: 0.25rem;
+}
+
+.board-grid__clue-cell:hover {
+  background: rgb(30 41 59 / 0.7); /* slate-800/70 */
+  border-color: rgb(99 102 241 / 0.4); /* indigo-500/40 */
+  color: rgb(203 213 225); /* slate-300 */
+}
+
+.board-grid__clue-cell:focus-visible {
+  outline: 2px solid rgb(99 102 241); /* indigo-500 */
+  outline-offset: 2px;
+}
+
+/* ─── Clue Cell — Filled State ───────────────────────────────────────────────── */
+
+.board-grid__clue-cell--filled {
+  background: rgb(99 102 241 / 0.1); /* indigo-500/10 */
+  border-color: rgb(99 102 241 / 0.3); /* indigo-500/30 */
+  color: rgb(165 180 252); /* indigo-300 */
+}
+
+.board-grid__clue-cell--filled:hover {
+  background: rgb(99 102 241 / 0.2); /* indigo-500/20 */
+  border-color: rgb(99 102 241 / 0.5); /* indigo-500/50 */
+  color: rgb(199 210 254); /* indigo-200 */
+}
+
+/* ─── Clue Cell — Daily Double State ─────────────────────────────────────────── */
+
+.board-grid__clue-cell--daily-double {
+  background: rgb(250 204 21 / 0.08); /* yellow-400/8 */
+  border-color: rgb(250 204 21 / 0.3); /* yellow-400/30 */
+  color: rgb(253 224 71); /* yellow-300 */
+}
+
+.board-grid__clue-cell--daily-double:hover {
+  background: rgb(250 204 21 / 0.15); /* yellow-400/15 */
+  border-color: rgb(250 204 21 / 0.5); /* yellow-400/50 */
+}
+
+/* ─── Clue Value Text ────────────────────────────────────────────────────────── */
+
+.board-grid__clue-value {
+  font-weight: 600;
+  font-size: 0.8125rem;
+}
+
+/* ─── Media Badge ────────────────────────────────────────────────────────────── */
+
+.board-grid__media-badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  font-size: 0.6875rem;
+  line-height: 1;
+  opacity: 0.8;
+}
+
+/* ─── Daily Double Badge ─────────────────────────────────────────────────────── */
+
+.board-grid__daily-double-badge {
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  font-size: 0.6875rem;
+  line-height: 1;
+  opacity: 0.9;
+}
+
+/* ─── Add Column Cell ────────────────────────────────────────────────────────── */
+
+.board-grid__add-column-cell {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 0.5rem;
+}
+
+.board-grid__add-column-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0.5rem;
+  border: 1px dashed rgb(51 65 85); /* slate-700 */
+  border-radius: 0.5rem;
+  background: transparent;
+  color: rgb(100 116 139); /* slate-500 */
+  font-size: 1.25rem;
+  font-weight: 300;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.board-grid__add-column-btn:hover {
+  border-color: rgb(99 102 241 / 0.5); /* indigo-500/50 */
+  color: rgb(165 180 252); /* indigo-300 */
+  background: rgb(99 102 241 / 0.05);
+}
+
+.board-grid__add-column-btn:focus-visible {
+  outline: 2px solid rgb(99 102 241); /* indigo-500 */
+  outline-offset: 2px;
+}
+
+.board-grid__add-column-btn:active {
+  transform: scale(0.95);
+}
+
+/* ─── Add Row (bottom edge) ──────────────────────────────────────────────────── */
+
+.board-grid__add-row-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem;
+}
+
+.board-grid__add-row-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0.5rem 1rem;
+  border: 1px dashed rgb(51 65 85); /* slate-700 */
+  border-radius: 0.5rem;
+  background: transparent;
+  color: rgb(100 116 139); /* slate-500 */
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.board-grid__add-row-btn:hover {
+  border-color: rgb(99 102 241 / 0.5); /* indigo-500/50 */
+  color: rgb(165 180 252); /* indigo-300 */
+  background: rgb(99 102 241 / 0.05);
+}
+
+.board-grid__add-row-btn:focus-visible {
+  outline: 2px solid rgb(99 102 241); /* indigo-500 */
+  outline-offset: 2px;
+}
+
+.board-grid__add-row-btn:active {
+  transform: scale(0.95);
+}
+
+/* ─── Empty Cell (placeholder in add-column column for clue rows) ────────────── */
+
+.board-grid__empty-cell {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+/* ─── Drag-and-Drop Visual Feedback ──────────────────────────────────────────── */
+
+/* Dragging state: applied via data attribute on the header cell */
+[data-dragging] {
+  opacity: 0.5;
+  transform: scale(0.95);
+  z-index: 10;
+}
+
+/* DnD-kit drag overlay appearance */
+.board-grid__header-cell .board-grid__category-header {
+  transition: box-shadow 0.15s ease;
+}
+
+[data-dragging] .board-grid__category-header {
+  box-shadow: 0 8px 25px -5px rgb(99 102 241 / 0.3),
+              0 4px 10px -3px rgb(0 0 0 / 0.3);
+  border-color: rgb(99 102 241 / 0.6); /* indigo-500/60 */
+}
+
+/* ─── Board Editor Sections ──────────────────────────────────────────────────── */
+
+.board-editor__grid {
+  flex: 1;
+  min-width: 0;
+}
+
+.board-editor__final {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+/* ─── Modal/Dialog Overlay ───────────────────────────────────────────────────── */
+
+.board-editor__modal {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgb(0 0 0 / 0.6);
+  z-index: 1000;
+  padding: 1rem;
+}
+
+/* ─── Responsive: Tablet ─────────────────────────────────────────────────────── */
+
+@media (max-width: 1024px) {
+  .board-editor {
+    padding: 1rem;
+    gap: 1rem;
+  }
+
+  .board-grid__header-cell {
+    min-width: 100px;
+  }
+
+  .board-grid__clue-cell {
+    min-width: 64px;
+    min-height: 48px;
+    font-size: 0.75rem;
+  }
+}
+
+/* ─── Responsive: Mobile ─────────────────────────────────────────────────────── */
+
+@media (max-width: 640px) {
+  .board-editor {
+    padding: 0.75rem;
+    gap: 0.75rem;
+  }
+
+  .board-editor__toolbar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+    padding: 0.75rem;
+  }
+
+  .board-editor__autosave-status,
+  .board-editor__autosave-warning {
+    margin-left: 0;
+  }
+
+  .board-grid {
+    padding: 0.5rem;
+    border-radius: 0.75rem;
+  }
+
+  .board-grid__category-name-input {
+    font-size: 0.75rem;
+  }
+
+  .board-grid__clue-cell {
+    min-width: 56px;
+    min-height: 44px;
+    padding: 0.375rem;
+  }
+
+  .board-grid__add-column-btn,
+  .board-grid__add-row-btn {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}

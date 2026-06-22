@@ -15,7 +15,7 @@ export interface UseDraftPersistenceReturn {
 
 // ─── Constants ─────────────────────────────────────────────────────────────────
 
-const AUTO_SAVE_DELAY_MS = 30000
+const AUTO_SAVE_DELAY_MS = 60000
 
 // ─── Hook ──────────────────────────────────────────────────────────────────────
 
@@ -121,7 +121,7 @@ export function useDraftPersistence(
       return
     }
 
-    // Set or reset the 30s inactivity timer
+    // Set or reset the 60s auto-save timer
     cancelAutoSaveTimer()
     autoSaveActiveRef.current = true
 

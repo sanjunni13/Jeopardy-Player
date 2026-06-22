@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import type { RoundName, Category, FinalRound } from '../types/game';
+import type { MediaAttachment } from './builderFormStructure';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -9,6 +10,8 @@ export interface BuilderDraft {
   categoriesPerRound: number;
   rounds: Record<RoundName, Category[]>;
   final: FinalRound;
+  /** Media manifest mapping clue keys to storage paths */
+  media?: Record<string, MediaAttachment[]>;
 }
 
 export interface DraftMetadata {

@@ -227,12 +227,12 @@ export function BuilderForm({
       </div>
 
       {/* RoundSection × N */}
-      {formState.rounds.map((categories, roundIdx) => (
+      {formState.rounds.map((round, roundIdx) => (
         <div key={roundIdx} data-round-index={roundIdx}>
           <RoundSection
             roundIndex={roundIdx}
             roundName={roundLabels[roundIdx]}
-            categories={categories}
+            categories={round.categories}
             errors={errors}
             onCategoryNameChange={(catIdx, name) =>
               onSetCategoryName(roundIdx, catIdx, name)

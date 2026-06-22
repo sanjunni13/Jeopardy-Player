@@ -100,16 +100,11 @@ describe('ExitGuardDialog', () => {
   it('disables Save and Exit button when isSaving is true and shows loading', () => {
     render(<ExitGuardDialog {...dialogProps} isSaving={true} />)
 
-    // When isSaving is true, the Save and Exit button text changes to "Saving…"
-    // and the button is disabled. We query for the button containing "Saving…" text
-    // by filtering out the "Exit Without Saving" button.
-    const buttons = screen.getAllByRole('button')
-    const saveAndExitButton = buttons.find(
-      (btn) => btn.textContent?.includes('Saving…') && !btn.textContent?.includes('Exit Without')
-    )
-    expect(saveAndExitButton).toBeDefined()
-    expect(saveAndExitButton).toBeDisabled()
-    expect(screen.getByText('Saving…')).toBeInTheDocument()
+    // When isSaving is true, the dialog shows a full loading state (spinner + text)
+    // instead of button options.
+    expect(screen.getByText('Saving your changes...')).toBeInTheDocument()
+    // Buttons should not be present during saving state
+    expect(screen.queryByRole('button')).not.toBeInTheDocument()
   })
 })
 

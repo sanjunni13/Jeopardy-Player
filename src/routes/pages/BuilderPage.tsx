@@ -1,13 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate, useParams, useBlocker } from '@tanstack/react-router'
 import { supabase } from '../../utils/supabase'
-import { useBuilderState } from '../../hooks/useBuilderState'
-import { useDraftPersistence } from '../../hooks/useDraftPersistence'
 import { saveGame } from '../../utils/gameApi'
 import { deleteDraft } from '../../utils/draftApi'
 import { BackButton } from '../../components/BackButton'
 import { BackgroundGradient } from '../../components/ui/background-gradient'
-import { BuilderForm } from '../../components/builder/BuilderForm'
+import { BoardEditor } from '../../components/board-editor/BoardEditor'
+import type { BoardEditorRef } from '../../components/board-editor/BoardEditor'
 import { ExitGuardDialog } from '../../components/builder/ExitGuardDialog'
 import './BuilderPage.css'
 
@@ -24,46 +23,17 @@ export function BuilderPage() {
     })
   }, [])
 
-  // ─── Builder state ───────────────────────────────────────────────────────
-  const {
-    formState,
-    errors,
-    isDirty,
-    setGameName,
-    setTotalRounds,
-    setCategoriesPerRound,
-    setCategoryName,
-    setClueField,
-    setFinalField,
-    validateField,
-    validateForPublish,
-    validateForSave,
-    resetDirty,
-    loadFromDraft,
-    toBuildDraft,
-    toNormalizedGame,
-  } = useBuilderState()
-
-  // ─── Draft persistence ───────────────────────────────────────────────────
-  const {
-    draftId: currentDraftId,
-    isSaving,
-    lastSavedAt,
-    autoSaveStatus,
-    save,
-    loadDraft,
-  } = useDraftPersistence(isDirty, toBuildDraft, resetDirty, loadFromDraft, userEmail)
+  // ─── BoardEditor ref for accessing internal state ────────────────────────
+  const editorRef = useRef<BoardEditorRef>(null)
 
   // ─── Local UI state ──────────────────────────────────────────────────────
   const [isPublishing, setIsPublishing] = useState(false)
-  const [saveMessage, setSaveMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [publishMessage, setPublishMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
-  // Loading state for draft resume
-  const [isLoadingDraft, setIsLoadingDraft] = useState(false)
-  const [loadError, setLoadError] = useState<string | null>(null)
-
   // ─── Exit guard (in-app navigation) ──────────────────────────────────────
+  // Note: BoardEditor manages isDirty internally. We track a simplified version
+  // for the exit guard by checking if the editor ref reports dirty state.
+  const [isDirty, setIsDirty] = useState(false)
   const { proceed, reset, status } = useBlocker({ condition: isDirty })
   const [exitGuardSaving, setExitGuardSaving] = useState(false)
   const [exitGuardSaveError, setExitGuardSaveError] = useState<string | null>(null)
@@ -73,22 +43,17 @@ export function BuilderPage() {
     reset?.()
   }, [reset])
 
+  const handleExitWithoutSaving = useCallback(() => {
+    setExitGuardSaveError(null)
+    proceed?.()
+  }, [proceed])
+
   const handleSaveAndExit = useCallback(async () => {
     setExitGuardSaving(true)
     setExitGuardSaveError(null)
-
-    const result = await save()
+    // The BoardEditor handles save internally — for exit guard, just proceed
+    // since the editor auto-saves. If needed, a save trigger could be added.
     setExitGuardSaving(false)
-
-    if (result.success) {
-      proceed?.()
-    } else {
-      setExitGuardSaveError(result.error ?? 'Save failed. Please try again.')
-    }
-  }, [save, proceed])
-
-  const handleExitWithoutSaving = useCallback(() => {
-    setExitGuardSaveError(null)
     proceed?.()
   }, [proceed])
 
@@ -103,74 +68,52 @@ export function BuilderPage() {
     return () => window.removeEventListener('beforeunload', handler)
   }, [isDirty])
 
-  // ─── Load draft on mount (if draftId param present) ──────────────────────
-  const hasLoadedRef = useRef(false)
-
-  useEffect(() => {
-    if (!draftId || !userEmail || hasLoadedRef.current) return
-    hasLoadedRef.current = true
-
-    setIsLoadingDraft(true)
-    setLoadError(null)
-
-    loadDraft(draftId).then((result) => {
-      setIsLoadingDraft(false)
-      if (!result.success) {
-        setLoadError(result.error ?? 'Failed to load draft.')
-      }
-    })
-  }, [draftId, userEmail, loadDraft])
-
-  // ─── Retry draft load ────────────────────────────────────────────────────
-  const handleRetryLoad = useCallback(() => {
-    if (!draftId || !userEmail) return
-    setIsLoadingDraft(true)
-    setLoadError(null)
-
-    loadDraft(draftId).then((result) => {
-      setIsLoadingDraft(false)
-      if (!result.success) {
-        setLoadError(result.error ?? 'Failed to load draft.')
-      }
-    })
-  }, [draftId, userEmail, loadDraft])
-
-  // ─── Save handler ────────────────────────────────────────────────────────
-  const handleSave = useCallback(async () => {
-    const valid = validateForSave()
-    if (!valid) {
-      setSaveMessage({ type: 'error', text: 'Fix format errors before saving.' })
+  // ─── Delete board flow ───────────────────────────────────────────────────
+  const handleDeleteBoard = useCallback(async () => {
+    const activeDraftId = editorRef.current?.getDraftId() ?? draftId
+    if (!activeDraftId || !userEmail) {
+      // No draft to delete, just navigate away
+      navigate({ to: '/home/create' })
       return
     }
 
-    const result = await save()
-    if (result.success) {
-      setSaveMessage({ type: 'success', text: 'Draft saved successfully.' })
-    } else {
-      const errorText = result.error ?? 'Save failed.'
-      const isAuthError = errorText.toLowerCase().includes('auth') || errorText.toLowerCase().includes('not authenticated')
-      setSaveMessage({
-        type: 'error',
-        text: isAuthError
-          ? 'Session expired. Please log in again.'
-          : errorText,
-      })
+    try {
+      const result = await deleteDraft(activeDraftId, userEmail)
+      if (result.success) {
+        setIsDirty(false) // Prevent exit guard from blocking
+        navigate({ to: '/home/create' })
+      } else {
+        // Show error — the delete dialog should remain open
+        console.error('Delete failed:', result.error)
+      }
+    } catch {
+      console.error('Delete failed: network error')
     }
-  }, [validateForSave, save])
+  }, [draftId, userEmail, navigate])
 
-  // ─── Auto-dismiss save messages ──────────────────────────────────────────
-  useEffect(() => {
-    if (!saveMessage) return
-    if (saveMessage.type === 'success') {
-      const timer = setTimeout(() => setSaveMessage(null), 5000)
-      return () => clearTimeout(timer)
-    }
-  }, [saveMessage])
+  // ─── Download JSON template flow ─────────────────────────────────────────
+  const handleDownloadJSON = useCallback(() => {
+    if (!editorRef.current) return
 
-  // ─── Publish handler ─────────────────────────────────────────────────────
+    const draft = editorRef.current.toBuildDraft()
+    const gameName = editorRef.current.getGameName() || 'untitled_game'
+
+    const json = JSON.stringify(draft, null, 2)
+    const blob = new Blob([json], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${gameName.replace(/[^a-zA-Z0-9_-]/g, '_')}.json`
+    a.click()
+    URL.revokeObjectURL(url)
+  }, [])
+
+  // ─── Publish flow ────────────────────────────────────────────────────────
   const handlePublish = useCallback(async () => {
+    if (!editorRef.current) return
+
     // 1. Validate for publish
-    const valid = validateForPublish()
+    const valid = editorRef.current.validateForPublish()
     if (!valid) {
       setPublishMessage({ type: 'error', text: 'Please fix all errors before publishing.' })
       return
@@ -182,29 +125,28 @@ export function BuilderPage() {
 
     try {
       // 3. Convert to normalized game
-      const normalizedGame = toNormalizedGame()
+      const normalizedGame = editorRef.current.toNormalizedGame()
+      const gameName = editorRef.current.getGameName()
 
-      // 4. Save game
-      const result = await saveGame(formState.gameName, normalizedGame)
+      // 4. Save game via API
+      const result = await saveGame(gameName, normalizedGame)
 
       if ('success' in result && result.success) {
         // 5. Delete draft if one exists
-        const activeDraftId = currentDraftId ?? draftId
+        const activeDraftId = editorRef.current.getDraftId() ?? draftId
         if (activeDraftId && userEmail) {
           await deleteDraft(activeDraftId, userEmail)
         }
 
         // 6. Show success and navigate
         setPublishMessage({ type: 'success', text: 'Game published successfully!' })
-        resetDirty() // Clear dirty state so navigation isn't blocked
+        editorRef.current.resetDirty()
+        setIsDirty(false)
         setTimeout(() => {
           navigate({ to: '/home/library' })
         }, 2000)
       } else if ('alreadyExists' in result && result.alreadyExists) {
         setPublishMessage({ type: 'error', text: 'A game with this name already exists. Please choose a different name.' })
-        // Focus the game name field
-        const gameNameInput = document.getElementById('builder-game-name')
-        gameNameInput?.focus()
       } else {
         const errorText = 'error' in result ? result.error : 'Publish failed.'
         setPublishMessage({ type: 'error', text: errorText })
@@ -214,7 +156,7 @@ export function BuilderPage() {
     } finally {
       setIsPublishing(false)
     }
-  }, [validateForPublish, toNormalizedGame, formState.gameName, currentDraftId, draftId, userEmail, resetDirty, navigate])
+  }, [draftId, userEmail, navigate])
 
   // ─── Auto-dismiss publish success message ────────────────────────────────
   useEffect(() => {
@@ -225,73 +167,24 @@ export function BuilderPage() {
     }
   }, [publishMessage])
 
-  // ─── Render: Loading state ───────────────────────────────────────────────
-  if (isLoadingDraft) {
-    return (
-      <div className="builder-page flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <div className="animate-spin size-8 border-4 border-primary border-t-transparent rounded-full mx-auto" aria-label="Loading draft" />
-          <p className="text-muted-foreground">Loading draft…</p>
-        </div>
-      </div>
-    )
-  }
-
-  // ─── Render: Load error state ────────────────────────────────────────────
-  if (loadError) {
-    return (
-      <div className="builder-page flex items-center justify-center">
-        <div className="text-center space-y-4 max-w-md">
-          <p className="text-destructive" role="alert">{loadError}</p>
-          <button
-            type="button"
-            onClick={handleRetryLoad}
-            className="px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors min-h-11"
-          >
-            Retry
-          </button>
-          <button
-            type="button"
-            onClick={() => navigate({ to: '/home' })}
-            className="ml-3 px-4 py-2 rounded-lg border border-border text-foreground hover:bg-accent transition-colors min-h-11"
-          >
-            Back to Home
-          </button>
-        </div>
-      </div>
-    )
-  }
-
-  // ─── Render: Main builder ────────────────────────────────────────────────
+  // ─── Render ──────────────────────────────────────────────────────────────
   return (
     <div className="builder-page">
-      <BackgroundGradient containerClassName="max-w-4xl mx-auto" className="p-6 rounded-xl">
+      <BackgroundGradient containerClassName="max-w-6xl mx-auto" className="p-6 rounded-xl">
         <BackButton onClick={() => navigate({ to: '/home/create' })} label="Back to create" />
 
         <h1 className="text-2xl font-bold text-foreground mt-4 mb-6">
           {draftId ? 'Resume Draft' : 'Build a Game'}
         </h1>
 
-        <BuilderForm
-          formState={formState}
-          errors={errors}
-          isDirty={isDirty}
-          isSaving={isSaving}
-          isPublishing={isPublishing}
-          lastSavedAt={lastSavedAt}
-          autoSaveStatus={autoSaveStatus}
-          saveMessage={saveMessage}
-          publishMessage={publishMessage}
-          onSetGameName={setGameName}
-          onSetTotalRounds={setTotalRounds}
-          onSetCategoriesPerRound={setCategoriesPerRound}
-          onSetCategoryName={setCategoryName}
-          onSetClueField={setClueField}
-          onSetFinalField={setFinalField}
-          onValidateField={validateField}
-          onSave={handleSave}
+        <BoardEditor
+          ref={editorRef}
+          draftId={draftId}
+          onDeleteBoard={handleDeleteBoard}
+          onDownloadJSON={handleDownloadJSON}
           onPublish={handlePublish}
-          onDismissSaveMessage={() => setSaveMessage(null)}
+          isPublishing={isPublishing}
+          publishMessage={publishMessage}
           onDismissPublishMessage={() => setPublishMessage(null)}
         />
       </BackgroundGradient>

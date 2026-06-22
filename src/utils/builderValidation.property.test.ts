@@ -9,6 +9,8 @@ import {
   type ClueFormState,
   type CategoryFormState,
 } from './builderValidation'
+import { generateDefaultPointValues } from './builderFormStructure'
+import type { RoundFormState } from './builderFormStructure'
 
 // ─── Helper Generators ─────────────────────────────────────────────────────
 
@@ -34,13 +36,8 @@ const validClueFormState: fc.Arbitrary<ClueFormState> = fc.record({
 // Generator for a valid CategoryFormState (all fields filled and valid)
 const validCategoryFormState: fc.Arbitrary<CategoryFormState> = fc.record({
   name: nonEmptyText,
-  clues: fc.tuple(
-    validClueFormState,
-    validClueFormState,
-    validClueFormState,
-    validClueFormState,
-    validClueFormState
-  ),
+  clues: fc.array(validClueFormState, { minLength: 5, maxLength: 5 }),
+  isDefaultName: fc.constant(false),
 })
 
 // Generator for a fully valid BuilderFormState (all required fields filled)
@@ -49,25 +46,27 @@ const validBuilderFormState: fc.Arbitrary<BuilderFormState> = fc
     totalRounds: fc.integer({ min: 1, max: 6 }),
     categoriesPerRound: fc.integer({ min: 1, max: 6 }),
   })
-  .chain(({ totalRounds, categoriesPerRound }) =>
-    fc.record({
+  .chain(({ totalRounds, categoriesPerRound }) => {
+    const roundArb = (roundIndex: number): fc.Arbitrary<RoundFormState> => fc.record({
+      categories: fc.array(validCategoryFormState, { minLength: categoriesPerRound, maxLength: categoriesPerRound }),
+      pointValues: fc.constant(generateDefaultPointValues(roundIndex + 1, 5)),
+    })
+    const roundsArb = fc.tuple(
+      ...Array.from({ length: totalRounds }, (_, i) => roundArb(i))
+    ) as fc.Arbitrary<RoundFormState[]>
+
+    return fc.record({
       gameName: validGameName,
       totalRounds: fc.constant(totalRounds),
       categoriesPerRound: fc.constant(categoriesPerRound),
-      rounds: fc.tuple(
-        ...Array.from({ length: totalRounds }, () =>
-          fc.tuple(
-            ...Array.from({ length: categoriesPerRound }, () => validCategoryFormState)
-          )
-        )
-      ),
+      rounds: roundsArb,
       finalRound: fc.record({
         category: nonEmptyText,
         clue: nonEmptyText,
         solution: nonEmptyText,
       }),
     })
-  )
+  })
 
 // Generator for a ClueFormState with a mix of empty and non-empty fields
 const mixedClueFormState: fc.Arbitrary<ClueFormState> = fc.record({
@@ -80,13 +79,8 @@ const mixedClueFormState: fc.Arbitrary<ClueFormState> = fc.record({
 // Generator for a CategoryFormState with a mix of empty and non-empty fields
 const mixedCategoryFormState: fc.Arbitrary<CategoryFormState> = fc.record({
   name: fc.oneof(fc.constant(''), nonEmptyText),
-  clues: fc.tuple(
-    mixedClueFormState,
-    mixedClueFormState,
-    mixedClueFormState,
-    mixedClueFormState,
-    mixedClueFormState
-  ),
+  clues: fc.array(mixedClueFormState, { minLength: 5, maxLength: 5 }),
+  isDefaultName: fc.boolean(),
 })
 
 // Generator for a BuilderFormState with mixed fields (some empty, some filled)
@@ -95,25 +89,27 @@ const mixedBuilderFormState: fc.Arbitrary<BuilderFormState> = fc
     totalRounds: fc.integer({ min: 1, max: 3 }),
     categoriesPerRound: fc.integer({ min: 1, max: 3 }),
   })
-  .chain(({ totalRounds, categoriesPerRound }) =>
-    fc.record({
+  .chain(({ totalRounds, categoriesPerRound }) => {
+    const roundArb = (roundIndex: number): fc.Arbitrary<RoundFormState> => fc.record({
+      categories: fc.array(mixedCategoryFormState, { minLength: categoriesPerRound, maxLength: categoriesPerRound }),
+      pointValues: fc.constant(generateDefaultPointValues(roundIndex + 1, 5)),
+    })
+    const roundsArb = fc.tuple(
+      ...Array.from({ length: totalRounds }, (_, i) => roundArb(i))
+    ) as fc.Arbitrary<RoundFormState[]>
+
+    return fc.record({
       gameName: fc.oneof(fc.constant(''), validGameName),
       totalRounds: fc.constant(totalRounds),
       categoriesPerRound: fc.constant(categoriesPerRound),
-      rounds: fc.tuple(
-        ...Array.from({ length: totalRounds }, () =>
-          fc.tuple(
-            ...Array.from({ length: categoriesPerRound }, () => mixedCategoryFormState)
-          )
-        )
-      ),
+      rounds: roundsArb,
       finalRound: fc.record({
         category: fc.oneof(fc.constant(''), nonEmptyText),
         clue: fc.oneof(fc.constant(''), nonEmptyText),
         solution: fc.oneof(fc.constant(''), nonEmptyText),
       }),
     })
-  )
+  })
 
 // ─── Game Name Regex (mirrors the implementation) ──────────────────────────
 const GAME_NAME_REGEX = /^[\w\s-]{1,100}$/
@@ -305,7 +301,7 @@ describe('Property 4: Publish Validation Completeness', () => {
       fc.property(validBuilderFormState, (state) => {
         // Make the first category name empty
         const modified = structuredClone(state)
-        modified.rounds[0][0].name = ''
+        modified.rounds[0].categories[0].name = ''
         const errors = validateForPublish(modified)
         expect(Object.keys(errors).length).toBeGreaterThan(0)
         expect(errors['rounds.0.0.name']).toBeDefined()
@@ -318,7 +314,7 @@ describe('Property 4: Publish Validation Completeness', () => {
     fc.assert(
       fc.property(validBuilderFormState, (state) => {
         const modified = structuredClone(state)
-        modified.rounds[0][0].clues[0].value = ''
+        modified.rounds[0].categories[0].clues[0].value = ''
         const errors = validateForPublish(modified)
         expect(Object.keys(errors).length).toBeGreaterThan(0)
         expect(errors['rounds.0.0.clues.0.value']).toBeDefined()
@@ -347,7 +343,7 @@ describe('Property 4: Publish Validation Completeness', () => {
     fc.assert(
       fc.property(validBuilderFormState, (state) => {
         const modified = structuredClone(state)
-        modified.rounds[0][0].clues[0].value = 'abc'
+        modified.rounds[0].categories[0].clues[0].value = 'abc'
         const errors = validateForPublish(modified)
         expect(errors['rounds.0.0.clues.0.value']).toBeDefined()
       }),
@@ -376,9 +372,9 @@ describe('Property 5: Save Validation Permits Empty Fields', () => {
 
         // Check that no error exists for empty clue values
         for (let r = 0; r < state.rounds.length; r++) {
-          for (let c = 0; c < state.rounds[r].length; c++) {
-            for (let cl = 0; cl < state.rounds[r][c].clues.length; cl++) {
-              if (state.rounds[r][c].clues[cl].value.trim() === '') {
+          for (let c = 0; c < state.rounds[r].categories.length; c++) {
+            for (let cl = 0; cl < state.rounds[r].categories[c].clues.length; cl++) {
+              if (state.rounds[r].categories[c].clues[cl].value.trim() === '') {
                 expect(errors[`rounds.${r}.${c}.clues.${cl}.value`]).toBeUndefined()
               }
             }
@@ -405,16 +401,20 @@ describe('Property 5: Save Validation Permits Empty Fields', () => {
       gameName: '',
       totalRounds: 1,
       categoriesPerRound: 1,
-      rounds: [[{
-        name: '',
-        clues: [
-          { value: '', clue: '', solution: '', dailyDouble: false },
-          { value: '', clue: '', solution: '', dailyDouble: false },
-          { value: '', clue: '', solution: '', dailyDouble: false },
-          { value: '', clue: '', solution: '', dailyDouble: false },
-          { value: '', clue: '', solution: '', dailyDouble: false },
-        ],
-      }]],
+      rounds: [{
+        categories: [{
+          name: '',
+          clues: [
+            { value: '', clue: '', solution: '', dailyDouble: false },
+            { value: '', clue: '', solution: '', dailyDouble: false },
+            { value: '', clue: '', solution: '', dailyDouble: false },
+            { value: '', clue: '', solution: '', dailyDouble: false },
+            { value: '', clue: '', solution: '', dailyDouble: false },
+          ],
+          isDefaultName: true,
+        }],
+        pointValues: [200, 400, 600, 800, 1000],
+      }],
       finalRound: { category: '', clue: '', solution: '' },
     }
     const errors = validateForSave(emptyState)
@@ -438,7 +438,7 @@ describe('Property 5: Save Validation Permits Empty Fields', () => {
             const roundIdx = Number(parts[1])
             const catIdx = Number(parts[2])
             const clueIdx = Number(parts[4])
-            const value = state.rounds[roundIdx][catIdx].clues[clueIdx].value
+            const value = state.rounds[roundIdx].categories[catIdx].clues[clueIdx].value
             expect(value.trim()).not.toBe('')
           }
         }

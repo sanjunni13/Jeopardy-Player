@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import fc from 'fast-check'
-import { generateEmptyFormState, generateRoundLabels } from './builderFormStructure'
+import { generateEmptyFormState, generateRoundLabels, generateDefaultPointValues } from './builderFormStructure'
 import type { RoundName } from '../types/game'
 
 // Feature: custom-game-builder, Property 2: Form Structure Invariants
@@ -10,7 +10,7 @@ describe('Property 2: Form Structure Invariants', () => {
    *
    * For any valid configuration where totalRounds is between 1 and 6
    * and categoriesPerRound is between 1 and 6, the generated form state
-   * SHALL contain exactly totalRounds round arrays, each containing exactly
+   * SHALL contain exactly totalRounds rounds, each containing exactly
    * categoriesPerRound categories, each containing exactly 5 clue entries.
    * The round labels SHALL be the first totalRounds elements of
    * ['single', 'double', 'triple', 'quadruple', 'quintuple', 'sextuple'] in that order.
@@ -19,7 +19,7 @@ describe('Property 2: Form Structure Invariants', () => {
   const totalRoundsArb = fc.integer({ min: 1, max: 6 })
   const categoriesPerRoundArb = fc.integer({ min: 1, max: 6 })
 
-  it('generateEmptyFormState produces exactly totalRounds round arrays', () => {
+  it('generateEmptyFormState produces exactly totalRounds rounds', () => {
     fc.assert(
       fc.property(totalRoundsArb, categoriesPerRoundArb, (totalRounds, categoriesPerRound) => {
         const state = generateEmptyFormState(totalRounds, categoriesPerRound)
@@ -36,7 +36,7 @@ describe('Property 2: Form Structure Invariants', () => {
       fc.property(totalRoundsArb, categoriesPerRoundArb, (totalRounds, categoriesPerRound) => {
         const state = generateEmptyFormState(totalRounds, categoriesPerRound)
         for (const round of state.rounds) {
-          expect(round).toHaveLength(categoriesPerRound)
+          expect(round.categories).toHaveLength(categoriesPerRound)
         }
       }),
       { numRuns: 100 }
@@ -48,7 +48,7 @@ describe('Property 2: Form Structure Invariants', () => {
       fc.property(totalRoundsArb, categoriesPerRoundArb, (totalRounds, categoriesPerRound) => {
         const state = generateEmptyFormState(totalRounds, categoriesPerRound)
         for (const round of state.rounds) {
-          for (const category of round) {
+          for (const category of round.categories) {
             expect(category.clues).toHaveLength(5)
           }
         }
@@ -57,7 +57,7 @@ describe('Property 2: Form Structure Invariants', () => {
     )
   })
 
-  it('all fields are empty strings or false', () => {
+  it('all clue fields are empty strings or false, and categories have default names', () => {
     fc.assert(
       fc.property(totalRoundsArb, categoriesPerRoundArb, (totalRounds, categoriesPerRound) => {
         const state = generateEmptyFormState(totalRounds, categoriesPerRound)
@@ -70,10 +70,13 @@ describe('Property 2: Form Structure Invariants', () => {
         expect(state.finalRound.clue).toBe('')
         expect(state.finalRound.solution).toBe('')
 
-        // All round/category/clue fields are empty/false
+        // All round/category/clue fields
         for (const round of state.rounds) {
-          for (const category of round) {
-            expect(category.name).toBe('')
+          for (let catIdx = 0; catIdx < round.categories.length; catIdx++) {
+            const category = round.categories[catIdx]
+            // Default category names are "Category N"
+            expect(category.name).toBe(`Category ${catIdx + 1}`)
+            expect(category.isDefaultName).toBe(true)
             for (const clue of category.clues) {
               expect(clue.value).toBe('')
               expect(clue.clue).toBe('')
@@ -81,6 +84,20 @@ describe('Property 2: Form Structure Invariants', () => {
               expect(clue.dailyDouble).toBe(false)
             }
           }
+        }
+      }),
+      { numRuns: 100 }
+    )
+  })
+
+  it('each round has correct default point values', () => {
+    fc.assert(
+      fc.property(totalRoundsArb, categoriesPerRoundArb, (totalRounds, categoriesPerRound) => {
+        const state = generateEmptyFormState(totalRounds, categoriesPerRound)
+        for (let roundIdx = 0; roundIdx < state.rounds.length; roundIdx++) {
+          const round = state.rounds[roundIdx]
+          const expected = generateDefaultPointValues(roundIdx + 1, 5)
+          expect(round.pointValues).toEqual(expected)
         }
       }),
       { numRuns: 100 }

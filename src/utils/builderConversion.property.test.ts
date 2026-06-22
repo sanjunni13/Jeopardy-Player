@@ -6,8 +6,8 @@ import {
   builderStateToDraft,
   draftToBuilderState,
 } from './builderConversion'
-import { generateEmptyFormState } from './builderFormStructure'
-import type { BuilderFormState, ClueFormState } from './builderFormStructure'
+import { generateEmptyFormState, generateDefaultPointValues } from './builderFormStructure'
+import type { BuilderFormState, RoundFormState } from './builderFormStructure'
 import type { RoundName } from '../types/game'
 
 // ─── Generators ────────────────────────────────────────────────────────────────
@@ -37,21 +37,21 @@ const validGameNameArb = fc
   })
   .map(chars => chars.join(''))
 
-// Full valid BuilderFormState generator
+// Full valid BuilderFormState generator (new RoundFormState format)
 function validBuilderFormStateArb() {
   return fc.tuple(totalRoundsArb, categoriesPerRoundArb).chain(([totalRounds, catsPerRound]) => {
     const categoryArb = fc.record({
       name: nonEmptyText,
-      clues: fc.tuple(
-        clueFormStateArb,
-        clueFormStateArb,
-        clueFormStateArb,
-        clueFormStateArb,
-        clueFormStateArb
-      ) as fc.Arbitrary<[ClueFormState, ClueFormState, ClueFormState, ClueFormState, ClueFormState]>,
+      clues: fc.array(clueFormStateArb, { minLength: 5, maxLength: 5 }),
+      isDefaultName: fc.boolean(),
     })
-    const roundArb = fc.array(categoryArb, { minLength: catsPerRound, maxLength: catsPerRound })
-    const roundsArb = fc.array(roundArb, { minLength: totalRounds, maxLength: totalRounds })
+    const roundArb = (roundIndex: number) => fc.record({
+      categories: fc.array(categoryArb, { minLength: catsPerRound, maxLength: catsPerRound }),
+      pointValues: fc.constant(generateDefaultPointValues(roundIndex + 1, 5)),
+    })
+    const roundsArb = fc.tuple(
+      ...Array.from({ length: totalRounds }, (_, i) => roundArb(i))
+    ) as fc.Arbitrary<RoundFormState[]>
 
     return fc.record({
       gameName: validGameNameArb,
@@ -227,13 +227,13 @@ describe('Property 8: Draft Serialization Round-Trip', () => {
         // Verify rounds structure dimensions
         expect(restored.rounds).toHaveLength(state.totalRounds)
         for (let r = 0; r < state.totalRounds; r++) {
-          expect(restored.rounds[r]).toHaveLength(state.categoriesPerRound)
+          expect(restored.rounds[r].categories).toHaveLength(state.categoriesPerRound)
           for (let c = 0; c < state.categoriesPerRound; c++) {
-            expect(restored.rounds[r][c].name).toBe(state.rounds[r][c].name)
-            expect(restored.rounds[r][c].clues).toHaveLength(5)
+            expect(restored.rounds[r].categories[c].name).toBe(state.rounds[r].categories[c].name)
+            expect(restored.rounds[r].categories[c].clues).toHaveLength(5)
             for (let i = 0; i < 5; i++) {
-              const originalClue = state.rounds[r][c].clues[i]
-              const restoredClue = restored.rounds[r][c].clues[i]
+              const originalClue = state.rounds[r].categories[c].clues[i]
+              const restoredClue = restored.rounds[r].categories[c].clues[i]
               // Value goes through Number() then String() so compare numerically
               expect(restoredClue.value).toBe(String(Number(originalClue.value)))
               expect(restoredClue.clue).toBe(originalClue.clue)

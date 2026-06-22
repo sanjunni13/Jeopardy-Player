@@ -1,0 +1,31 @@
+.point-value-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 4px 8px;
+  border: none;
+  background: transparent;
+  color: var(--foreground, #e2e8f0);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background-color 0.15s ease, color 0.15s ease;
+  user-select: none;
+}
+
+.point-value-label:hover {
+  background-color: var(--muted, rgba(255, 255, 255, 0.1));
+  color: var(--primary, #facc15);
+}
+
+.point-value-label:focus-visible {
+  outline: 2px solid var(--ring, #6366f1);
+  outline-offset: 2px;
+}
+
+.point-value-label:active {
+  transform: translateY(1px);
+}

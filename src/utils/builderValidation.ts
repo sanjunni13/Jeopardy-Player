@@ -1,41 +1,20 @@
-// ─── Builder Form Types ────────────────────────────────────────────────────
+import type { BuilderFormState, ValidationErrors, ClueFormState, CategoryFormState } from './builderFormStructure'
 
-/** Form-level state for a single clue row */
-export interface ClueFormState {
-  value: string
-  clue: string
-  solution: string
-  dailyDouble: boolean
-}
-
-/** Form-level state for a single category */
-export interface CategoryFormState {
-  name: string
-  clues: [ClueFormState, ClueFormState, ClueFormState, ClueFormState, ClueFormState]
-}
-
-/** Form-level state for Final Jeopardy */
-export interface FinalRoundFormState {
-  category: string
-  clue: string
-  solution: string
-}
-
-/** Top-level builder form state */
-export interface BuilderFormState {
-  gameName: string
-  totalRounds: number
-  categoriesPerRound: number
-  rounds: CategoryFormState[][]
-  finalRound: FinalRoundFormState
-}
-
-/** Validation error map keyed by field path */
-export type ValidationErrors = Record<string, string>
+// Re-export types for backward compatibility with existing imports
+export type { BuilderFormState, ValidationErrors, ClueFormState, CategoryFormState }
 
 // ─── Constants ─────────────────────────────────────────────────────────────
 
 const GAME_NAME_REGEX = /^[\w\s-]{1,100}$/
+
+/**
+ * Regex for recognized YouTube URL patterns:
+ * - youtube.com/watch?v=ID
+ * - youtu.be/ID
+ * - youtube.com/embed/ID
+ * With optional http(s)://, www. prefix
+ */
+const YOUTUBE_URL_REGEX = /^(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)[\w-]+/
 
 // ─── Validation Functions ──────────────────────────────────────────────────
 
@@ -68,6 +47,34 @@ export function validateClueValue(value: string): string | null {
 }
 
 /**
+ * Validates a point value (number or string).
+ * If string, parses to number first.
+ * Returns null if valid (positive integer ≥ 1), or an error message string if invalid.
+ */
+export function validatePointValue(value: number | string): string | null {
+  const num = typeof value === 'string' ? Number(value) : value
+  if (isNaN(num) || !Number.isFinite(num)) {
+    return 'Point value must be a valid number'
+  }
+  if (!Number.isInteger(num)) {
+    return 'Point value must be a whole number'
+  }
+  if (num < 1) {
+    return 'Point value must be at least 1'
+  }
+  return null
+}
+
+/**
+ * Validates a YouTube URL against recognized patterns.
+ * Returns true if the URL matches: youtube.com/watch?v=ID, youtu.be/ID, or youtube.com/embed/ID
+ * (with optional www., https://, http:// prefix). Returns false otherwise.
+ */
+export function validateYouTubeUrl(url: string): boolean {
+  return YOUTUBE_URL_REGEX.test(url)
+}
+
+/**
  * Validates all fields for publish. Every required field must be non-empty and valid.
  * Returns a ValidationErrors record with an entry for each invalid field.
  * An empty record means all fields are valid.
@@ -84,12 +91,23 @@ export function validateForPublish(state: BuilderFormState): ValidationErrors {
   // Validate all rounds
   for (let roundIdx = 0; roundIdx < state.rounds.length; roundIdx++) {
     const round = state.rounds[roundIdx]
-    for (let catIdx = 0; catIdx < round.length; catIdx++) {
-      const category = round[catIdx]
 
-      // Category name must be non-empty
+    // Validate point values per row
+    for (let rowIdx = 0; rowIdx < round.pointValues.length; rowIdx++) {
+      const pointValueError = validatePointValue(round.pointValues[rowIdx])
+      if (pointValueError) {
+        errors[`rounds.${roundIdx}.pointValues.${rowIdx}`] = pointValueError
+      }
+    }
+
+    for (let catIdx = 0; catIdx < round.categories.length; catIdx++) {
+      const category = round.categories[catIdx]
+
+      // Category name must be non-empty and not a default name
       if (category.name.trim() === '') {
         errors[`rounds.${roundIdx}.${catIdx}.name`] = 'Category name is required'
+      } else if (category.isDefaultName) {
+        errors[`rounds.${roundIdx}.${catIdx}.name`] = 'Please provide a custom category name'
       }
 
       // Each clue row
@@ -153,8 +171,8 @@ export function validateForSave(state: BuilderFormState): ValidationErrors {
   // Validate all rounds — only non-empty fields
   for (let roundIdx = 0; roundIdx < state.rounds.length; roundIdx++) {
     const round = state.rounds[roundIdx]
-    for (let catIdx = 0; catIdx < round.length; catIdx++) {
-      const category = round[catIdx]
+    for (let catIdx = 0; catIdx < round.categories.length; catIdx++) {
+      const category = round.categories[catIdx]
 
       // Category names don't have a format constraint beyond length (1-100)
       // so we don't flag them here — they're only required on publish
