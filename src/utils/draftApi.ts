@@ -30,8 +30,7 @@ async function getAuthUser() {
 // ─── API Functions ────────────────────────────────────────────────────────────
 
 export async function createDraft(
-  draft: BuilderDraft,
-  _userEmail: string
+  draft: BuilderDraft
 ): Promise<{ success: true; id: string } | { success: false; error: string }> {
   try {
     const user = await getAuthUser();
@@ -75,8 +74,7 @@ export async function createDraft(
 
 export async function updateDraft(
   draftId: string,
-  draft: BuilderDraft,
-  _userEmail: string
+  draft: BuilderDraft
 ): Promise<{ success: true } | { success: false; error: string }> {
   try {
     const user = await getAuthUser();
@@ -116,8 +114,7 @@ export async function updateDraft(
 }
 
 export async function loadDraft(
-  draftId: string,
-  _userEmail: string
+  draftId: string
 ): Promise<{ success: true; draft: BuilderDraft } | { success: false; error: string }> {
   try {
     const user = await getAuthUser();
@@ -143,8 +140,7 @@ export async function loadDraft(
 }
 
 export async function deleteDraft(
-  draftId: string,
-  _userEmail: string
+  draftId: string
 ): Promise<{ success: true } | { success: false; error: string }> {
   try {
     const user = await getAuthUser();
@@ -177,9 +173,7 @@ export async function deleteDraft(
   }
 }
 
-export async function listDrafts(
-  _userEmail: string
-): Promise<{ success: true; drafts: DraftMetadata[] } | { success: false; error: string }> {
+export async function listDrafts(): Promise<{ success: true; drafts: DraftMetadata[] } | { success: false; error: string }> {
   try {
     // RLS automatically scopes to the authenticated user's drafts via auth.uid()
     const { data, error } = await supabase

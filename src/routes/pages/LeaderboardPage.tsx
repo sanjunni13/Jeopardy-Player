@@ -54,12 +54,42 @@ export function LeaderboardPage() {
   }, [])
 
   useEffect(() => {
-    loadPlayers()
+    let cancelled = false
+
+    const controller = new AbortController()
+    controllerRef.current = controller
+
+    const timeoutId = setTimeout(() => controller.abort(), 10_000)
+
+    fetchAllPlayers({ signal: controller.signal }).then(
+      (data) => {
+        clearTimeout(timeoutId)
+        if (cancelled) return
+        if (data.length === 0) {
+          setState({ status: 'empty' })
+        } else {
+          setState({ status: 'success', players: data })
+        }
+      },
+      (err) => {
+        clearTimeout(timeoutId)
+        if (cancelled) return
+        if (controller.signal.aborted) {
+          setState({ status: 'error', message: 'Request timed out. Please try again.' })
+        } else {
+          setState({
+            status: 'error',
+            message: err instanceof Error ? err.message : 'Could not load player stats.',
+          })
+        }
+      },
+    )
 
     return () => {
-      controllerRef.current?.abort()
+      cancelled = true
+      controller.abort()
     }
-  }, [loadPlayers])
+  }, [])
 
   return (
     <div className="leaderboard-page">
