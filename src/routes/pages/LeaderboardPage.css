@@ -1,0 +1,192 @@
+/* ─── Leaderboard Page ──────────────────────────────────────────────────────── */
+
+.leaderboard-page {
+  max-height: 100vh;
+  background: rgb(15 23 42 / 0.95); /* slate-900/95 */
+  color: rgb(241 245 249); /* slate-100 */
+  padding: 2rem 1.5rem;
+  max-width: 72rem;
+  margin: 0 auto;
+  border-radius: 1.5rem;
+  overflow: hidden; 
+}
+
+/* ─── Header ───────────────────────────────────────────────────────────────── */
+
+.leaderboard-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.leaderboard-glossary-header {
+  margin-top: 4rem;
+}
+
+.leaderboard-glossary-header p {
+  margin-top: 3rem;
+}
+
+.leaderboard-glossary-list {
+  list-style: disc;
+  padding-left: 1.5rem;
+}
+
+.leaderboard-glossary-list li {
+  color: rgb(203 213 225); /* slate-300 */
+  line-height: 1.7;
+  margin-bottom: 0.25rem;
+  text-align: left;
+}
+
+.leaderboard-title {
+  font-size: 1.875rem;
+  font-weight: 600;
+  flex: 1;
+}
+
+.leaderboard-refresh-btn {
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgb(51 65 85); /* slate-700 */
+  background: rgb(15 23 42); /* slate-900 */
+  color: rgb(148 163 184); /* slate-400 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s;
+}
+
+.leaderboard-refresh-btn svg {
+  width: 1.125rem;
+  height: 1.125rem;
+}
+
+.leaderboard-refresh-btn:hover {
+  border-color: #6A1B9A;
+  color: rgb(241 245 249); /* slate-100 */
+}
+
+.leaderboard-refresh-btn:focus-visible {
+  outline: 2px solid #6A1B9A;
+  outline-offset: 2px;
+}
+
+/* ─── Loading State ────────────────────────────────────────────────────────── */
+
+.leaderboard-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 4rem 1rem;
+}
+
+.leaderboard-spinner {
+  width: 2.5rem;
+  height: 2.5rem;
+  color: #6A1B9A;
+  animation: leaderboard-spin 1s linear infinite;
+}
+
+@keyframes leaderboard-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.leaderboard-loading-text {
+  font-size: 0.875rem;
+  color: rgb(148 163 184); /* slate-400 */
+}
+
+/* ─── Error State ──────────────────────────────────────────────────────────── */
+
+.leaderboard-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 3rem 1rem;
+  border-radius: 1rem;
+  border: 1px solid rgb(244 63 94 / 0.3); /* rose-500/30 */
+  background: rgb(244 63 94 / 0.05);
+  max-width: 28rem;
+  margin: 0 auto;
+}
+
+.leaderboard-error-message {
+  font-size: 1.125rem;
+  font-weight: 500;
+  color: rgb(251 113 133); /* rose-400 */
+}
+
+.leaderboard-error-detail {
+  font-size: 0.875rem;
+  color: rgb(148 163 184); /* slate-400 */
+  text-align: center;
+}
+
+.leaderboard-retry-btn {
+  margin-top: 0.5rem;
+  border-radius: 100px;
+  padding: 0.625rem 1.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: white;
+  background-color: #6A1B9A;
+  border: 0;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.leaderboard-retry-btn:hover {
+  background-color: #8E24AA;
+  box-shadow: 0 0 20px rgba(142, 36, 170, 0.3);
+  transform: scale(1.05);
+}
+
+.leaderboard-retry-btn:active {
+  background-color: #4A148C;
+  transform: scale(0.98);
+}
+
+.leaderboard-retry-btn:focus-visible {
+  outline: 2px solid #6A1B9A;
+  outline-offset: 2px;
+}
+
+/* ─── Empty State ──────────────────────────────────────────────────────────── */
+
+.leaderboard-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 1rem;
+}
+
+.leaderboard-empty-message {
+  font-size: 1rem;
+  color: rgb(148 163 184); /* slate-400 */
+}
+
+/* ─── Content (table wrapper) ──────────────────────────────────────────────── */
+
+.leaderboard-content {
+  animation: leaderboard-fadeIn 0.3s ease-out;
+}
+
+@keyframes leaderboard-fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(0.5rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

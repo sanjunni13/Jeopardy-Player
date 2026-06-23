@@ -1,6 +1,7 @@
 import { useNavigate } from '@tanstack/react-router'
 import { BackgroundGradient } from '../../components/ui/background-gradient'
 import './HomePage.css'
+import { LeaderboardPage } from './LeaderboardPage'
 
 export function HomePage() {
   const navigate = useNavigate()
@@ -43,6 +44,13 @@ export function HomePage() {
           >
             Create a Game
           </button>
+        </div>
+      </BackgroundGradient>
+      <BackgroundGradient
+      containerClassName="home-gradient-container"
+      className='leaderboard-home-card'>
+        <div>
+          <LeaderboardPage />
         </div>
       </BackgroundGradient>
     </div>
