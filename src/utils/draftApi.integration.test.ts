@@ -46,6 +46,7 @@ const sampleDraft: BuilderDraft = {
 };
 
 const testEmail = 'user@example.com';
+const testUserId = 'user-id-abc';
 
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
@@ -84,9 +85,9 @@ describe('draftApi integration tests', () => {
       }
       expect(supabase.storage.from).toHaveBeenCalledWith('games');
       expect(storageUpload).toHaveBeenCalledWith(
-        `${testEmail}/drafts/test-uuid-1234.json`,
+        `${testUserId}/drafts/test-uuid-1234.json`,
         JSON.stringify(sampleDraft),
-        { contentType: 'application/json', upsert: false }
+        { contentType: 'application/json', upsert: true }
       );
     });
 
@@ -114,7 +115,7 @@ describe('draftApi integration tests', () => {
       }
       // Verify rollback: storage remove called
       expect(removeFn).toHaveBeenCalledWith([
-        `${testEmail}/drafts/test-uuid-1234.json`,
+        `${testUserId}/drafts/test-uuid-1234.json`,
       ]);
     });
   });
@@ -140,7 +141,7 @@ describe('draftApi integration tests', () => {
       expect(result.success).toBe(true);
       expect(supabase.storage.from).toHaveBeenCalledWith('games');
       expect(storageUpload).toHaveBeenCalledWith(
-        `${testEmail}/drafts/draft-id-123.json`,
+        `${testUserId}/drafts/draft-id-123.json`,
         JSON.stringify(sampleDraft),
         { contentType: 'application/json', upsert: true }
       );
@@ -205,7 +206,7 @@ describe('draftApi integration tests', () => {
         expect(result.draft).toEqual(sampleDraft);
       }
       expect(downloadFn).toHaveBeenCalledWith(
-        `${testEmail}/drafts/draft-id-123.json`
+        `${testUserId}/drafts/draft-id-123.json`
       );
     });
 
@@ -247,7 +248,7 @@ describe('draftApi integration tests', () => {
 
       expect(result.success).toBe(true);
       expect(removeFn).toHaveBeenCalledWith([
-        `${testEmail}/drafts/draft-id-123.json`,
+        `${testUserId}/drafts/draft-id-123.json`,
       ]);
     });
 

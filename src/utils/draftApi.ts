@@ -38,7 +38,7 @@ export async function createDraft(
     if (!user) return { success: false, error: 'Not authenticated.' };
 
     const id = crypto.randomUUID();
-    const storagePath = `${user.email}/drafts/${id}.json`;
+    const storagePath = `${user.id}/drafts/${id}.json`;
 
     // Upload JSON to Storage
     console.log('[draftApi] Attempting storage upload:', { path: storagePath, userId: user.id });
@@ -95,7 +95,7 @@ export async function updateDraft(
     const user = await getAuthUser();
     if (!user) return { success: false, error: 'Not authenticated.' };
 
-    const storagePath = `${user.email}/drafts/${draftId}.json`;
+    const storagePath = `${user.id}/drafts/${draftId}.json`;
 
     // Overwrite JSON in Storage
     const { error: uploadErr } = await supabase.storage
@@ -135,7 +135,7 @@ export async function loadDraft(
     const user = await getAuthUser();
     if (!user) return { success: false, error: 'Not authenticated.' };
 
-    const storagePath = `${user.email}/drafts/${draftId}.json`;
+    const storagePath = `${user.id}/drafts/${draftId}.json`;
 
     const { data, error: downloadErr } = await supabase.storage
       .from('games')
@@ -161,7 +161,7 @@ export async function deleteDraft(
     const user = await getAuthUser();
     if (!user) return { success: false, error: 'Not authenticated.' };
 
-    const storagePath = `${user.email}/drafts/${draftId}.json`;
+    const storagePath = `${user.id}/drafts/${draftId}.json`;
 
     // Delete JSON from Storage
     const { error: storageErr } = await supabase.storage

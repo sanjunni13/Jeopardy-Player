@@ -1,0 +1,132 @@
+/* ─── Profile Setup Page ───────────────────────────────────────────────────── */
+
+.profile-setup-page {
+  min-height: 100vh;
+  background: rgb(2 6 23); /* slate-950 */
+  color: rgb(241 245 249); /* slate-100 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+
+.profile-setup-card {
+  width: 100%;
+  max-width: 28rem;
+  border-radius: 1.5rem;
+  border: 1px solid rgb(30 41 59); /* slate-800 */
+  background: rgb(15 23 42 / 0.95); /* slate-900/95 */
+  padding: 2rem;
+  box-shadow: 0 25px 50px -12px rgb(15 23 42 / 0.3);
+}
+
+.profile-setup-gradient-container {
+  width: 100%;
+  max-width: 28rem;
+}
+
+.profile-setup-title {
+  font-size: 1.875rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+.profile-setup-subtitle {
+  color: rgb(148 163 184); /* slate-400 */
+  margin-bottom: 1rem;
+  font-size: 0.875rem;
+}
+
+.profile-setup-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.profile-setup-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-top: 1rem;
+}
+
+.profile-setup-label {
+  font-size: 0.875rem;
+  color: rgb(203 213 225); /* slate-300 */
+}
+
+.profile-setup-input {
+  border-radius: 0.75rem;
+  border: 1px solid rgb(51 65 85); /* slate-700 */
+  background: rgb(2 6 23); /* slate-950 */
+  padding: 0.625rem 1rem;
+  color: rgb(241 245 249); /* slate-100 */
+  font-size: 1rem;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.profile-setup-input::placeholder {
+  color: rgb(71 85 105); /* slate-600 */
+}
+
+.profile-setup-input:focus {
+  border-color: #6A1B9A;
+  box-shadow: 0 0 0 2px rgba(106, 27, 154, 0.25);
+}
+
+.profile-setup-input-error {
+  border-color: rgb(244 63 94); /* rose-500 */
+  box-shadow: 0 0 0 2px rgba(244, 63, 94, 0.25);
+}
+
+.profile-setup-input-error:focus {
+  border-color: rgb(244 63 94);
+  box-shadow: 0 0 0 2px rgba(244, 63, 94, 0.25);
+}
+
+/* ─── Error message ────────────────────────────────────────────────────────── */
+
+.profile-setup-error {
+  border-radius: 0.75rem;
+  background: rgb(244 63 94 / 0.1); /* rose-500/10 */
+  border: 1px solid rgb(244 63 94 / 0.3); /* rose-500/30 */
+  padding: 0.625rem 1rem;
+  font-size: 0.875rem;
+  color: rgb(251 113 133); /* rose-400 */
+}
+
+/* ─── Submit button ────────────────────────────────────────────────────────── */
+
+.profile-setup-submit-btn {
+  margin-top: 0.5rem;
+  border-radius: 100px;
+  padding: 12.5px 30px;
+  font-size: 0.875rem;
+  font-weight: bold;
+  color: white;
+  background-color: #6A1B9A;
+  border: 0;
+  cursor: pointer;
+  transition: all 0.5s;
+  -webkit-transition: all 0.5s;
+}
+
+.profile-setup-submit-btn:hover:not(:disabled) {
+  background-color: #8E24AA;
+  box-shadow: 0 0 20px rgba(142, 36, 170, 0.3);
+  transform: scale(1.1);
+}
+
+.profile-setup-submit-btn:active:not(:disabled) {
+  background-color: #4A148C;
+  transition: all 0.25s;
+  -webkit-transition: all 0.25s;
+  box-shadow: none;
+  transform: scale(0.98);
+}
+
+.profile-setup-submit-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

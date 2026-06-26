@@ -224,6 +224,35 @@ serve(async (req: Request) => {
       })
     }
 
+    // Look up Player ID from players table using Auth UUID
+    const { data: playerData, error: playerError } = await supabase
+      .from('players')
+      .select('id')
+      .eq('auth_uuid', user.id)
+      .single()
+
+    if (playerError) {
+      if (playerError.code === 'PGRST116') {
+        return new Response(JSON.stringify({ error: 'Profile setup required' }), {
+          status: 400,
+          headers: { ...CORS, 'Content-Type': 'application/json' },
+        })
+      }
+      return new Response(JSON.stringify({ error: 'Could not complete operation' }), {
+        status: 500,
+        headers: { ...CORS, 'Content-Type': 'application/json' },
+      })
+    }
+
+    if (!playerData) {
+      return new Response(JSON.stringify({ error: 'Profile setup required' }), {
+        status: 400,
+        headers: { ...CORS, 'Content-Type': 'application/json' },
+      })
+    }
+
+    const playerId = playerData.id
+
     // Parse request body
     const body = await req.json()
     const keywords: string[] = body.keywords
@@ -335,7 +364,7 @@ serve(async (req: Request) => {
     const slug = keywords.join('-').replace(/[^a-z0-9-]/gi, '').slice(0, 50)
     const timestamp = Date.now()
     const gameName = `labs_${slug}_${timestamp}`
-    const storagePath = `${user.email}/${gameName}.json`
+    const storagePath = `${user.id}/${gameName}.json`
 
     // Upload game JSON to games bucket
     const { error: uploadError } = await supabase.storage
@@ -363,7 +392,7 @@ serve(async (req: Request) => {
         total_rounds: 2,
         times_played: 0,
         winners: [],
-        created_by: user.email,
+        created_by: playerId,
         source: 'labs',
       })
       .select('id')

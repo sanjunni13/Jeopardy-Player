@@ -12,6 +12,7 @@ import { NotFoundPage } from './pages/NotFoundPage'
 
 const HomePage = lazy(() => import('./pages/HomePage').then(m => ({ default: m.HomePage })))
 const LoginPage = lazy(() => import('./pages/LoginPage').then(m => ({ default: m.LoginPage })))
+const ProfileSetupPage = lazy(() => import('./pages/ProfileSetupPage').then(m => ({ default: m.ProfileSetupPage })))
 const UnauthorizedPage = lazy(() => import('./pages/UnauthorizedPage').then(m => ({ default: m.UnauthorizedPage })))
 const UploadPage = lazy(() => import('./pages/UploadPage').then(m => ({ default: m.UploadPage })))
 const GamePage = lazy(() => import('./pages/GamePage').then(m => ({ default: m.GamePage })))
@@ -50,6 +51,12 @@ const loginRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/login',
   component: withSuspense(LoginPage),
+})
+
+const profileSetupRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/profile-setup',
+  component: withSuspense(ProfileSetupPage),
 })
 
 const protectedRoute = createRoute({
@@ -121,6 +128,7 @@ const catchAllRoute = createRoute({
 const routeTree = rootRoute.addChildren([
   indexRoute,
   loginRoute,
+  profileSetupRoute,
   protectedRoute.addChildren([
     homeIndexRoute,
     uploadRoute,

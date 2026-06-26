@@ -40,6 +40,38 @@ serve(async (req: Request) => {
       })
     }
 
+    // Look up Player ID from players table using Auth UUID
+    const { data: playerData, error: playerError } = await supabase
+      .from('players')
+      .select('id')
+      .eq('auth_uuid', user.id)
+      .single()
+
+    if (playerError) {
+      // Distinguish between "not found" and actual DB failure
+      if (playerError.code === 'PGRST116') {
+        // No rows returned — player record does not exist
+        return new Response(JSON.stringify({ error: 'Profile setup required' }), {
+          status: 400,
+          headers: { ...CORS, 'Content-Type': 'application/json' },
+        })
+      }
+      // Actual database error
+      return new Response(JSON.stringify({ error: 'Could not complete operation' }), {
+        status: 500,
+        headers: { ...CORS, 'Content-Type': 'application/json' },
+      })
+    }
+
+    if (!playerData) {
+      return new Response(JSON.stringify({ error: 'Profile setup required' }), {
+        status: 400,
+        headers: { ...CORS, 'Content-Type': 'application/json' },
+      })
+    }
+
+    const playerId = playerData.id
+
     // Parse request body
     const { rounds, categoriesPerRound } = await req.json()
 
@@ -197,7 +229,7 @@ serve(async (req: Request) => {
     // Generate timestamp and upload
     const timestamp = Date.now()
     const gameName = `generated_${timestamp}`
-    const storagePath = `${user.email}/${gameName}.json`
+    const storagePath = `${user.id}/${gameName}.json`
 
     const { error: uploadError } = await supabase.storage
       .from('games')
@@ -221,7 +253,7 @@ serve(async (req: Request) => {
         total_rounds: rounds,
         times_played: 0,
         winners: [],
-        created_by: user.email,
+        created_by: playerId,
         source: 'archive',
       })
       .select('id')

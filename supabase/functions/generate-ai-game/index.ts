@@ -38,6 +38,30 @@ serve(async (req: Request) => {
       })
     }
 
+    // Look up Player ID from players table using Auth UUID
+    const { data: playerData, error: playerError } = await supabase
+      .from('players')
+      .select('id')
+      .eq('auth_uuid', user.id)
+      .single()
+
+    if (playerError && playerError.code !== 'PGRST116') {
+      // DB query failure (not a "no rows" error)
+      return new Response(JSON.stringify({ error: 'Could not complete operation' }), {
+        status: 500,
+        headers: { ...CORS, 'Content-Type': 'application/json' },
+      })
+    }
+
+    if (!playerData) {
+      return new Response(JSON.stringify({ error: 'Profile setup required' }), {
+        status: 400,
+        headers: { ...CORS, 'Content-Type': 'application/json' },
+      })
+    }
+
+    const playerId = playerData.id
+
     // Rate limiting: 10 requests per 60-minute sliding window
     const windowStart = new Date(Date.now() - 60 * 60 * 1000).toISOString()
 
@@ -268,7 +292,7 @@ The "categories" array must contain exactly ${totalCategories} categories. Each 
     // Upload game JSON to storage and insert DB row
     const timestamp = Date.now()
     const gameName = `ai_${timestamp}`
-    const storagePath = `${user.email}/${gameName}.json`
+    const storagePath = `${user.id}/${gameName}.json`
 
     // Upload to storage
     const { error: uploadError } = await supabase.storage
@@ -296,7 +320,7 @@ The "categories" array must contain exactly ${totalCategories} categories. Each 
         total_rounds: validatedParams.rounds,
         times_played: 0,
         winners: [],
-        created_by: user.email,
+        created_by: playerId,
         source: 'ai',
       })
       .select('id')

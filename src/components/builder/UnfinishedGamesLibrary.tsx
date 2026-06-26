@@ -2,14 +2,11 @@ import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { listDrafts, deleteDraft } from '../../utils/draftApi'
 import type { DraftMetadata } from '../../utils/draftApi'
+import { usePlayerProfileContext } from '../../hooks/usePlayerProfileContext'
 import { BackgroundGradient } from '../ui/background-gradient'
 import './UnfinishedGamesLibrary.css'
 import '../DeleteButton.css'
 import '../LogoutDialog.css'
-
-interface UnfinishedGamesLibraryProps {
-  userEmail: string
-}
 
 function getDisplayName(gameName: string): { text: string; isUntitled: boolean } {
   if (gameName !== '') {
@@ -18,7 +15,8 @@ function getDisplayName(gameName: string): { text: string; isUntitled: boolean }
   return { text: 'Untitled', isUntitled: true }
 }
 
-export function UnfinishedGamesLibrary({ userEmail }: UnfinishedGamesLibraryProps) {
+export function UnfinishedGamesLibrary() {
+  const { profile } = usePlayerProfileContext()
   const navigate = useNavigate()
 
   const [drafts, setDrafts] = useState<DraftMetadata[]>([])
@@ -30,27 +28,25 @@ export function UnfinishedGamesLibrary({ userEmail }: UnfinishedGamesLibraryProp
 
   // ─── Fetch drafts ──────────────────────────────────────────────────────────
   const fetchDrafts = useCallback(async () => {
-    if (!userEmail) return
     setIsLoading(true)
     setError(null)
 
-    const result = await listDrafts(userEmail)
+    const result = await listDrafts()
     if (result.success) {
       setDrafts(result.drafts)
     } else {
       setError(result.error)
     }
     setIsLoading(false)
-  }, [userEmail])
+  }, [])
 
   useEffect(() => {
-    if (!userEmail) return
     let cancelled = false
 
     async function load() {
       setIsLoading(true)
       setError(null)
-      const result = await listDrafts(userEmail)
+      const result = await listDrafts()
       if (cancelled) return
       if (result.success) {
         setDrafts(result.drafts)
@@ -62,7 +58,7 @@ export function UnfinishedGamesLibrary({ userEmail }: UnfinishedGamesLibraryProp
 
     load()
     return () => { cancelled = true }
-  }, [userEmail])
+  }, [])
 
   // ─── Delete handlers ───────────────────────────────────────────────────────
   const handleDeleteClick = (e: React.MouseEvent, draft: DraftMetadata) => {
@@ -82,7 +78,7 @@ export function UnfinishedGamesLibrary({ userEmail }: UnfinishedGamesLibraryProp
     setDeletingId(confirmDeleteDraft.id)
     setDeleteError(null)
 
-    const result = await deleteDraft(confirmDeleteDraft.id, userEmail)
+    const result = await deleteDraft(confirmDeleteDraft.id)
 
     if (result.success) {
       setDrafts((prev) => prev.filter((d) => d.id !== confirmDeleteDraft.id))
@@ -98,11 +94,13 @@ export function UnfinishedGamesLibrary({ userEmail }: UnfinishedGamesLibraryProp
   }
 
   // ─── Loading state ─────────────────────────────────────────────────────────
+  const sectionTitle = profile ? `${profile.playerName}'s Unfinished Games` : 'Your Unfinished Games'
+
   if (isLoading) {
     return (
-      <section className="unfinished-library" aria-label="Your Unfinished Games">
+      <section className="unfinished-library" aria-label={sectionTitle}>
         <BackgroundGradient containerClassName="unfinished-library-gradient" className="unfinished-library-card">
-          <h2 className="unfinished-library-title">Your Unfinished Games</h2>
+          <h2 className="unfinished-library-title">{sectionTitle}</h2>
           <div className="unfinished-library-loading">
             <div
               className="unfinished-library-spinner"
@@ -119,9 +117,9 @@ export function UnfinishedGamesLibrary({ userEmail }: UnfinishedGamesLibraryProp
   // ─── Error state ───────────────────────────────────────────────────────────
   if (error) {
     return (
-      <section className="unfinished-library" aria-label="Your Unfinished Games">
+      <section className="unfinished-library" aria-label={sectionTitle}>
         <BackgroundGradient containerClassName="unfinished-library-gradient" className="unfinished-library-card">
-          <h2 className="unfinished-library-title">Your Unfinished Games</h2>
+          <h2 className="unfinished-library-title">{sectionTitle}</h2>
           <div className="unfinished-library-error">
             <p>Something went wrong loading your drafts. Please try again.</p>
             <button
@@ -140,9 +138,9 @@ export function UnfinishedGamesLibrary({ userEmail }: UnfinishedGamesLibraryProp
   // ─── Empty state ───────────────────────────────────────────────────────────
   if (drafts.length === 0) {
     return (
-      <section className="unfinished-library" aria-label="Your Unfinished Games">
+      <section className="unfinished-library" aria-label={sectionTitle}>
         <BackgroundGradient containerClassName="unfinished-library-gradient" className="unfinished-library-card">
-          <h2 className="unfinished-library-title">Your Unfinished Games</h2>
+          <h2 className="unfinished-library-title">{sectionTitle}</h2>
           <div className="unfinished-library-empty">
             <p>You have no unfinished games in the database. Start one now!</p>
           </div>
@@ -153,9 +151,9 @@ export function UnfinishedGamesLibrary({ userEmail }: UnfinishedGamesLibraryProp
 
   // ─── Draft list ────────────────────────────────────────────────────────────
   return (
-    <section className="unfinished-library" aria-label="Your Unfinished Games">
+    <section className="unfinished-library" aria-label={sectionTitle}>
       <BackgroundGradient containerClassName="unfinished-library-gradient" className="unfinished-library-card">
-        <h2 className="unfinished-library-title">Your Unfinished Games</h2>
+        <h2 className="unfinished-library-title">{sectionTitle}</h2>
         <ul className="unfinished-library-list" role="list">
           {drafts.map((draft) => {
             const { text: displayName, isUntitled } = getDisplayName(draft.game_name)

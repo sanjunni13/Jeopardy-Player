@@ -6,6 +6,7 @@ import { useDraftPersistence } from '../../hooks/useDraftPersistence'
 import { saveGame } from '../../utils/gameApi'
 import { deleteDraft } from '../../utils/draftApi'
 import { validateDraftForPublish } from '../../utils/draftValidation'
+import { usePlayerProfileContext } from '../../hooks/usePlayerProfileContext'
 import { BackButton } from '../../components/BackButton'
 import { BackgroundGradient } from '../../components/ui/background-gradient'
 import { BuilderForm } from '../../components/builder/BuilderForm'
@@ -15,6 +16,7 @@ import './BuilderPage.css'
 export function BuilderPage() {
   const navigate = useNavigate()
   const { draftId } = useParams({ strict: false }) as { draftId?: string }
+  const { profile } = usePlayerProfileContext()
 
   // ─── Auth state ──────────────────────────────────────────────────────────
   const [userEmail, setUserEmail] = useState<string>('')
@@ -184,7 +186,7 @@ export function BuilderPage() {
       const normalizedGame = toNormalizedGame()
 
       // 4. Save game
-      const result = await saveGame(formState.gameName, normalizedGame)
+      const result = await saveGame(formState.gameName, normalizedGame, profile?.playerId)
 
       if ('success' in result && result.success) {
         // 5. Delete draft if one exists

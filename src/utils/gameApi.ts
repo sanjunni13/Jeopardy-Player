@@ -4,6 +4,7 @@ import type { NormalizedGame, Player, SaveGameResponse, UpdateStatsResponse } fr
 export async function saveGame(
   gameName: string,
   gameData: NormalizedGame,
+  playerId?: number,
 ): Promise<SaveGameResponse> {
   try {
     const { data: { user } } = await supabase.auth.getUser();
@@ -12,18 +13,22 @@ export async function saveGame(
       return { error: 'Not authenticated.' } as SaveGameResponse;
     }
 
+    // Abort if player record is missing (profile setup required)
+    if (playerId == null) {
+      return { error: 'Please complete profile setup before saving games.' } as SaveGameResponse;
+    }
+
     // Validate gameName
     if (!/^[\w\s\\-]{1,100}$/.test(gameName)) {
       return { error: 'Game name is invalid. It must be 1 to 100 characters and contain only letters, numbers, spaces, hyphens, or underscores.' } as SaveGameResponse;
     }
 
-    // Duplicate check (case-insensitive, scoped to user by email)
-    const userEmail = user.email ?? ''
+    // Duplicate check (case-insensitive, scoped to user by Player ID)
     const { data: existing, error: lookupErr } = await supabase
       .from('games')
       .select('id')
       .ilike('game_name', gameName)
-      .eq('created_by', userEmail)
+      .eq('created_by', playerId)
       .maybeSingle();
 
     if (lookupErr) {
@@ -33,8 +38,8 @@ export async function saveGame(
       return { error: 'Game already exists', alreadyExists: true } as SaveGameResponse;
     }
 
-    // Upload to Storage
-    const storagePath = `${user.email}/${gameName}.json`;
+    // Upload to Storage using Auth UUID as folder prefix
+    const storagePath = `${user.id}/${gameName}.json`;
     const { data: uploadData, error: uploadErr } = await supabase.storage
       .from('games')
       .upload(storagePath, JSON.stringify(gameData), {
@@ -51,7 +56,7 @@ export async function saveGame(
     // Count rounds
     const totalRounds = Object.keys(gameData.rounds).length;
 
-    // Insert into games table
+    // Insert into games table with numeric Player ID
     const { data: row, error: insertErr } = await supabase
       .from('games')
       .insert({
@@ -59,7 +64,7 @@ export async function saveGame(
         total_rounds: totalRounds,
         times_played: 0,
         winners: [],
-        created_by: userEmail,
+        created_by: playerId,
       })
       .select('id')
       .single();
@@ -80,6 +85,7 @@ export async function updateGameStats(
   gameId: string,
   players: Player[],
   winnerNames: string[],
+  authenticatedPlayer?: { playerId: number; playerName: string },
 ): Promise<UpdateStatsResponse> {
   try {
     // Get auth user
@@ -115,71 +121,128 @@ export async function updateGameStats(
       return { success: false, error: `Games table update failed: ${gameUpdateErr.message}` };
     }
 
+    // If authenticated player info is provided, verify the player record exists by ID.
+    // If it doesn't exist, fall back to name-based matching for all players (Req 8.3).
+    let verifiedAuthPlayer: { playerId: number; playerName: string } | undefined;
+    if (authenticatedPlayer) {
+      const { data: authRow, error: authLookupErr } = await supabase
+        .from('players')
+        .select('id')
+        .eq('id', authenticatedPlayer.playerId)
+        .maybeSingle();
+
+      if (!authLookupErr && authRow) {
+        verifiedAuthPlayer = authenticatedPlayer;
+      }
+      // If lookup fails or no row found, verifiedAuthPlayer stays undefined → name-based fallback for all
+    }
+
     // Update players table for each matching player
     const errors: string[] = [];
 
     for (const player of players) {
       if (!player.name) continue;
 
-      const { data: userRow, error: lookupErr } = await supabase
-        .from('players')
-        .select('id, total_games_played, total_games_won, total_correct_answers, total_incorrect_answers, total_money_earned, total_correct_daily_doubles, total_incorrect_daily_doubles, total_correct_final_jeopardies, total_incorrect_final_jeopardies, current_balance')
-        .ilike('player_name', player.name)
-        .maybeSingle();
+      // Check if this player is the authenticated user (Req 8.1)
+      const isAuthenticatedPlayer = verifiedAuthPlayer &&
+        player.name.toLowerCase() === verifiedAuthPlayer.playerName.toLowerCase();
 
-      if (lookupErr) {
-        errors.push(`Lookup error for '${player.name}': ${lookupErr.message}`);
-        continue;
-      }
+      if (isAuthenticatedPlayer) {
+        // Use Player_ID directly for the authenticated user
+        const { data: userRow, error: lookupErr } = await supabase
+          .from('players')
+          .select('id, total_games_played, total_games_won, total_correct_answers, total_incorrect_answers, total_money_earned, total_correct_daily_doubles, total_incorrect_daily_doubles, total_correct_final_jeopardies, total_incorrect_final_jeopardies, current_balance')
+          .eq('id', verifiedAuthPlayer!.playerId)
+          .single();
 
-      if (!userRow) {
-        // Player doesn't exist — insert a new row
+        if (lookupErr || !userRow) {
+          errors.push(`Lookup error for authenticated player '${player.name}': ${lookupErr?.message ?? 'not found'}`);
+          continue;
+        }
+
+        const row = userRow as Record<string, unknown>;
         const isWinner = winnerNames.includes(player.name);
 
-        const { error: insertErr } = await supabase
+        const { error: updateErr } = await supabase
           .from('players')
-          .insert({
-            player_name: player.name,
-            total_games_played: 1,
-            total_games_won: isWinner ? 1 : 0,
-            total_correct_answers: player.correctCount ?? 0,
-            total_incorrect_answers: player.incorrectCount ?? 0,
-            total_correct_daily_doubles: player.correctDailyDoubles ?? 0,
-            total_incorrect_daily_doubles: player.incorrectDailyDoubles ?? 0,
-            total_correct_final_jeopardies: player.correctFinalJeopardy ?? 0,
-            total_incorrect_final_jeopardies: player.incorrectFinalJeopardy ?? 0,
-            current_balance: player.score,
-            total_money_earned: player.totalEarned ?? 0,
-          });
+          .update({
+            total_games_played: (row.total_games_played as number ?? 0) + 1,
+            total_games_won: (row.total_games_won as number ?? 0) + (isWinner ? 1 : 0),
+            total_correct_answers: (row.total_correct_answers as number ?? 0) + (player.correctCount ?? 0),
+            total_incorrect_answers: (row.total_incorrect_answers as number ?? 0) + (player.incorrectCount ?? 0),
+            total_correct_daily_doubles: (row.total_correct_daily_doubles as number ?? 0) + (player.correctDailyDoubles ?? 0),
+            total_incorrect_daily_doubles: (row.total_incorrect_daily_doubles as number ?? 0) + (player.incorrectDailyDoubles ?? 0),
+            total_correct_final_jeopardies: (row.total_correct_final_jeopardies as number ?? 0) + (player.correctFinalJeopardy ?? 0),
+            total_incorrect_final_jeopardies: (row.total_incorrect_final_jeopardies as number ?? 0) + (player.incorrectFinalJeopardy ?? 0),
+            current_balance: (row.current_balance as number ?? 0) + player.score,
+            total_money_earned: (row.total_money_earned as number ?? 0) + (player.totalEarned ?? 0),
+          })
+          .eq('id', verifiedAuthPlayer!.playerId);
 
-        if (insertErr) {
-          errors.push(`Insert failed for '${player.name}': ${insertErr.message}`);
+        if (updateErr) {
+          errors.push(`Update failed for '${player.name}': ${updateErr.message}`);
         }
-        continue;
-      }
+      } else {
+        // Non-authenticated player: use case-insensitive name matching (Req 8.2)
+        const { data: userRow, error: lookupErr } = await supabase
+          .from('players')
+          .select('id, total_games_played, total_games_won, total_correct_answers, total_incorrect_answers, total_money_earned, total_correct_daily_doubles, total_incorrect_daily_doubles, total_correct_final_jeopardies, total_incorrect_final_jeopardies, current_balance')
+          .ilike('player_name', player.name)
+          .maybeSingle();
 
-      const row = userRow as Record<string, unknown>;
+        if (lookupErr) {
+          errors.push(`Lookup error for '${player.name}': ${lookupErr.message}`);
+          continue;
+        }
 
-      const isWinner = winnerNames.includes(player.name);
+        if (!userRow) {
+          // Player doesn't exist — insert a new row
+          const isWinner = winnerNames.includes(player.name);
 
-      const { error: updateErr } = await supabase
-        .from('players')
-        .update({
-          total_games_played: (row.total_games_played as number ?? 0) + 1,
-          total_games_won: (row.total_games_won as number ?? 0) + (isWinner ? 1 : 0),
-          total_correct_answers: (row.total_correct_answers as number ?? 0) + (player.correctCount ?? 0),
-          total_incorrect_answers: (row.total_incorrect_answers as number ?? 0) + (player.incorrectCount ?? 0),
-          total_correct_daily_doubles: (row.total_correct_daily_doubles as number ?? 0) + (player.correctDailyDoubles ?? 0),
-          total_incorrect_daily_doubles: (row.total_incorrect_daily_doubles as number ?? 0) + (player.incorrectDailyDoubles ?? 0),
-          total_correct_final_jeopardies: (row.total_correct_final_jeopardies as number ?? 0) + (player.correctFinalJeopardy ?? 0),
-          total_incorrect_final_jeopardies: (row.total_incorrect_final_jeopardies as number ?? 0) + (player.incorrectFinalJeopardy ?? 0),
-          current_balance: (row.current_balance as number ?? 0) + player.score,
-          total_money_earned: (row.total_money_earned as number ?? 0) + (player.totalEarned ?? 0),
-        })
-        .eq('id', row.id);
+          const { error: insertErr } = await supabase
+            .from('players')
+            .insert({
+              player_name: player.name,
+              total_games_played: 1,
+              total_games_won: isWinner ? 1 : 0,
+              total_correct_answers: player.correctCount ?? 0,
+              total_incorrect_answers: player.incorrectCount ?? 0,
+              total_correct_daily_doubles: player.correctDailyDoubles ?? 0,
+              total_incorrect_daily_doubles: player.incorrectDailyDoubles ?? 0,
+              total_correct_final_jeopardies: player.correctFinalJeopardy ?? 0,
+              total_incorrect_final_jeopardies: player.incorrectFinalJeopardy ?? 0,
+              current_balance: player.score,
+              total_money_earned: player.totalEarned ?? 0,
+            });
 
-      if (updateErr) {
-        errors.push(`Update failed for '${player.name}': ${updateErr.message}`);
+          if (insertErr) {
+            errors.push(`Insert failed for '${player.name}': ${insertErr.message}`);
+          }
+          continue;
+        }
+
+        const row = userRow as Record<string, unknown>;
+        const isWinner = winnerNames.includes(player.name);
+
+        const { error: updateErr } = await supabase
+          .from('players')
+          .update({
+            total_games_played: (row.total_games_played as number ?? 0) + 1,
+            total_games_won: (row.total_games_won as number ?? 0) + (isWinner ? 1 : 0),
+            total_correct_answers: (row.total_correct_answers as number ?? 0) + (player.correctCount ?? 0),
+            total_incorrect_answers: (row.total_incorrect_answers as number ?? 0) + (player.incorrectCount ?? 0),
+            total_correct_daily_doubles: (row.total_correct_daily_doubles as number ?? 0) + (player.correctDailyDoubles ?? 0),
+            total_incorrect_daily_doubles: (row.total_incorrect_daily_doubles as number ?? 0) + (player.incorrectDailyDoubles ?? 0),
+            total_correct_final_jeopardies: (row.total_correct_final_jeopardies as number ?? 0) + (player.correctFinalJeopardy ?? 0),
+            total_incorrect_final_jeopardies: (row.total_incorrect_final_jeopardies as number ?? 0) + (player.incorrectFinalJeopardy ?? 0),
+            current_balance: (row.current_balance as number ?? 0) + player.score,
+            total_money_earned: (row.total_money_earned as number ?? 0) + (player.totalEarned ?? 0),
+          })
+          .eq('id', row.id);
+
+        if (updateErr) {
+          errors.push(`Update failed for '${player.name}': ${updateErr.message}`);
+        }
       }
     }
 

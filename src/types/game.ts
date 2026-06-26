@@ -152,6 +152,21 @@ export interface UpdateStatsResponse {
   error?: string;
 }
 
+// ─── Database record types ────────────────────────────────────────────────────
+
+/** Row shape returned when selecting from the `games` table */
+export interface GameRecord {
+  id: string
+  game_name: string
+  total_rounds: number
+  times_played: number
+  winners: string[]
+  created_by: number | null
+  source: string | null
+  /** Joined player_name from the players table via created_by FK */
+  creator_name: string | null
+}
+
 // ─── Utility result types ─────────────────────────────────────────────────────
 
 export type ValidationResult =

@@ -1,7 +1,5 @@
-import { useState, useEffect } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { sampleGame } from '../../assets/sampleGame'
-import { supabase } from '../../utils/supabase'
 import { BackButton } from '../../components/BackButton'
 import { BackgroundGradient } from '../../components/ui/background-gradient'
 import { UnfinishedGamesLibrary } from '../../components/builder/UnfinishedGamesLibrary'
@@ -11,13 +9,6 @@ import './CreateGamePage.css'
 
 export function CreateGamePage() {
   const navigate = useNavigate()
-  const [userEmail, setUserEmail] = useState<string>('')
-
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      setUserEmail(data.user?.email ?? '')
-    })
-  }, [])
 
   function handleDownload() {
     const json = JSON.stringify(sampleGame, null, 2)
@@ -90,7 +81,7 @@ export function CreateGamePage() {
         </button>
       </BackgroundGradient>
 
-      {userEmail && <UnfinishedGamesLibrary userEmail={userEmail} />}
+      <UnfinishedGamesLibrary />
 
       <FAQCard items={createGameFAQ} />
     </div>

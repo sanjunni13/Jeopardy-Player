@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import confetti from 'canvas-confetti'
 import type { Player } from '../../types/game'
 import { updateGameStats } from '../../utils/gameApi'
+import { usePlayerProfileContext } from '../../hooks/usePlayerProfileContext'
 import { Toast } from '../Toast'
 import { BackgroundGradient } from '../ui/background-gradient'
 import './GameOver.css'
@@ -17,6 +18,7 @@ export function GameOver({ players, gameId, onBackToHome }: GameOverProps) {
   const statsCalledRef = useRef(false)
   const confettiFiredRef = useRef(false)
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const { profile } = usePlayerProfileContext()
 
   // Determine winners (highest score) — sorted highest to lowest
   const sortedPlayers = [...players].sort((a, b) => b.score - a.score)
@@ -31,7 +33,11 @@ export function GameOver({ players, gameId, onBackToHome }: GameOverProps) {
     if (statsCalledRef.current) return
     statsCalledRef.current = true
 
-    updateGameStats(gameId, players, winnerNames).then(response => {
+    const authenticatedPlayer = profile
+      ? { playerId: profile.playerId, playerName: profile.playerName }
+      : undefined
+
+    updateGameStats(gameId, players, winnerNames, authenticatedPlayer).then(response => {
       if (!response.success) {
         setWarningMessage(response.error ?? 'Failed to update game statistics.')
       }

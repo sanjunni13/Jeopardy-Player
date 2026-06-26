@@ -2,10 +2,11 @@ interface GameCardProps {
   id: string
   gameName: string
   totalRounds: number
+  creatorName?: string | null
   onClick: (id: string) => void
 }
 
-export function GameCard({ id, gameName, totalRounds, onClick }: GameCardProps) {
+export function GameCard({ id, gameName, totalRounds, creatorName, onClick }: GameCardProps) {
   const roundLabel = totalRounds === 1 ? '1 round' : `${totalRounds} rounds`
 
   return (
@@ -16,6 +17,9 @@ export function GameCard({ id, gameName, totalRounds, onClick }: GameCardProps) 
     >
       <h3 className="text-lg font-semibold text-slate-100">{gameName}</h3>
       <p className="mt-1 text-sm text-slate-400">{roundLabel}</p>
+      {creatorName && (
+        <p className="mt-1 text-xs text-slate-500">by {creatorName}</p>
+      )}
     </button>
   )
 }

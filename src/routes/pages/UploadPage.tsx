@@ -3,6 +3,7 @@ import { useNavigate } from '@tanstack/react-router'
 import { validateGameFile } from '../../utils/gameValidator'
 import { normalizeGame } from '../../utils/gameNormalizer'
 import { saveGame } from '../../utils/gameApi'
+import { usePlayerProfileContext } from '../../hooks/usePlayerProfileContext'
 import { BackButton } from '../../components/BackButton'
 import { BackgroundGradient } from '../../components/ui/background-gradient'
 import { FAQCard } from '../../components/ui/FAQCard'
@@ -13,6 +14,7 @@ type Status = 'idle' | 'validating' | 'uploading' | 'error'
 
 export function UploadPage() {
   const navigate = useNavigate()
+  const { profile } = usePlayerProfileContext()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [status, setStatus] = useState<Status>('idle')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
@@ -42,7 +44,7 @@ export function UploadPage() {
 
     setStatus('uploading')
     const gameName = file.name.replace(/\.json$/i, '')
-    const response = await saveGame(gameName, normalizeResult.game)
+    const response = await saveGame(gameName, normalizeResult.game, profile?.playerId)
 
     if ('error' in response) {
       if ('alreadyExists' in response) {

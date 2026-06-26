@@ -7,17 +7,8 @@ import { BackButton } from '../../components/BackButton'
 import { BackgroundGradient } from '../../components/ui/background-gradient'
 import { FAQCard } from '../../components/ui/FAQCard'
 import { gameLibraryFAQ } from '../../data/faqData'
+import type { GameRecord } from '../../types/game'
 import './GameLibraryPage.css'
-
-interface GameRecord {
-  id: string
-  game_name: string
-  total_rounds: number
-  times_played: number
-  winners: string[]
-  created_by: string | null
-  source: string | null
-}
 
 interface Filters {
   rounds: number | null
@@ -41,10 +32,21 @@ const EXCLUDED_GAMES = [
 async function loadGames() {
   const { data, error } = await supabase
     .from('games')
-    .select('*')
+    .select('*, players(player_name)')
     .not('game_name', 'in', `(${EXCLUDED_GAMES.join(',')})`)
   if (error) throw error
-  return (data ?? []) as GameRecord[]
+
+  // Map the joined player_name into a flat creator_name field
+  return (data ?? []).map((row: Record<string, unknown>) => ({
+    id: row.id as string,
+    game_name: row.game_name as string,
+    total_rounds: row.total_rounds as number,
+    times_played: row.times_played as number,
+    winners: row.winners as string[],
+    created_by: row.created_by as number | null,
+    source: row.source as string | null,
+    creator_name: (row.players as { player_name: string } | null)?.player_name ?? null,
+  })) as GameRecord[]
 }
 
 export function GameLibraryPage() {
@@ -95,7 +97,7 @@ export function GameLibraryPage() {
   )
 
   const creatorOptions = useMemo(() =>
-    [...new Set(games.map(g => g.created_by).filter((c): c is string => c != null))].sort(),
+    [...new Set(games.map(g => g.creator_name).filter((c): c is string => c != null))].sort((a, b) => a.localeCompare(b)),
     [games]
   )
 
@@ -115,7 +117,7 @@ export function GameLibraryPage() {
     }
 
     if (filters.creator != null) {
-      results = results.filter(g => g.created_by === filters.creator)
+      results = results.filter(g => g.creator_name === filters.creator)
     }
 
     if (filters.source != null) {
@@ -279,6 +281,7 @@ export function GameLibraryPage() {
                 id={game.id}
                 gameName={game.game_name}
                 totalRounds={game.total_rounds}
+                creatorName={game.creator_name}
                 onClick={handleCardClick}
               />
             ))}
