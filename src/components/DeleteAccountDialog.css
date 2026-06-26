@@ -1,0 +1,197 @@
+/* ─── Delete Account Dialog ─────────────────────────────────────────────────── */
+
+.delete-account-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgb(0 0 0 / 0.6);
+  backdrop-filter: blur(4px);
+}
+
+.delete-account-dialog {
+  width: 100%;
+  max-width: 28rem;
+  border-radius: 1rem;
+  border: 1px solid rgb(30 41 59); /* slate-800 */
+  background: rgb(15 23 42); /* slate-900 */
+  padding: 2rem;
+  box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.4);
+}
+
+/* ── Title ── */
+.delete-account-dialog__title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: rgb(241 245 249); /* slate-100 */
+  margin-bottom: 0.75rem;
+}
+
+/* ── Warning text ── */
+.delete-account-dialog__warning {
+  color: rgb(251 146 60); /* orange-400 */
+  font-size: 0.875rem;
+  line-height: 1.5;
+  margin-bottom: 1.25rem;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  background: rgb(251 146 60 / 0.1);
+  border: 1px solid rgb(251 146 60 / 0.25);
+}
+
+/* ── Label ── */
+.delete-account-dialog__label {
+  display: block;
+  font-size: 0.875rem;
+  color: rgb(148 163 184); /* slate-400 */
+  margin-bottom: 0.5rem;
+}
+
+.delete-account-dialog__label strong {
+  color: rgb(241 245 249); /* slate-100 */
+  font-family: monospace;
+  letter-spacing: 0.05em;
+}
+
+/* ── Input ── */
+.delete-account-dialog__input {
+  width: 100%;
+  padding: 0.625rem 0.75rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgb(51 65 85); /* slate-700 */
+  background: rgb(30 41 59); /* slate-800 */
+  color: rgb(241 245 249); /* slate-100 */
+  font-size: 0.875rem;
+  font-family: monospace;
+  letter-spacing: 0.05em;
+  outline: none;
+  transition: border-color 0.2s;
+  box-sizing: border-box;
+  margin-bottom: 1.5rem;
+}
+
+.delete-account-dialog__input:focus {
+  border-color: rgb(244 63 94); /* rose-500 */
+  box-shadow: 0 0 0 2px rgb(244 63 94 / 0.2);
+}
+
+/* ── Actions ── */
+.delete-account-dialog__actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: center;
+}
+
+.delete-account-dialog__cancel {
+  flex: 1;
+  border-radius: 100px;
+  border: 1px solid rgb(51 65 85); /* slate-700 */
+  padding: 12.5px 30px;
+  font-size: 0.875rem;
+  font-weight: bold;
+  color: rgb(203 213 225); /* slate-300 */
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.5s;
+  -webkit-transition: all 0.5s;
+}
+
+.delete-account-dialog__cancel:hover {
+  background-color: rgb(30 41 59); /* slate-800 */
+  box-shadow: 0 0 20px rgba(51, 65, 85, 0.3);
+  transform: scale(1.1);
+}
+
+.delete-account-dialog__cancel:active {
+  background-color: rgb(15 23 42); /* slate-900 */
+  transition: all 0.25s;
+  -webkit-transition: all 0.25s;
+  box-shadow: none;
+  transform: scale(0.98);
+}
+
+.delete-account-dialog__cancel:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.delete-account-dialog__confirm {
+  flex: 1;
+  border-radius: 100px;
+  background-color: rgb(244 63 94); /* rose-500 */
+  padding: 12.5px 30px;
+  font-size: 0.875rem;
+  font-weight: bold;
+  color: white;
+  border: 0;
+  cursor: pointer;
+  transition: all 0.5s;
+  -webkit-transition: all 0.5s;
+}
+
+.delete-account-dialog__confirm:hover:not(:disabled) {
+  background-color: rgb(251 113 133); /* rose-400 */
+  box-shadow: 0 0 20px rgba(251, 113, 133, 0.3);
+  transform: scale(1.1);
+}
+
+.delete-account-dialog__confirm:active:not(:disabled) {
+  background-color: rgb(190 18 60); /* rose-700 */
+  transition: all 0.25s;
+  -webkit-transition: all 0.25s;
+  box-shadow: none;
+  transform: scale(0.98);
+}
+
+/* ── Disabled confirm state ── */
+.delete-account-dialog__confirm--disabled {
+  background-color: rgb(51 65 85); /* slate-700 */
+  color: rgb(100 116 139); /* slate-500 */
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.delete-account-dialog__confirm:disabled {
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* ── Loading state ── */
+.delete-account-dialog__loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.5rem 0;
+}
+
+.delete-account-dialog__loading-text {
+  color: rgb(203 213 225); /* slate-300 */
+  font-weight: 500;
+}
+
+.delete-account-dialog__spinner {
+  height: 2.5rem;
+  width: 2.5rem;
+  animation: delete-account-spin 1s linear infinite;
+  color: rgb(244 63 94); /* rose-500 */
+}
+
+.delete-account-dialog__spinner-bg {
+  opacity: 0.25;
+}
+
+.delete-account-dialog__spinner-fg {
+  opacity: 0.75;
+}
+
+@keyframes delete-account-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}

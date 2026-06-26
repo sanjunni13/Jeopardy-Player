@@ -1,0 +1,43 @@
+/* ─── Settings Icon Button ───────────────────────────────────────────────────── */
+
+.settings-icon-btn {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 0;
+  height: 36px;
+  width: 36px;
+  border: none;
+  background: transparent;
+  border-radius: 50%;
+  cursor: pointer;
+  color: rgb(148 163 184); /* slate-400 */
+  transition: color 0.3s ease;
+}
+
+.settings-icon-btn:hover {
+  color: rgb(241 245 249); /* slate-100 */
+}
+
+.settings-icon-btn .settings-svg-icon {
+  width: 24px;
+  height: 24px;
+}
+
+.settings-icon-btn:hover .settings-svg-icon {
+  animation: settings-spin 2s linear infinite;
+}
+
+.settings-icon-btn:focus-visible {
+  outline: 2px solid rgb(99 102 241); /* indigo-500 */
+  outline-offset: 2px;
+}
+
+@keyframes settings-spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}

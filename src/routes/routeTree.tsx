@@ -7,6 +7,7 @@ import {
 import { lazy, Suspense } from 'react'
 import { IndexRedirect, ProtectedShell } from './routeComponents'
 import { NotFoundPage } from './pages/NotFoundPage'
+import { PreferencesProvider } from '../contexts/PreferencesProvider'
 
 // ─── Lazy-loaded page components ─────────────────────────────────────────────
 
@@ -20,6 +21,7 @@ const GameLibraryPage = lazy(() => import('./pages/GameLibraryPage').then(m => (
 const GenerateGamePage = lazy(() => import('./pages/GenerateGamePage').then(m => ({ default: m.GenerateGamePage })))
 const CreateGamePage = lazy(() => import('./pages/CreateGamePage').then(m => ({ default: m.CreateGamePage })))
 const BuilderPage = lazy(() => import('./pages/BuilderPage').then(m => ({ default: m.BuilderPage })))
+const SettingsPage = lazy(() => import('./pages/SettingsPage').then(m => ({ default: m.SettingsPage })))
 
 function LazyFallback() {
   return <p className="p-6 text-slate-300">Loading…</p>
@@ -38,7 +40,11 @@ function withSuspense(Component: React.LazyExoticComponent<React.ComponentType>)
 // ─── Route Tree ──────────────────────────────────────────────────────────────
 
 const rootRoute = createRootRoute({
-  component: () => <Outlet />,
+  component: () => (
+    <PreferencesProvider>
+      <Outlet />
+    </PreferencesProvider>
+  ),
 })
 
 const indexRoute = createRoute({
@@ -113,6 +119,12 @@ const builderResumeRoute = createRoute({
   component: withSuspense(BuilderPage),
 })
 
+const settingsRoute = createRoute({
+  getParentRoute: () => protectedRoute,
+  path: '/settings',
+  component: withSuspense(SettingsPage),
+})
+
 const unauthorizedRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/401',
@@ -138,6 +150,7 @@ const routeTree = rootRoute.addChildren([
     gameRoute,
     libraryRoute,
     generateRoute,
+    settingsRoute,
   ]),
   unauthorizedRoute,
   catchAllRoute,

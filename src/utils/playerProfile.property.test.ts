@@ -358,3 +358,35 @@ describe('Property 3: Case-insensitive player name uniqueness', () => {
     )
   })
 })
+
+
+// Feature: settings-menu, Property 3: Player name validation consistency
+describe('Feature: settings-menu, Property 3: Player name validation consistency', () => {
+  /**
+   * **Validates: Requirements 2.2, 2.3**
+   *
+   * For any arbitrary string input, `validatePlayerName(input)` should return
+   * `valid: true` if and only if the trimmed input has length between 1 and 50
+   * (inclusive) and every character matches the pattern `[a-zA-Z0-9 _-]`.
+   */
+
+  /** The reference regex for validation */
+  const ALLOWED_PATTERN = /^[a-zA-Z0-9 _-]+$/
+
+  it('returns valid: true iff trimmed input is 1-50 chars of [a-zA-Z0-9 _-]', () => {
+    fc.assert(
+      fc.property(fc.string(), (input) => {
+        const trimmed = input.trim()
+        const result = validatePlayerName(input)
+
+        const expectedValid =
+          trimmed.length >= 1 &&
+          trimmed.length <= 50 &&
+          ALLOWED_PATTERN.test(trimmed)
+
+        expect(result.valid).toBe(expectedValid)
+      }),
+      { numRuns: 100 }
+    )
+  })
+})

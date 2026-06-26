@@ -1,0 +1,49 @@
+/* ─── Support Section ──────────────────────────────────────────────────────── */
+
+.support-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.support-section__heading {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: rgb(241 245 249); /* slate-100 */
+  margin: 0 0 0.5rem;
+}
+
+.support-section__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: rgb(168 85 247); /* purple-400 */
+  text-decoration: none;
+  font-size: 0.9375rem;
+  padding: 0.375rem 0;
+  border-radius: 0.25rem;
+  transition: color 0.2s;
+}
+
+.support-section__link:hover {
+  color: rgb(192 132 252); /* purple-300 */
+  text-decoration: underline;
+}
+
+.support-section__link:focus-visible {
+  outline: 2px solid rgb(168 85 247);
+  outline-offset: 2px;
+}
+
+.support-section__link-indicator {
+  font-size: 0.75rem;
+  opacity: 0.7;
+}
+
+.support-section__version {
+  margin-top: 0.5rem;
+  font-size: 0.8125rem;
+  color: rgb(148 163 184); /* slate-400 */
+  user-select: text;
+  -webkit-user-select: text;
+}

@@ -6,6 +6,7 @@ import {
   generateAiGame,
 } from '../../utils/generateApi'
 import { sanitizeGameName, getDefaultGameName, MAX_GAME_NAME_LENGTH } from '../../utils/gameNameUtils'
+import { usePreferences } from '../../hooks/usePreferences'
 import { BackgroundGradient } from '../../components/ui/background-gradient'
 import { BackButton } from '../../components/BackButton'
 import { CloudSpinner } from '../../components/ui/CloudSpinner'
@@ -40,9 +41,10 @@ interface AiState {
 
 export function GenerateGamePage() {
   const navigate = useNavigate()
+  const { preferences } = usePreferences()
   const [activeTab, setActiveTab] = useState<ActiveTab>('archive')
   const [archiveState, setArchiveState] = useState<ArchiveState>({
-    rounds: 2,
+    rounds: preferences.defaultRounds,
     categoriesPerRound: 6,
     loading: false,
     error: null,
@@ -53,7 +55,7 @@ export function GenerateGamePage() {
     error: null,
   })
   const [aiState, setAiState] = useState<AiState>({
-    rounds: '',
+    rounds: String(preferences.defaultRounds),
     categoriesPerRound: '',
     difficulty: '',
     dailyDoublesPerRound: 0,

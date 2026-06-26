@@ -42,6 +42,7 @@ const mockStorageFrom = vi.fn().mockReturnValue({
   remove: vi.fn().mockResolvedValue({ data: null, error: null }),
 })
 
+let mockUserId = ''
 const mockGetUser = vi.fn()
 
 vi.mock('./supabase', () => ({

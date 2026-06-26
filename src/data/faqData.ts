@@ -116,6 +116,6 @@ export const gameLibraryFAQ: FAQItem[] = [
   {
     question: 'What is the Cheat Sheet and what does it do?',
     answer:
-      'The Cheat Sheet opens as a modal overlay within the game window displaying all answers organized by round and category. The host can open it by clicking the "Cheat Sheet" button visible during active gameplay phases after player entry.',
+      'The Cheat Sheet opens as a modal overlay within the game window displaying all answers organized by round and category. The host can open it by clicking the "Cheat Sheet" button visible during active gameplay phases after player entry. It is available for generated games created via AI Generation, JeopardyLabs, or J! Archive.',
   },
 ]

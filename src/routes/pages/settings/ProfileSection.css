@@ -1,0 +1,362 @@
+/* ─── Profile Section ───────────────────────────────────────────────────────── */
+
+.profile-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.profile-section__title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: rgb(241 245 249); /* slate-100 */
+  margin-bottom: 0.5rem;
+}
+
+/* ─── Form Groups ──────────────────────────────────────────────────────────── */
+
+.profile-section__form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid rgb(30 41 59); /* slate-800 */
+}
+
+.profile-section__form-group:last-of-type {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.profile-section__label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: rgb(203 213 225); /* slate-300 */
+}
+
+.profile-section__current-value {
+  font-size: 0.875rem;
+  color: rgb(148 163 184); /* slate-400 */
+  margin: 0;
+}
+
+/* ─── Input Row ────────────────────────────────────────────────────────────── */
+
+.profile-section__input-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.profile-section__input {
+  flex: 1;
+  border-radius: 0.5rem;
+  border: 1px solid rgb(51 65 85); /* slate-700 */
+  background: rgb(2 6 23); /* slate-950 */
+  padding: 0.5rem 0.75rem;
+  color: rgb(241 245 249); /* slate-100 */
+  font-size: 0.875rem;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.profile-section__input::placeholder {
+  color: rgb(71 85 105); /* slate-600 */
+}
+
+.profile-section__input:focus {
+  border-color: #6A1B9A;
+  box-shadow: 0 0 0 2px rgba(106, 27, 154, 0.25);
+}
+
+/* ─── Password Fields ──────────────────────────────────────────────────────── */
+
+.profile-section__password-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+/* ─── Buttons ──────────────────────────────────────────────────────────────── */
+
+.profile-section__btn {
+  border: none;
+  border-radius: 0.5rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s, opacity 0.2s, transform 0.1s;
+  white-space: nowrap;
+}
+
+.profile-section__btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.profile-section__btn--primary {
+  background-color: #6A1B9A;
+  color: white;
+}
+
+.profile-section__btn--primary:hover:not(:disabled) {
+  background-color: #8E24AA;
+}
+
+.profile-section__btn--primary:active:not(:disabled) {
+  background-color: #4A148C;
+  transform: scale(0.97);
+}
+
+.profile-section__btn--delete-game {
+  background-color: transparent;
+  color: rgb(251 113 133); /* rose-400 */
+  border: 1px solid rgb(244 63 94 / 0.3); /* rose-500/30 */
+  font-size: 0.75rem;
+  padding: 0.25rem 0.625rem;
+}
+
+.profile-section__btn--delete-game:hover:not(:disabled) {
+  background-color: rgb(244 63 94 / 0.1);
+  border-color: rgb(244 63 94 / 0.5);
+}
+
+.profile-section__btn--destructive {
+  background-color: rgb(220 38 38); /* red-600 */
+  color: white;
+  padding: 0.625rem 1.25rem;
+  font-size: 0.875rem;
+}
+
+.profile-section__btn--destructive:hover:not(:disabled) {
+  background-color: rgb(185 28 28); /* red-700 */
+}
+
+.profile-section__btn--destructive:active:not(:disabled) {
+  background-color: rgb(153 27 27); /* red-800 */
+  transform: scale(0.97);
+}
+
+/* ─── Messages ─────────────────────────────────────────────────────────────── */
+
+.profile-section__message {
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.8125rem;
+  margin: 0;
+}
+
+.profile-section__message--success {
+  background: rgb(34 197 94 / 0.1); /* green-500/10 */
+  border: 1px solid rgb(34 197 94 / 0.3); /* green-500/30 */
+  color: rgb(74 222 128); /* green-400 */
+}
+
+.profile-section__message--error {
+  background: rgb(244 63 94 / 0.1); /* rose-500/10 */
+  border: 1px solid rgb(244 63 94 / 0.3); /* rose-500/30 */
+  color: rgb(251 113 133); /* rose-400 */
+}
+
+/* ─── Games List ───────────────────────────────────────────────────────────── */
+
+.profile-section__games-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.profile-section__game-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  background: rgb(15 23 42 / 0.5); /* slate-900/50 */
+  border: 1px solid rgb(30 41 59); /* slate-800 */
+}
+
+.profile-section__game-name {
+  font-size: 0.875rem;
+  color: rgb(226 232 240); /* slate-200 */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-right: 0.5rem;
+}
+
+/* ─── Danger Zone ──────────────────────────────────────────────────────────── */
+
+.profile-section__danger-zone {
+  margin-top: 1rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid rgb(244 63 94 / 0.2); /* rose-500/20 */
+  border-bottom: none;
+}
+
+.profile-section__form-group:has(+ .profile-section__danger-zone) {
+  border-bottom: none;
+}
+
+.profile-section__danger-zone-heading {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: rgb(241 245 249); /* slate-100 */
+  margin: 0 0 0.5rem;
+}
+
+/* ─── Delete Account Button (from UI reference) ───────────────────────────── */
+
+.delete-button {
+  position: relative;
+  background: transparent;
+  padding: 0;
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-block;
+  touch-action: manipulation;
+  outline-offset: 4px;
+  box-sizing: border-box;
+  margin: 10px 0;
+}
+
+.button-shadow {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 30px;
+  background: rgba(0, 0, 0, 0.3);
+  transform: translateY(4px);
+  transition: transform 0.15s cubic-bezier(0.3, 0.7, 0.4, 1);
+  z-index: 1;
+}
+
+.button-edge {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 30px;
+  background: linear-gradient(
+    to left,
+    #7f1d1d 0%,
+    #991b1b 8%,
+    #991b1b 92%,
+    #7f1d1d 100%
+  );
+  z-index: 2;
+}
+
+.button-front {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  padding: 16px 32px;
+  border-radius: 30px;
+  font-family: "Montserrat", sans-serif;
+  font-size: 18px;
+  font-weight: 900;
+  color: white;
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  transform: translateY(-8px);
+  transition:
+    transform 0.1s cubic-bezier(0.3, 0.7, 0.4, 1),
+    background 0.15s;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  z-index: 3;
+  overflow: hidden;
+  text-shadow:
+    0px -1px 1px rgba(0, 0, 0, 0.5),
+    0px 1px 1px rgba(255, 255, 255, 0.3);
+}
+
+.button-front::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.2),
+    transparent
+  );
+  transition: 0.5s;
+}
+
+.delete-button:hover .button-front::after {
+  left: 100%;
+}
+
+.delete-icon {
+  width: 20px;
+  height: 20px;
+  margin-right: 12px;
+  stroke: #ffffff;
+  flex-shrink: 0;
+  filter: drop-shadow(0px -1px 1px rgba(0, 0, 0, 0.5));
+}
+
+.delete-button:hover .button-front {
+  transform: translateY(-6px);
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+}
+
+.delete-button:hover .button-shadow {
+  transform: translateY(3px);
+}
+
+.delete-button:active .button-front {
+  transform: translateY(0px);
+  background: linear-gradient(135deg, #ff6666 0%, #dc2626 100%);
+  transition: transform 34ms;
+}
+
+.delete-button:active .button-shadow {
+  transform: translateY(0px);
+  transition: transform 34ms;
+}
+
+@media (max-width: 600px) {
+  .delete-button {
+    display: inline-block;
+    width: auto;
+    margin: 5px 0;
+  }
+
+  .button-front {
+    padding: 10px 20px;
+    font-size: 12px;
+    letter-spacing: 0.5px;
+    transform: translateY(-5px);
+    white-space: nowrap;
+  }
+
+  .delete-button:hover .button-front {
+    transform: translateY(-3px);
+  }
+
+  .delete-button:active .button-front {
+    transform: translateY(0px);
+    background: linear-gradient(135deg, #ff6666 0%, #dc2626 100%);
+  }
+
+  .delete-icon {
+    width: 14px;
+    height: 14px;
+    margin-right: 8px;
+  }
+}

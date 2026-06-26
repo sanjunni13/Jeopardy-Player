@@ -1,0 +1,44 @@
+/* ─── Settings Page ─────────────────────────────────────────────────────────── */
+
+.settings-page {
+  width: 100%;
+  max-width: 700px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+  color: rgb(241 245 249); /* slate-100 */
+}
+
+.settings-page__header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  padding-left: 3rem;
+}
+
+.settings-page__header .back-button {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  transform: translateY(-50%);
+}
+
+.settings-page__title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin: 0;
+  color: rgb(241 245 249); /* slate-100 */
+}
+
+.settings-page__content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.settings-page__divider {
+  border: none;
+  border-top: 1px solid rgb(30 41 59); /* slate-800 */
+  margin: 0.5rem 0;
+}

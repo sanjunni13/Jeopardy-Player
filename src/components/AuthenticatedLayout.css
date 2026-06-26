@@ -30,6 +30,13 @@
   font-family: 'Korinna', 'Swiss921', Arial, sans-serif;
 }
 
+/* ── Header actions ── */
+.layout-header__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 /* ── Main content ── */
 .layout-main {
   flex: 1;
