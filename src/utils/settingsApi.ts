@@ -91,97 +91,44 @@ export async function deleteGame(
 }
 
 /**
- * Deletes a user's entire account in sequence:
- * 1. Delete all game rows
- * 2. Delete all storage files
+ * Deletes a user's entire account by invoking the delete-user Edge Function.
+ * The Edge Function handles all deletion steps server-side with service role
+ * (bypasses RLS) to avoid foreign key constraint issues:
+ * 1. Delete game rows
+ * 2. Delete storage files
  * 3. Delete player record
- * 4. Invoke Edge Function to delete auth account
- *
- * If any step fails, halts and returns the failed step name.
+ * 4. Delete auth account
  */
 export async function deleteAccount(
   authUuid: string,
   playerId: number,
 ): Promise<{ success: boolean; error?: string; failedStep?: string }> {
   try {
-    // Step 1: Get all user's games (needed for storage file paths)
-    const { data: games, error: gamesQueryErr } = await supabase
-      .from('games')
-      .select('id, game_name')
-      .eq('created_by', playerId);
-
-    if (gamesQueryErr) {
-      return {
-        success: false,
-        error: 'Failed to retrieve games for deletion',
-        failedStep: 'delete_games',
-      };
-    }
-
-    // Step 2: Delete all game rows
-    if (games && games.length > 0) {
-      const { error: gamesDeleteErr } = await supabase
-        .from('games')
-        .delete()
-        .eq('created_by', playerId);
-
-      if (gamesDeleteErr) {
-        return {
-          success: false,
-          error: 'Failed to delete games',
-          failedStep: 'delete_games',
-        };
-      }
-    }
-
-    // Step 3: Delete all storage files under the user's folder
-    if (games && games.length > 0) {
-      const filePaths = games.map(
-        (game) => `${authUuid}/${(game as { game_name: string }).game_name}.json`,
-      );
-
-      const { error: storageErr } = await supabase.storage
-        .from('games')
-        .remove(filePaths);
-
-      if (storageErr) {
-        return {
-          success: false,
-          error: 'Failed to delete storage files',
-          failedStep: 'delete_storage',
-        };
-      }
-    }
-
-    // Step 4: Delete player record
-    const { error: playerDeleteErr } = await supabase
-      .from('players')
-      .delete()
-      .eq('id', playerId);
-
-    if (playerDeleteErr) {
-      return {
-        success: false,
-        error: 'Failed to delete player record',
-        failedStep: 'delete_player',
-      };
-    }
-
-    // Step 5: Invoke Edge Function to delete auth account
-    const { error: authDeleteErr } = await supabase.functions.invoke('delete-user', {
-      body: { userId: authUuid },
+    const { data: fnData, error: invokeErr } = await supabase.functions.invoke('delete-user', {
+      body: { userId: authUuid, playerId },
     });
 
-    if (authDeleteErr) {
+    if (invokeErr) {
+      console.error('delete-user invoke error:', invokeErr);
       return {
         success: false,
-        error: 'Failed to delete authentication account',
+        error: 'Failed to delete account',
         failedStep: 'delete_auth',
+      };
+    }
+
+    // Check if the response indicates failure
+    if (fnData && typeof fnData === 'object' && 'error' in fnData) {
+      const response = fnData as { error: string; failedStep?: string };
+      return {
+        success: false,
+        error: response.error,
+        failedStep: response.failedStep || 'delete_auth',
       };
     }
 
     return { success: true };
   } catch {
-    return { success: false, error: 'Network error. Please try again.', failedStep: 'delete_games' };
+    return { success: false, error: 'Network error. Please try again.', failedStep: 'delete_auth' };
   }
 }
