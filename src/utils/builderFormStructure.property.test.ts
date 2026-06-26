@@ -57,7 +57,7 @@ describe('Property 2: Form Structure Invariants', () => {
     )
   })
 
-  it('all fields are empty strings or false', () => {
+  it('all user-editable fields are empty strings or false, and clue values are computed', () => {
     fc.assert(
       fc.property(totalRoundsArb, categoriesPerRoundArb, (totalRounds, categoriesPerRound) => {
         const state = generateEmptyFormState(totalRounds, categoriesPerRound)
@@ -70,12 +70,15 @@ describe('Property 2: Form Structure Invariants', () => {
         expect(state.finalRound.clue).toBe('')
         expect(state.finalRound.solution).toBe('')
 
-        // All round/category/clue fields are empty/false
-        for (const round of state.rounds) {
-          for (const category of round) {
+        // All round/category/clue user-editable fields are empty/false
+        // Clue values are pre-populated with computed values (rowPosition * 200 * roundNumber)
+        for (let roundIdx = 0; roundIdx < state.rounds.length; roundIdx++) {
+          for (const category of state.rounds[roundIdx]) {
             expect(category.name).toBe('')
-            for (const clue of category.clues) {
-              expect(clue.value).toBe('')
+            for (let clueIdx = 0; clueIdx < category.clues.length; clueIdx++) {
+              const clue = category.clues[clueIdx]
+              const expectedValue = String((clueIdx + 1) * 200 * (roundIdx + 1))
+              expect(clue.value).toBe(expectedValue)
               expect(clue.clue).toBe('')
               expect(clue.solution).toBe('')
               expect(clue.dailyDouble).toBe(false)

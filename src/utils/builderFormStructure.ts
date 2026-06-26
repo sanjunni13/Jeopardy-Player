@@ -1,6 +1,13 @@
 import type { RoundName } from '../types/game'
+import { computeClueValue } from './clueValues'
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
+
+/** Discriminated union for media attached to a clue */
+export type MediaData =
+  | { type: 'image'; url: string; fileName: string }
+  | { type: 'audio'; url: string; fileName: string }
+  | { type: 'youtube'; url: string }
 
 /** Form-level state for a single clue row */
 export interface ClueFormState {
@@ -8,6 +15,7 @@ export interface ClueFormState {
   clue: string
   solution: string
   dailyDouble: boolean
+  media?: MediaData | null
 }
 
 /** Form-level state for a single category */
@@ -64,21 +72,22 @@ export function generateEmptyFormState(
   totalRounds: number,
   categoriesPerRound: number,
 ): BuilderFormState {
-  const createEmptyClue = (): ClueFormState => ({
-    value: '',
+  const createEmptyClue = (clueIndex: number, roundIndex: number): ClueFormState => ({
+    value: String(computeClueValue(clueIndex + 1, roundIndex + 1)),
     clue: '',
     solution: '',
     dailyDouble: false,
+    media: null,
   })
 
-  const createEmptyCategory = (): CategoryFormState => ({
+  const createEmptyCategory = (roundIndex: number): CategoryFormState => ({
     name: '',
     clues: [
-      createEmptyClue(),
-      createEmptyClue(),
-      createEmptyClue(),
-      createEmptyClue(),
-      createEmptyClue(),
+      createEmptyClue(0, roundIndex),
+      createEmptyClue(1, roundIndex),
+      createEmptyClue(2, roundIndex),
+      createEmptyClue(3, roundIndex),
+      createEmptyClue(4, roundIndex),
     ],
   })
 
@@ -86,9 +95,25 @@ export function generateEmptyFormState(
     gameName: '',
     totalRounds,
     categoriesPerRound,
-    rounds: Array.from({ length: totalRounds }, () =>
-      Array.from({ length: categoriesPerRound }, () => createEmptyCategory()),
+    rounds: Array.from({ length: totalRounds }, (_, roundIdx) =>
+      Array.from({ length: categoriesPerRound }, () => createEmptyCategory(roundIdx)),
     ),
     finalRound: { category: '', clue: '', solution: '' },
   }
+}
+
+/**
+ * Recalculates all clue values in the given rounds array based on row position and round number.
+ * Returns a new rounds array with updated values.
+ */
+export function recalculateClueValues(rounds: CategoryFormState[][]): CategoryFormState[][] {
+  return rounds.map((round, roundIdx) =>
+    round.map(cat => ({
+      ...cat,
+      clues: cat.clues.map((clue, clueIdx) => ({
+        ...clue,
+        value: String(computeClueValue(clueIdx + 1, roundIdx + 1)),
+      })) as [ClueFormState, ClueFormState, ClueFormState, ClueFormState, ClueFormState],
+    }))
+  )
 }

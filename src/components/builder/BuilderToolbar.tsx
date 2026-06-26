@@ -1,5 +1,3 @@
-import { Button } from '../ui/button'
-
 interface BuilderToolbarProps {
   onSave: () => void
   onPublish: () => void
@@ -19,12 +17,12 @@ export function BuilderToolbar({
 }: BuilderToolbarProps) {
   return (
     <div className="flex flex-wrap items-center gap-3 py-4">
-      <Button
-        variant="outline"
-        className="min-h-11"
+      <button
+        type="button"
         onClick={onSave}
         disabled={isSaving}
         aria-label={isSaving ? 'Saving draft...' : 'Save draft'}
+        className="flex items-center gap-2 rounded-full border border-slate-500 px-6 py-3 text-sm font-bold text-slate-200 bg-slate-700 cursor-pointer transition-all duration-500 hover:bg-slate-600 hover:shadow-[0_0_20px_rgba(100,116,139,0.3)] hover:scale-105 active:bg-slate-800 active:shadow-none active:scale-[0.98] active:transition-all active:duration-[250ms] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:shadow-none"
       >
         {isSaving && (
           <svg
@@ -39,14 +37,14 @@ export function BuilderToolbar({
           </svg>
         )}
         {isSaving ? 'Saving...' : 'Save Draft'}
-      </Button>
+      </button>
 
-      <Button
-        variant="default"
-        className="min-h-11"
+      <button
+        type="button"
         onClick={onPublish}
         disabled={isPublishing}
         aria-label={isPublishing ? 'Publishing game...' : 'Publish game'}
+        className="flex items-center gap-2 rounded-full border-0 px-6 py-3 text-sm font-bold text-white bg-emerald-600 cursor-pointer transition-all duration-500 hover:bg-emerald-500 hover:shadow-[0_0_20px_rgba(52,211,153,0.3)] hover:scale-105 active:bg-emerald-700 active:shadow-none active:scale-[0.98] active:transition-all active:duration-[250ms] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:shadow-none"
       >
         {isPublishing && (
           <svg
@@ -61,7 +59,7 @@ export function BuilderToolbar({
           </svg>
         )}
         {isPublishing ? 'Publishing...' : 'Publish'}
-      </Button>
+      </button>
 
       {/* Auto-save status indicator */}
       {autoSaveStatus === 'saving' && (
@@ -70,7 +68,7 @@ export function BuilderToolbar({
         </span>
       )}
       {autoSaveStatus === 'failed' && (
-        <span className="text-sm text-amber-500" role="status">
+        <span className="text-sm text-red-500" role="status">
           Auto-save failed. Save manually.
         </span>
       )}
@@ -78,7 +76,11 @@ export function BuilderToolbar({
       {/* Last saved label */}
       {autoSaveStatus === 'idle' && lastSavedAt && (
         <span className="text-sm text-muted-foreground" role="status">
-          Last saved at {lastSavedAt.toLocaleTimeString()}
+          Last saved at {
+            Date.now() - lastSavedAt.getTime() > 24 * 60 * 60 * 1000
+              ? `${lastSavedAt.toLocaleDateString()} ${lastSavedAt.toLocaleTimeString()}`
+              : lastSavedAt.toLocaleTimeString()
+          }
         </span>
       )}
     </div>

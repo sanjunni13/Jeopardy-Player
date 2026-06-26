@@ -46,7 +46,12 @@ describe('Accessibility: Keyboard navigation order (Req 11.1)', () => {
     expect(categoriesSelect).toBeInTheDocument()
     expect(categoriesSelect.tabIndex).not.toBe(-1)
 
-    // Final Jeopardy fields
+    // Final Jeopardy fields are visible when the Final Jeopardy tab is active.
+    // With RoundTabs, only one tab's content is shown at a time.
+    // Click the Final Jeopardy tab to show those fields.
+    const fjTab = screen.getByRole('tab', { name: /final jeopardy/i })
+    fireEvent.click(fjTab)
+
     expect(screen.getByLabelText(/final jeopardy category/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/final jeopardy clue/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/final jeopardy solution/i)).toBeInTheDocument()
@@ -60,10 +65,19 @@ describe('Accessibility: Focus management on section add (Req 11.6)', () => {
       <BuilderForm {...defaultFormProps} formState={formState} />
     )
 
+    // With RoundTabs, only one round is shown at a time (the active tab).
+    // The default active tab is the first round (index 0).
     const roundSections = container.querySelectorAll('[data-round-index]')
-    expect(roundSections.length).toBe(2)
+    expect(roundSections.length).toBe(1)
     expect(roundSections[0].getAttribute('data-round-index')).toBe('0')
-    expect(roundSections[1].getAttribute('data-round-index')).toBe('1')
+
+    // Switch to the second round tab and verify it renders with correct attribute
+    const round2Tab = screen.getByRole('tab', { name: /round 2/i })
+    fireEvent.click(round2Tab)
+
+    const updatedRoundSections = container.querySelectorAll('[data-round-index]')
+    expect(updatedRoundSections.length).toBe(1)
+    expect(updatedRoundSections[0].getAttribute('data-round-index')).toBe('1')
   })
 
   it('category sections have data-category-index attributes for focus targeting', () => {
@@ -157,11 +171,14 @@ describe('Accessibility: ARIA label associations (Req 11.2)', () => {
         clue={{ value: '', clue: '', solution: '', dailyDouble: false }}
         errors={{}}
         onFieldChange={vi.fn()}
-        onBlurValue={vi.fn()}
+        onMediaAttach={vi.fn()}
+        onMediaRemove={vi.fn()}
+        isMediaUploading={false}
+        mediaError={null}
       />
     )
 
-    // Each input should have an associated label via htmlFor
+    // Each input should have an associated label via htmlFor or aria-label
     expect(screen.getByLabelText(/clue 1 value/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/clue 1 clue text/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/clue 1 solution/i)).toBeInTheDocument()

@@ -6,13 +6,26 @@ import { useBuilderState } from '../../hooks/useBuilderState'
 import { useDraftPersistence } from '../../hooks/useDraftPersistence'
 import { saveGame } from '../../utils/gameApi'
 import { deleteDraft } from '../../utils/draftApi'
+import { uploadClueMedia, deleteClueMedia } from '../../utils/mediaApi'
 import { validateDraftForPublish } from '../../utils/draftValidation'
 import { usePlayerProfileContext } from '../../hooks/usePlayerProfileContext'
 import { BackButton } from '../../components/BackButton'
+import { DeleteButton } from '../../components/DeleteButton'
 import { BackgroundGradient } from '../../components/ui/background-gradient'
 import { BuilderForm } from '../../components/builder/BuilderForm'
 import { ExitGuardDialog } from '../../components/builder/ExitGuardDialog'
+import { DeleteConfirmationDialog } from '../../components/builder/DeleteConfirmationDialog'
+import type { MediaData } from '../../utils/builderFormStructure'
 import './BuilderPage.css'
+
+// ─── Media upload state types ──────────────────────────────────────────────────
+
+export interface MediaUploadState {
+  isUploading: boolean
+  error: string | null
+}
+
+export type MediaUploadStates = Record<string, MediaUploadState>
 
 export function BuilderPage() {
   const navigate = useNavigate()
@@ -63,6 +76,134 @@ export function BuilderPage() {
   // Loading state for draft resume
   const [isLoadingDraft, setIsLoadingDraft] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
+
+  // ─── Delete state ────────────────────────────────────────────────────────
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+
+  // ─── Media upload state ──────────────────────────────────────────────────
+  const [mediaUploadStates, setMediaUploadStates] = useState<MediaUploadStates>({})
+
+  const getMediaKey = (roundIdx: number, catIdx: number, clueIdx: number) =>
+    `${roundIdx}-${catIdx}-${clueIdx}`
+
+  const handleMediaAttach = useCallback(async (
+    roundIdx: number,
+    catIdx: number,
+    clueIdx: number,
+    fileOrUrl: File | string
+  ) => {
+    const key = getMediaKey(roundIdx, catIdx, clueIdx)
+
+    // If it's a YouTube URL string, just set the media field directly
+    if (typeof fileOrUrl === 'string') {
+      // If existing media is an uploaded file, delete it first
+      const existingMedia = formState.rounds[roundIdx]?.[catIdx]?.clues[clueIdx]?.media
+      if (existingMedia && (existingMedia.type === 'image' || existingMedia.type === 'audio')) {
+        deleteClueMedia(existingMedia.url) // fire and forget for replacement
+      }
+
+      const mediaData: MediaData = { type: 'youtube', url: fileOrUrl }
+      setClueField(roundIdx, catIdx, clueIdx, 'media', mediaData)
+      // Clear any previous error for this clue
+      setMediaUploadStates(prev => {
+        const next = { ...prev }
+        delete next[key]
+        return next
+      })
+      return
+    }
+
+    // File upload path
+    const activeDraftId = currentDraftId ?? draftId
+    if (!activeDraftId) {
+      // Need to save draft first to get a draftId
+      const saveResult = await save()
+      if (!saveResult.success) {
+        setMediaUploadStates(prev => ({
+          ...prev,
+          [key]: { isUploading: false, error: 'Save the draft first to attach media.' },
+        }))
+        return
+      }
+    }
+
+    const uploadDraftId = currentDraftId ?? draftId
+    if (!uploadDraftId) {
+      setMediaUploadStates(prev => ({
+        ...prev,
+        [key]: { isUploading: false, error: 'Could not determine draft ID.' },
+      }))
+      return
+    }
+
+    // If existing media is an uploaded file, delete it first
+    const existingMedia = formState.rounds[roundIdx]?.[catIdx]?.clues[clueIdx]?.media
+    if (existingMedia && (existingMedia.type === 'image' || existingMedia.type === 'audio')) {
+      await deleteClueMedia(existingMedia.url)
+    }
+
+    // Set uploading state
+    setMediaUploadStates(prev => ({
+      ...prev,
+      [key]: { isUploading: true, error: null },
+    }))
+
+    const result = await uploadClueMedia(fileOrUrl, uploadDraftId, roundIdx, catIdx, clueIdx)
+
+    if (result.success) {
+      // Determine media type from file extension
+      const ext = fileOrUrl.name.toLowerCase().split('.').pop() ?? ''
+      const isAudio = ext === 'mp3'
+      const mediaData: MediaData = isAudio
+        ? { type: 'audio', url: result.url, fileName: fileOrUrl.name }
+        : { type: 'image', url: result.url, fileName: fileOrUrl.name }
+
+      setClueField(roundIdx, catIdx, clueIdx, 'media', mediaData)
+      setMediaUploadStates(prev => {
+        const next = { ...prev }
+        delete next[key]
+        return next
+      })
+    } else {
+      setMediaUploadStates(prev => ({
+        ...prev,
+        [key]: { isUploading: false, error: result.error },
+      }))
+    }
+  }, [formState, currentDraftId, draftId, save, setClueField])
+
+  const handleMediaRemove = useCallback(async (
+    roundIdx: number,
+    catIdx: number,
+    clueIdx: number
+  ) => {
+    const media = formState.rounds[roundIdx]?.[catIdx]?.clues[clueIdx]?.media
+    if (!media) return
+
+    // If it's an uploaded file (image/audio), delete from storage
+    if (media.type === 'image' || media.type === 'audio') {
+      const result = await deleteClueMedia(media.url)
+      if (!result.success) {
+        const key = getMediaKey(roundIdx, catIdx, clueIdx)
+        setMediaUploadStates(prev => ({
+          ...prev,
+          [key]: { isUploading: false, error: result.error },
+        }))
+        return
+      }
+    }
+
+    // Clear the media field
+    setClueField(roundIdx, catIdx, clueIdx, 'media', null)
+    // Clear any error state
+    const key = getMediaKey(roundIdx, catIdx, clueIdx)
+    setMediaUploadStates(prev => {
+      const next = { ...prev }
+      delete next[key]
+      return next
+    })
+  }, [formState, setClueField])
 
   // ─── Exit guard (in-app navigation) ──────────────────────────────────────
   const { proceed, reset, status } = useBlocker({ condition: isDirty })
@@ -151,6 +292,35 @@ export function BuilderPage() {
       )
     }
   }, [save])
+
+  // ─── Delete handlers ─────────────────────────────────────────────────────
+  const handleDeleteClick = useCallback(() => {
+    setIsDeleteDialogOpen(true)
+  }, [])
+
+  const handleDeleteCancel = useCallback(() => {
+    setIsDeleteDialogOpen(false)
+  }, [])
+
+  const handleDeleteConfirm = useCallback(async () => {
+    const activeDraftId = currentDraftId ?? draftId
+    if (!activeDraftId || !userEmail) return
+
+    setIsDeleting(true)
+
+    try {
+      await deleteDraft(activeDraftId, userEmail)
+      setIsDeleteDialogOpen(false)
+      setIsDeleting(false)
+      resetDirty()
+      toast.success('Draft deleted successfully.')
+      navigate({ to: '/home/create' })
+    } catch {
+      setIsDeleting(false)
+      setIsDeleteDialogOpen(false)
+      toast.error('Could not delete draft. Please try again.')
+    }
+  }, [currentDraftId, draftId, userEmail, resetDirty, navigate])
 
   // ─── Publish handler ─────────────────────────────────────────────────────
   const handlePublish = useCallback(async () => {
@@ -245,8 +415,18 @@ export function BuilderPage() {
   // ─── Render: Main builder ────────────────────────────────────────────────
   return (
     <div className="builder-page">
-      <BackgroundGradient containerClassName="max-w-4xl mx-auto" className="p-6 rounded-xl">
-        <BackButton onClick={() => navigate({ to: '/home/create' })} label="Back to create" />
+      <BackgroundGradient containerClassName="max-w-4xl mx-auto" className="p-6 rounded-lg bg-slate-900/95 border border-slate-800">
+        <div className="relative">
+          <BackButton onClick={() => navigate({ to: '/home/create' })} label="Back to create" />
+          {(currentDraftId ?? draftId) && (
+            <div className="absolute top-0 right-0">
+              <DeleteButton
+                onClick={handleDeleteClick}
+                label="Delete draft"
+              />
+            </div>
+          )}
+        </div>
 
         <h1 className="text-2xl font-bold text-foreground mt-4 mb-6">
           {draftId ? 'Resume Draft' : 'Build a Game'}
@@ -269,6 +449,18 @@ export function BuilderPage() {
           onValidateField={validateField}
           onSave={handleSave}
           onPublish={handlePublish}
+          onMediaAttach={handleMediaAttach}
+          onMediaRemove={handleMediaRemove}
+          mediaUploadingState={
+            Object.fromEntries(
+              Object.entries(mediaUploadStates).map(([key, state]) => [key, state.isUploading])
+            )
+          }
+          mediaErrors={
+            Object.fromEntries(
+              Object.entries(mediaUploadStates).map(([key, state]) => [key, state.error])
+            )
+          }
         />
       </BackgroundGradient>
 
@@ -280,6 +472,15 @@ export function BuilderPage() {
         onExitWithoutSaving={handleExitWithoutSaving}
         isSaving={exitGuardSaving}
         saveError={exitGuardSaveError}
+      />
+
+      {/* Delete Confirmation Dialog */}
+      <DeleteConfirmationDialog
+        isOpen={isDeleteDialogOpen}
+        gameName={formState.gameName || 'Untitled Game'}
+        isDeleting={isDeleting}
+        onConfirm={handleDeleteConfirm}
+        onCancel={handleDeleteCancel}
       />
     </div>
   )

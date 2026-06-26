@@ -69,6 +69,7 @@ export function builderStateToDraft(state: BuilderFormState): BuilderDraft {
         solution: c.solution,
         dailyDouble: c.dailyDouble,
         html: false,
+        ...(c.media ? { media: c.media } : {}),
       })),
     }))
   }
@@ -101,12 +102,19 @@ export function draftToBuilderState(draft: BuilderDraft): BuilderFormState {
     rounds.push(
       categories.map(cat => ({
         name: cat.category,
-        clues: cat.clues.map(c => ({
-          value: String(c.value),
-          clue: c.clue,
-          solution: c.solution,
-          dailyDouble: c.dailyDouble,
-        })) as [ClueFormState, ClueFormState, ClueFormState, ClueFormState, ClueFormState],
+        clues: cat.clues.map(c => {
+          const clue: ClueFormState = {
+            value: String(c.value),
+            clue: c.clue,
+            solution: c.solution,
+            dailyDouble: c.dailyDouble,
+          }
+          const media = (c as Record<string, unknown>).media as ClueFormState['media'] | undefined
+          if (media !== undefined) {
+            clue.media = media
+          }
+          return clue
+        }) as [ClueFormState, ClueFormState, ClueFormState, ClueFormState, ClueFormState],
       }))
     )
   }
@@ -127,20 +135,22 @@ export function draftToBuilderState(draft: BuilderDraft): BuilderFormState {
 /**
  * Compares current form state to the last-saved snapshot to determine if there are unsaved changes.
  * If lastSaved is null (new game), returns true if any field has content.
+ * Note: clue values are computed/read-only and excluded from dirty checks for new games.
  */
 export function isDirtyState(
   current: BuilderFormState,
   lastSaved: BuilderFormState | null
 ): boolean {
   if (lastSaved === null) {
-    // New game: dirty if any field has content
+    // New game: dirty if any user-editable field has content
+    // (clue values are computed and always populated, so they're excluded)
     return (
       current.gameName !== '' ||
       current.rounds.some(round =>
         round.some(
           cat =>
             cat.name !== '' ||
-            cat.clues.some(c => c.value !== '' || c.clue !== '' || c.solution !== '')
+            cat.clues.some(c => c.clue !== '' || c.solution !== '')
         )
       ) ||
       current.finalRound.category !== '' ||

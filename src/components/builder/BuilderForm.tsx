@@ -1,13 +1,15 @@
-import { useRef, useEffect } from 'react'
+import { useRef, useEffect, useState } from 'react'
 import { RoundSection } from './RoundSection'
 import { FinalJeopardySection } from './FinalJeopardySection'
 import { BuilderToolbar } from './BuilderToolbar'
+import { RoundTabs } from './RoundTabs'
 import { generateRoundLabels } from '../../utils/builderFormStructure'
 import type {
   BuilderFormState,
   ValidationErrors,
   ClueFormState,
   FinalRoundFormState,
+  MediaData,
 } from '../../utils/builderFormStructure'
 
 // ─── Props ─────────────────────────────────────────────────────────────────────
@@ -29,12 +31,16 @@ interface BuilderFormProps {
     catIdx: number,
     clueIdx: number,
     field: keyof ClueFormState,
-    value: string | boolean
+    value: string | boolean | MediaData | null
   ) => void
   onSetFinalField: (field: keyof FinalRoundFormState, value: string) => void
   onValidateField: (fieldPath: string) => void
   onSave: () => void
   onPublish: () => void
+  onMediaAttach?: (roundIdx: number, catIdx: number, clueIdx: number, file: File | string) => void
+  onMediaRemove?: (roundIdx: number, catIdx: number, clueIdx: number) => void
+  mediaUploadingState?: Record<string, boolean>
+  mediaErrors?: Record<string, string | null>
 }
 
 // ─── Component ─────────────────────────────────────────────────────────────────
@@ -55,7 +61,19 @@ export function BuilderForm({
   onValidateField,
   onSave,
   onPublish,
+  onMediaAttach,
+  onMediaRemove,
+  mediaUploadingState = {},
+  mediaErrors = {},
 }: BuilderFormProps) {
+  // ─── Tab navigation (Req 1.2, 1.3, 1.5, 1.6) ─────────────────────────────
+  const [activeTab, setActiveTab] = useState(0)
+
+  // Clamp activeTab when totalRounds decreases (Property 2: active tab fallback)
+  useEffect(() => {
+    setActiveTab((prev) => Math.min(prev, formState.totalRounds))
+  }, [formState.totalRounds])
+
   // ─── Focus management (Req 11.6) ──────────────────────────────────────────
   const prevTotalRoundsRef = useRef(formState.totalRounds)
   const prevCategoriesPerRoundRef = useRef(formState.categoriesPerRound)
@@ -165,7 +183,7 @@ export function BuilderForm({
         {errors['gameName'] && (
           <p
             id="builder-game-name-error"
-            className="text-sm text-destructive"
+            className="text-sm text-red-500"
             role="alert"
           >
             {errors['gameName']}
@@ -174,7 +192,7 @@ export function BuilderForm({
       </div>
 
       {/* Round/Category Config */}
-      <div className="flex gap-4 flex-wrap">
+      <div className="flex gap-4 flex-wrap justify-center">
         <div className="space-y-2">
           <label
             htmlFor="builder-total-rounds"
@@ -186,7 +204,7 @@ export function BuilderForm({
             id="builder-total-rounds"
             value={formState.totalRounds}
             onChange={(e) => onSetTotalRounds(Number(e.target.value))}
-            className="min-h-11 px-3 py-2 rounded-lg border border-border bg-input/30 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            className="min-h-11 px-3 py-2 rounded-lg border border-border bg-slate-800 text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
           >
             {roundOptions.map((n) => (
               <option key={n} value={n}>
@@ -207,7 +225,7 @@ export function BuilderForm({
             id="builder-categories-per-round"
             value={formState.categoriesPerRound}
             onChange={(e) => onSetCategoriesPerRound(Number(e.target.value))}
-            className="min-h-11 px-3 py-2 rounded-lg border border-border bg-input/30 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            className="min-h-11 px-3 py-2 rounded-lg border border-border bg-slate-800 text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
           >
             {roundOptions.map((n) => (
               <option key={n} value={n}>
@@ -218,39 +236,62 @@ export function BuilderForm({
         </div>
       </div>
 
-      {/* RoundSection × N */}
-      {formState.rounds.map((categories, roundIdx) => (
-        <div key={roundIdx} data-round-index={roundIdx}>
+      {/* Round Tabs Navigation */}
+      <RoundTabs
+        totalRounds={formState.totalRounds}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+      />
+
+      {/* Conditionally render active round or Final Jeopardy */}
+      {activeTab < formState.totalRounds ? (
+        <div key={activeTab} data-round-index={activeTab}>
           <RoundSection
-            roundIndex={roundIdx}
-            roundName={roundLabels[roundIdx]}
-            categories={categories}
+            roundIndex={activeTab}
+            roundName={roundLabels[activeTab]}
+            categories={formState.rounds[activeTab]}
             errors={errors}
             onCategoryNameChange={(catIdx, name) =>
-              onSetCategoryName(roundIdx, catIdx, name)
+              onSetCategoryName(activeTab, catIdx, name)
             }
             onClueFieldChange={(catIdx, clueIdx, field, value) =>
-              onSetClueField(roundIdx, catIdx, clueIdx, field, value)
+              onSetClueField(activeTab, catIdx, clueIdx, field, value)
             }
-            onBlurClueValue={(catIdx, clueIdx) =>
-              onValidateField(
-                `rounds.${roundIdx}.${catIdx}.clues.${clueIdx}.value`
+            onMediaAttach={(catIdx, clueIdx, file) =>
+              onMediaAttach?.(activeTab, catIdx, clueIdx, file)
+            }
+            onMediaRemove={(catIdx, clueIdx) =>
+              onMediaRemove?.(activeTab, catIdx, clueIdx)
+            }
+            mediaUploadingState={
+              Object.fromEntries(
+                Object.entries(mediaUploadingState)
+                  .filter(([key]) => key.startsWith(`${activeTab}-`))
+                  .map(([key, val]) => [key.slice(`${activeTab}-`.length), val])
+              )
+            }
+            mediaErrors={
+              Object.fromEntries(
+                Object.entries(mediaErrors)
+                  .filter(([key]) => key.startsWith(`${activeTab}-`))
+                  .map(([key, val]) => [key.slice(`${activeTab}-`.length), val])
               )
             }
           />
         </div>
-      ))}
-
-      {/* Final Jeopardy Section */}
-      <FinalJeopardySection
-        finalRound={formState.finalRound}
-        errors={{
-          category: errors['final.category'],
-          clue: errors['final.clue'],
-          solution: errors['final.solution'],
-        }}
-        onFieldChange={onSetFinalField}
-      />
+      ) : (
+        <FinalJeopardySection
+          finalRound={formState.finalRound}
+          errors={{
+            category: errors['final.category'],
+            clue: errors['final.clue'],
+            solution: errors['final.solution'],
+          }}
+          onFieldChange={onSetFinalField}
+          onMediaAttach={onMediaAttach ? (file) => onMediaAttach(formState.totalRounds, 0, 0, file) : undefined}
+          onMediaRemove={onMediaRemove ? () => onMediaRemove(formState.totalRounds, 0, 0) : undefined}
+        />
+      )}
 
       {/* Builder Toolbar */}
       <BuilderToolbar

@@ -1,10 +1,15 @@
 import { useState, useCallback, useMemo } from 'react'
-import { generateEmptyFormState } from '../utils/builderFormStructure'
-import type { BuilderFormState, ClueFormState, FinalRoundFormState, ValidationErrors } from '../utils/builderFormStructure'
+import { generateEmptyFormState, recalculateClueValues } from '../utils/builderFormStructure'
+import type { BuilderFormState, ClueFormState, FinalRoundFormState, ValidationErrors, MediaData } from '../utils/builderFormStructure'
 import { validateGameName, validateClueValue, validateForPublish as validateForPublishFn, validateForSave as validateForSaveFn } from '../utils/builderValidation'
 import { builderStateToNormalizedGame, builderStateToDraft, draftToBuilderState, isDirtyState } from '../utils/builderConversion'
 import type { BuilderDraft } from '../utils/draftApi'
 import type { NormalizedGame } from '../types/game'
+import { computeClueValue } from '../utils/clueValues'
+
+// ─── Types ─────────────────────────────────────────────────────────────────────
+
+export type ClueFieldValue = string | boolean | MediaData | null
 
 // ─── Return type ───────────────────────────────────────────────────────────────
 
@@ -16,7 +21,7 @@ export interface UseBuilderStateReturn {
   setTotalRounds: (n: number) => void
   setCategoriesPerRound: (n: number) => void
   setCategoryName: (roundIdx: number, catIdx: number, name: string) => void
-  setClueField: (roundIdx: number, catIdx: number, clueIdx: number, field: keyof ClueFormState, value: string | boolean) => void
+  setClueField: (roundIdx: number, catIdx: number, clueIdx: number, field: keyof ClueFormState, value: ClueFieldValue) => void
   setFinalField: (field: keyof FinalRoundFormState, value: string) => void
   validateField: (fieldPath: string) => void
   validateForPublish: () => boolean
@@ -29,15 +34,15 @@ export interface UseBuilderStateReturn {
 
 // ─── Helper: create empty category ────────────────────────────────────────────
 
-function createEmptyCategory() {
+function createEmptyCategory(roundIndex: number) {
   return {
     name: '',
     clues: [
-      { value: '', clue: '', solution: '', dailyDouble: false },
-      { value: '', clue: '', solution: '', dailyDouble: false },
-      { value: '', clue: '', solution: '', dailyDouble: false },
-      { value: '', clue: '', solution: '', dailyDouble: false },
-      { value: '', clue: '', solution: '', dailyDouble: false },
+      { value: String(computeClueValue(1, roundIndex + 1)), clue: '', solution: '', dailyDouble: false },
+      { value: String(computeClueValue(2, roundIndex + 1)), clue: '', solution: '', dailyDouble: false },
+      { value: String(computeClueValue(3, roundIndex + 1)), clue: '', solution: '', dailyDouble: false },
+      { value: String(computeClueValue(4, roundIndex + 1)), clue: '', solution: '', dailyDouble: false },
+      { value: String(computeClueValue(5, roundIndex + 1)), clue: '', solution: '', dailyDouble: false },
     ] as [ClueFormState, ClueFormState, ClueFormState, ClueFormState, ClueFormState],
   }
 }
@@ -74,15 +79,19 @@ export function useBuilderState(): UseBuilderStateReturn {
       let newRounds
 
       if (n > currentRounds.length) {
-        // Grow: append new empty rounds
-        const additional = Array.from({ length: n - currentRounds.length }, () =>
-          Array.from({ length: prev.categoriesPerRound }, () => createEmptyCategory())
-        )
+        // Grow: append new empty rounds with computed values
+        const additional = Array.from({ length: n - currentRounds.length }, (_, i) => {
+          const roundIndex = currentRounds.length + i
+          return Array.from({ length: prev.categoriesPerRound }, () => createEmptyCategory(roundIndex))
+        })
         newRounds = [...currentRounds, ...additional]
       } else {
         // Shrink: truncate
         newRounds = currentRounds.slice(0, n)
       }
+
+      // Recalculate all clue values across all rounds
+      newRounds = recalculateClueValues(newRounds)
 
       return { ...prev, totalRounds: n, rounds: newRounds }
     })
@@ -90,10 +99,10 @@ export function useBuilderState(): UseBuilderStateReturn {
 
   const setCategoriesPerRound = useCallback((n: number) => {
     setFormState(prev => {
-      const newRounds = prev.rounds.map(round => {
+      const newRounds = prev.rounds.map((round, roundIdx) => {
         if (n > round.length) {
-          // Grow: append empty categories
-          const additional = Array.from({ length: n - round.length }, () => createEmptyCategory())
+          // Grow: append empty categories with computed values
+          const additional = Array.from({ length: n - round.length }, () => createEmptyCategory(roundIdx))
           return [...round, ...additional]
         }
         // Shrink: truncate
@@ -132,7 +141,7 @@ export function useBuilderState(): UseBuilderStateReturn {
     catIdx: number,
     clueIdx: number,
     field: keyof ClueFormState,
-    value: string | boolean
+    value: ClueFieldValue
   ) => {
     setFormState(prev => {
       const newRounds = prev.rounds.map((round, rIdx) => {
@@ -233,6 +242,8 @@ export function useBuilderState(): UseBuilderStateReturn {
 
   const loadFromDraft = useCallback((draft: BuilderDraft) => {
     const newState = draftToBuilderState(draft)
+    // Recalculate clue values to ensure they match the computed formula
+    newState.rounds = recalculateClueValues(newState.rounds)
     setFormState(newState)
     setErrors({})
     setLastSavedSnapshot(JSON.parse(JSON.stringify(newState)))
