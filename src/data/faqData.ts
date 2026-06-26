@@ -57,6 +57,11 @@ export const generateGameFAQ: FAQItem[] = [
     answer:
       'For J! Archive generation, you can select the number of rounds and the number of categories per round. The generator pulls real historical clues from past Jeopardy episodes to fill your game.',
   },
+  {
+    question: 'What is the Cheat Sheet?',
+    answer:
+      'The Cheat Sheet is a feature that allows the host to view all correct answers during gameplay without affecting the game state. It opens as a modal overlay within the game page displaying all answers organized by round and grouped by category. The host can access it by clicking the "Cheat Sheet" button visible during gameplay. This button is only available for generated games (games created via J! Archive, JeopardyLabs, or AI Generation).',
+  },
 ]
 
 export const uploadGameFAQ: FAQItem[] = [
@@ -107,5 +112,10 @@ export const gameLibraryFAQ: FAQItem[] = [
     question: 'Can I replay a game from my library?',
     answer:
       'Yes, you can play any game in your library as many times as you like. Each play session starts fresh with new players and scores. Your game data is never modified by playing it.',
+  },
+  {
+    question: 'What is the Cheat Sheet and what does it do?',
+    answer:
+      'The Cheat Sheet opens as a modal overlay within the game window displaying all answers organized by round and category. The host can open it by clicking the "Cheat Sheet" button visible during active gameplay phases after player entry.',
   },
 ]

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from '@tanstack/react-router'
+import { useNavigate, useParams, useRouterState } from '@tanstack/react-router'
 import { supabase } from '../../utils/supabase'
 import { normalizeGame } from '../../utils/gameNormalizer'
 import type {
@@ -21,7 +21,7 @@ import { RoundTransition } from '../../components/game/RoundTransition'
 import { GameOver } from '../../components/game/GameOver'
 import { CheatSheetButton } from '../../components/game/CheatSheetButton'
 import { CheatSheet } from '../../components/game/CheatSheet'
-import { shouldShowCheatSheet } from '../../components/game/cheatSheetUtils'
+import { shouldShowCheatSheet } from '../../utils/cheatSheetVisibility'
 
 const ROUND_LABELS: Record<RoundName | 'final', string> = {
   single: 'Jeopardy!',
@@ -38,6 +38,8 @@ const ROUND_ORDER: RoundName[] = ['single', 'double', 'triple', 'quadruple', 'qu
 export function GamePage() {
   const { gameId } = useParams({ strict: false }) as { gameId: string }
   const navigate = useNavigate()
+  const locationState = useRouterState({ select: (s) => s.location.state }) as { fromLibrary?: boolean }
+  const fromLibrary = locationState?.fromLibrary ?? false
 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -363,7 +365,8 @@ export function GamePage() {
 
   // Fix #2: Full-screen overlay for all active game phases (after player-entry)
   const gameContent = renderGamePhase()
-  const showCheatSheet = shouldShowCheatSheet(gameSource, phase)
+  const hiddenPhases: GamePhase[] = ['player-entry', 'game-over']
+  const showCheatSheet = shouldShowCheatSheet(gameSource, fromLibrary) && !hiddenPhases.includes(phase)
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 50, background: 'black' }}>

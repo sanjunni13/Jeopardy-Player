@@ -193,8 +193,8 @@ function RoundContent({
             {cat.clues.map((clue, clueIdx) => (
               <li key={clueIdx} className="cheatsheet-clue-item">
                 <span className="cheatsheet-clue-value">${clue.value}</span>
-                <span className="cheatsheet-clue-solution">
-                  {clue.solution}
+                <span className={`cheatsheet-clue-solution${!clue.solution ? ' unavailable' : ''}`}>
+                  {clue.solution || 'Answer unavailable'}
                 </span>
               </li>
             ))}
@@ -211,7 +211,9 @@ function FinalJeopardyContent({ game }: { game: NormalizedGame }) {
   return (
     <div className="cheatsheet-final">
       <h3 className="cheatsheet-final-category">{final.category}</h3>
-      <p className="cheatsheet-final-solution">{final.solution}</p>
+      <p className={`cheatsheet-final-solution${!final.solution ? ' unavailable' : ''}`}>
+        {final.solution || 'Answer unavailable'}
+      </p>
     </div>
   )
 }
@@ -347,6 +349,11 @@ function getPopupStyles(): string {
       line-height: 1.4;
     }
 
+    .cheatsheet-clue-solution.unavailable {
+      font-style: italic;
+      color: rgb(148 163 184);
+    }
+
     .cheatsheet-final {
       text-align: center;
       padding: 2rem 1rem;
@@ -366,6 +373,12 @@ function getPopupStyles(): string {
       font-weight: 600;
       color: rgb(241 245 249);
       line-height: 1.5;
+    }
+
+    .cheatsheet-final-solution.unavailable {
+      font-style: italic;
+      color: rgb(148 163 184);
+      font-weight: 400;
     }
 
     .cheatsheet-empty {

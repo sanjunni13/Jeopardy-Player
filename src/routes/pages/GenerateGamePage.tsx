@@ -5,6 +5,7 @@ import {
   generateLabsGame,
   generateAiGame,
 } from '../../utils/generateApi'
+import { sanitizeGameName, getDefaultGameName, MAX_GAME_NAME_LENGTH } from '../../utils/gameNameUtils'
 import { BackgroundGradient } from '../../components/ui/background-gradient'
 import { BackButton } from '../../components/BackButton'
 import { CloudSpinner } from '../../components/ui/CloudSpinner'
@@ -61,6 +62,7 @@ export function GenerateGamePage() {
     error: null,
   })
 
+  const [gameName, setGameName] = useState('')
   const [toast, setToast] = useState<string | null>(null)
   const navigatingAfterSuccess = useRef(false)
 
@@ -76,13 +78,14 @@ export function GenerateGamePage() {
     disabled: !aiState.loading && !archiveState.loading && !labsState.loading,
   })
 
-  const isAiGenerateDisabled = aiState.rounds === '' || aiState.categoriesPerRound === '' || aiState.difficulty === '' || aiState.loading
+  const isAiGenerateDisabled = aiState.rounds === '' || aiState.categoriesPerRound === '' || aiState.difficulty === '' || aiState.loading || gameName.trim() === ''
 
   const isGenerating = archiveState.loading || labsState.loading || aiState.loading
 
   async function handleGenerateArchive() {
     setArchiveState((prev) => ({ ...prev, loading: true, error: null }))
-    const response = await generateArchiveGame(archiveState.rounds, archiveState.categoriesPerRound)
+    const resolvedName = gameName.trim() || getDefaultGameName('Archive')
+    const response = await generateArchiveGame(archiveState.rounds, archiveState.categoriesPerRound, resolvedName)
     if ('success' in response) {
       navigatingAfterSuccess.current = true
       navigate({ to: '/home/game/$gameId', params: { gameId: response.id } })
@@ -103,7 +106,8 @@ export function GenerateGamePage() {
     }
 
     setLabsState((prev) => ({ ...prev, loading: true, error: null }))
-    const response = await generateLabsGame(parsedKeywords)
+    const resolvedName = gameName.trim() || getDefaultGameName('Labs')
+    const response = await generateLabsGame(parsedKeywords, resolvedName)
     if ('success' in response) {
       navigatingAfterSuccess.current = true
       navigate({ to: '/home/game/$gameId', params: { gameId: response.id } })
@@ -115,12 +119,14 @@ export function GenerateGamePage() {
   async function handleGenerateAi() {
     setAiState((prev) => ({ ...prev, loading: true, error: null }))
 
+    const resolvedName = gameName.trim() || getDefaultGameName('AI')
     const params = {
       rounds: Number(aiState.rounds),
       categoriesPerRound: Number(aiState.categoriesPerRound),
       difficulty: aiState.difficulty as 'easy' | 'medium' | 'hard',
       dailyDoublesPerRound: aiState.dailyDoublesPerRound,
       specialRequests: aiState.specialRequests,
+      gameName: resolvedName,
     }
 
     // First attempt
@@ -231,6 +237,25 @@ export function GenerateGamePage() {
         {/* Archive Tab */}
         {activeTab === 'archive' && !isGenerating && (
           <div className="generate-tab-content">
+            {/* Game Name Input */}
+            <div>
+              <label className="generate-field-label">Game Name</label>
+              <input
+                type="text"
+                value={gameName}
+                onChange={(e) => setGameName(sanitizeGameName(e.target.value))}
+                placeholder="Enter a game name..."
+                maxLength={MAX_GAME_NAME_LENGTH}
+                required
+                className="generate-select"
+              />
+              {gameName.length >= 80 && (
+                <p className="generate-helper-text">
+                  {gameName.length}/{MAX_GAME_NAME_LENGTH} characters
+                </p>
+              )}
+            </div>
+
             {/* Number of Rounds */}
             <div>
               <label className="generate-field-label">Number of Rounds</label>
@@ -267,7 +292,7 @@ export function GenerateGamePage() {
             <button
               type="button"
               onClick={handleGenerateArchive}
-              disabled={archiveState.loading}
+              disabled={archiveState.loading || gameName.trim() === ''}
               className="generate-primary-btn"
             >
               {archiveState.loading ? 'Generating…' : 'Generate Game'}
@@ -284,6 +309,25 @@ export function GenerateGamePage() {
         {/* Labs Tab */}
         {activeTab === 'labs' && !isGenerating && (
           <div className="generate-tab-content">
+            {/* Game Name Input */}
+            <div>
+              <label className="generate-field-label">Game Name</label>
+              <input
+                type="text"
+                value={gameName}
+                onChange={(e) => setGameName(sanitizeGameName(e.target.value))}
+                placeholder="Enter a game name..."
+                maxLength={MAX_GAME_NAME_LENGTH}
+                required
+                className="generate-select"
+              />
+              {gameName.length >= 80 && (
+                <p className="generate-helper-text">
+                  {gameName.length}/{MAX_GAME_NAME_LENGTH} characters
+                </p>
+              )}
+            </div>
+
             {/* Keywords textarea */}
             <div>
               <textarea
@@ -305,7 +349,7 @@ export function GenerateGamePage() {
             <button
               type="button"
               onClick={handleGenerateLabs}
-              disabled={labsState.keywords.trim() === '' || labsState.loading}
+              disabled={labsState.keywords.trim() === '' || labsState.loading || gameName.trim() === ''}
               className="generate-primary-btn"
             >
               {labsState.loading ? 'Generating…' : 'Generate Game'}
@@ -321,6 +365,25 @@ export function GenerateGamePage() {
         {/* AI Generation Tab */}
         {activeTab === 'ai' && !isGenerating && (
           <div className="generate-tab-content">
+            {/* Game Name Input */}
+            <div>
+              <label className="generate-field-label">Game Name</label>
+              <input
+                type="text"
+                value={gameName}
+                onChange={(e) => setGameName(sanitizeGameName(e.target.value))}
+                placeholder="Enter a game name..."
+                maxLength={MAX_GAME_NAME_LENGTH}
+                required
+                className="generate-select"
+              />
+              {gameName.length >= 80 && (
+                <p className="generate-helper-text">
+                  {gameName.length}/{MAX_GAME_NAME_LENGTH} characters
+                </p>
+              )}
+            </div>
+
             {/* Number of Rounds */}
             <div>
               <label className="generate-field-label">Number of Rounds</label>

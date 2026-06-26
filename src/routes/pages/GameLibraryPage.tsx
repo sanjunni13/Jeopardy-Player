@@ -128,7 +128,7 @@ export function GameLibraryPage() {
   const activeFilterCount = (filters.rounds != null ? 1 : 0) + (filters.creator != null ? 1 : 0) + (filters.source != null ? 1 : 0)
 
   function handleCardClick(id: string) {
-    navigate({ to: '/home/game/$gameId', params: { gameId: id } })
+    navigate({ to: '/home/game/$gameId', params: { gameId: id }, state: { fromLibrary: true } })
   }
 
   function clearFilters() {
