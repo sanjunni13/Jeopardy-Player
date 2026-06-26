@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Outlet } from '@tanstack/react-router'
+import { Outlet, useNavigate } from '@tanstack/react-router'
 import { PlayerProfileProvider } from '../contexts/PlayerProfileProvider'
 import { ProfileGuard } from './ProfileGuard'
 import { LogoutDialog } from './LogoutDialog'
@@ -10,6 +10,7 @@ import './AuthenticatedLayout.css'
 export function AuthenticatedLayout() {
   const [showLogout, setShowLogout] = useState(false)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
+  const navigate = useNavigate()
 
   return (
     <PlayerProfileProvider>
@@ -17,9 +18,13 @@ export function AuthenticatedLayout() {
         <div className="authenticated-layout">
           {/* ── Header ── */}
           <header className="layout-header">
-            <span className="layout-brand">
+            <button
+              type="button"
+              className="layout-brand"
+              onClick={() => navigate({ to: '/home' })}
+            >
               Jeopardy Player by Sanjay Unni
-            </span>
+            </button>
             <div className="layout-header__actions">
               <SettingsIcon />
               <button
