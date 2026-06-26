@@ -28,7 +28,8 @@
 .profile-setup-title {
   font-size: 1.875rem;
   font-weight: 600;
-  margin-bottom: 1rem;
+  margin-top: .5rem;
+  margin-bottom: 2rem;
 }
 
 .profile-setup-subtitle {
@@ -53,6 +54,7 @@
 .profile-setup-label {
   font-size: 0.875rem;
   color: rgb(203 213 225); /* slate-300 */
+  font-style: italic;
 }
 
 .profile-setup-input {

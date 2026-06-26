@@ -3,8 +3,19 @@
 -- has a unique constraint (one auth user maps to at most one player),
 -- and references auth.users(id) as a foreign key.
 
-ALTER TABLE public.players
-  ADD COLUMN auth_uuid uuid UNIQUE REFERENCES auth.users(id);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'players'
+      AND column_name = 'auth_uuid'
+  ) THEN
+    ALTER TABLE public.players
+      ADD COLUMN auth_uuid uuid UNIQUE REFERENCES auth.users(id);
+  END IF;
+END
+$$;
 
 -- Backfill: attempt to link existing players to auth users by joining
 -- auth.users.email to the games.created_by field (which stores the creator's email).

@@ -40,7 +40,18 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.drafts TO authenticated;
 
 -- Ensure storage.objects has an UPDATE policy for the games bucket
 -- (needed for upsert operations on existing files)
-CREATE POLICY "Update Games for Auth Users 1mf269_3"
-  ON storage.objects FOR UPDATE
-  TO authenticated
-  USING (bucket_id = 'games'::text);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE policyname = 'Update Games for Auth Users 1mf269_3'
+      AND tablename = 'objects'
+      AND schemaname = 'storage'
+  ) THEN
+    CREATE POLICY "Update Games for Auth Users 1mf269_3"
+      ON storage.objects FOR UPDATE
+      TO authenticated
+      USING (bucket_id = 'games'::text);
+  END IF;
+END
+$$;

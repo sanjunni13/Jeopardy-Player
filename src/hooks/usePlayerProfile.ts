@@ -20,9 +20,10 @@ export function usePlayerProfile(): UsePlayerProfileResult {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const fetchedRef = useRef(false)
+  const authUuid = session?.user?.id ?? null
 
   const fetchProfile = useCallback(async () => {
-    if (!session?.user?.id) {
+    if (!authUuid) {
       setProfile(null)
       setLoading(false)
       return
@@ -34,7 +35,7 @@ export function usePlayerProfile(): UsePlayerProfileResult {
     const { data, error: queryError } = await supabase
       .from('players')
       .select('id, player_name, auth_uuid')
-      .eq('auth_uuid', session.user.id)
+      .eq('auth_uuid', authUuid)
       .maybeSingle()
 
     if (queryError) {
@@ -51,7 +52,7 @@ export function usePlayerProfile(): UsePlayerProfileResult {
     }
 
     setLoading(false)
-  }, [session?.user?.id])
+  }, [authUuid])
 
   useEffect(() => {
     if (fetchedRef.current) return

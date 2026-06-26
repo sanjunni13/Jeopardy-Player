@@ -8,7 +8,6 @@ import fc from 'fast-check'
 // Capture arguments passed to supabase operations
 let capturedStoragePath: string | null = null
 let capturedInsertPayload: Record<string, unknown> | null = null
-let mockUserId: string = ''
 
 const mockSingle = vi.fn().mockResolvedValue({ data: { id: 'game-uuid-123' }, error: null })
 const mockSelect = vi.fn().mockReturnValue({ single: mockSingle })
