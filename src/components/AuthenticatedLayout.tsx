@@ -1,15 +1,14 @@
 import { useState } from 'react'
 import { Outlet, useNavigate } from '@tanstack/react-router'
+import { toast } from 'react-toastify'
 import { PlayerProfileProvider } from '../contexts/PlayerProfileProvider'
 import { ProfileGuard } from './ProfileGuard'
 import { LogoutDialog } from './LogoutDialog'
 import { SettingsIcon } from './SettingsIcon'
-import { Toast } from './Toast'
 import './AuthenticatedLayout.css'
 
 export function AuthenticatedLayout() {
   const [showLogout, setShowLogout] = useState(false)
-  const [toastMessage, setToastMessage] = useState<string | null>(null)
   const navigate = useNavigate()
 
   return (
@@ -51,15 +50,7 @@ export function AuthenticatedLayout() {
           {showLogout && (
             <LogoutDialog
               onClose={() => setShowLogout(false)}
-              onError={(msg) => setToastMessage(msg)}
-            />
-          )}
-
-          {/* ── Error toast ── */}
-          {toastMessage && (
-            <Toast
-              message={toastMessage}
-              onDismiss={() => setToastMessage(null)}
+              onError={(msg) => toast.error(msg)}
             />
           )}
         </div>

@@ -7,10 +7,6 @@ interface BuilderToolbarProps {
   isPublishing: boolean
   lastSavedAt: Date | null
   autoSaveStatus: 'idle' | 'pending' | 'saving' | 'failed'
-  saveMessage?: { type: 'success' | 'error'; text: string } | null
-  publishMessage?: { type: 'success' | 'error'; text: string } | null
-  onDismissSaveMessage?: () => void
-  onDismissPublishMessage?: () => void
 }
 
 export function BuilderToolbar({
@@ -20,10 +16,6 @@ export function BuilderToolbar({
   isPublishing,
   lastSavedAt,
   autoSaveStatus,
-  saveMessage,
-  publishMessage,
-  onDismissSaveMessage,
-  onDismissPublishMessage,
 }: BuilderToolbarProps) {
   return (
     <div className="flex flex-wrap items-center gap-3 py-4">
@@ -72,11 +64,6 @@ export function BuilderToolbar({
       </Button>
 
       {/* Auto-save status indicator */}
-      {autoSaveStatus === 'idle' && lastSavedAt && (
-        <span className="text-sm text-muted-foreground" role="status">
-          Draft saved at {lastSavedAt.toLocaleTimeString()}
-        </span>
-      )}
       {autoSaveStatus === 'saving' && (
         <span className="text-sm text-muted-foreground" role="status">
           Auto-saving...
@@ -88,43 +75,10 @@ export function BuilderToolbar({
         </span>
       )}
 
-      {/* Save message */}
-      {saveMessage && (
-        <span
-          className={`text-sm ${saveMessage.type === 'success' ? 'text-green-500' : 'text-destructive'}`}
-          role="status"
-        >
-          {saveMessage.text}
-          {onDismissSaveMessage && (
-            <button
-              type="button"
-              onClick={onDismissSaveMessage}
-              className="ml-2 text-xs underline"
-              aria-label="Dismiss save message"
-            >
-              ×
-            </button>
-          )}
-        </span>
-      )}
-
-      {/* Publish message */}
-      {publishMessage && (
-        <span
-          className={`text-sm ${publishMessage.type === 'success' ? 'text-green-500' : 'text-destructive'}`}
-          role="status"
-        >
-          {publishMessage.text}
-          {onDismissPublishMessage && (
-            <button
-              type="button"
-              onClick={onDismissPublishMessage}
-              className="ml-2 text-xs underline"
-              aria-label="Dismiss publish message"
-            >
-              ×
-            </button>
-          )}
+      {/* Last saved label */}
+      {autoSaveStatus === 'idle' && lastSavedAt && (
+        <span className="text-sm text-muted-foreground" role="status">
+          Last saved at {lastSavedAt.toLocaleTimeString()}
         </span>
       )}
     </div>

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate, useParams, useBlocker } from '@tanstack/react-router'
+import { toast } from 'react-toastify'
 import { supabase } from '../../utils/supabase'
 import { useBuilderState } from '../../hooks/useBuilderState'
 import { useDraftPersistence } from '../../hooks/useDraftPersistence'
@@ -58,8 +59,6 @@ export function BuilderPage() {
 
   // ─── Local UI state ──────────────────────────────────────────────────────
   const [isPublishing, setIsPublishing] = useState(false)
-  const [saveMessage, setSaveMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
-  const [publishMessage, setPublishMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
   // Loading state for draft resume
   const [isLoadingDraft, setIsLoadingDraft] = useState(false)
@@ -141,27 +140,17 @@ export function BuilderPage() {
   const handleSave = useCallback(async () => {
     const result = await save()
     if (result.success) {
-      setSaveMessage({ type: 'success', text: 'Draft saved successfully.' })
+      toast.success('Draft saved successfully.')
     } else {
       const errorText = result.error ?? 'Save failed.'
       const isAuthError = errorText.toLowerCase().includes('auth') || errorText.toLowerCase().includes('not authenticated')
-      setSaveMessage({
-        type: 'error',
-        text: isAuthError
+      toast.error(
+        isAuthError
           ? 'Session expired. Please log in again.'
           : errorText,
-      })
+      )
     }
   }, [save])
-
-  // ─── Auto-dismiss save messages ──────────────────────────────────────────
-  useEffect(() => {
-    if (!saveMessage) return
-    if (saveMessage.type === 'success') {
-      const timer = setTimeout(() => setSaveMessage(null), 5000)
-      return () => clearTimeout(timer)
-    }
-  }, [saveMessage])
 
   // ─── Publish handler ─────────────────────────────────────────────────────
   const handlePublish = useCallback(async () => {
@@ -173,13 +162,12 @@ export function BuilderPage() {
     const draftValidation = validateDraftForPublish(draft)
 
     if (!formValid || !draftValidation.valid) {
-      setPublishMessage({ type: 'error', text: 'Please fix all errors before publishing.' })
+      toast.error('Please fix all errors before publishing.')
       return
     }
 
     // 2. Start publishing
     setIsPublishing(true)
-    setPublishMessage(null)
 
     try {
       // 3. Convert to normalized game
@@ -196,35 +184,26 @@ export function BuilderPage() {
         }
 
         // 6. Show success and navigate
-        setPublishMessage({ type: 'success', text: 'Game published successfully!' })
+        toast.success('Game published successfully!')
         resetDirty() // Clear dirty state so navigation isn't blocked
         setTimeout(() => {
           navigate({ to: '/home/library' })
         }, 2000)
       } else if ('alreadyExists' in result && result.alreadyExists) {
-        setPublishMessage({ type: 'error', text: 'A game with this name already exists. Please choose a different name.' })
+        toast.error('A game with this name already exists. Please choose a different name.')
         // Focus the game name field
         const gameNameInput = document.getElementById('builder-game-name')
         gameNameInput?.focus()
       } else {
         const errorText = 'error' in result ? result.error : 'Publish failed.'
-        setPublishMessage({ type: 'error', text: errorText })
+        toast.error(errorText)
       }
     } catch {
-      setPublishMessage({ type: 'error', text: 'Network error. Please try again.' })
+      toast.error('Network error. Please try again.')
     } finally {
       setIsPublishing(false)
     }
   }, [validateForPublish, toBuildDraft, toNormalizedGame, formState.gameName, profile, currentDraftId, draftId, userEmail, resetDirty, navigate])
-
-  // ─── Auto-dismiss publish success message ────────────────────────────────
-  useEffect(() => {
-    if (!publishMessage) return
-    if (publishMessage.type === 'success') {
-      const timer = setTimeout(() => setPublishMessage(null), 2000)
-      return () => clearTimeout(timer)
-    }
-  }, [publishMessage])
 
   // ─── Render: Loading state ───────────────────────────────────────────────
   if (isLoadingDraft) {
@@ -281,8 +260,6 @@ export function BuilderPage() {
           isPublishing={isPublishing}
           lastSavedAt={lastSavedAt}
           autoSaveStatus={autoSaveStatus}
-          saveMessage={saveMessage}
-          publishMessage={publishMessage}
           onSetGameName={setGameName}
           onSetTotalRounds={setTotalRounds}
           onSetCategoriesPerRound={setCategoriesPerRound}
@@ -292,8 +269,6 @@ export function BuilderPage() {
           onValidateField={validateField}
           onSave={handleSave}
           onPublish={handlePublish}
-          onDismissSaveMessage={() => setSaveMessage(null)}
-          onDismissPublishMessage={() => setPublishMessage(null)}
         />
       </BackgroundGradient>
 

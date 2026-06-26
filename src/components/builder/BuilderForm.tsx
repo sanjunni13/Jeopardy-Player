@@ -20,8 +20,6 @@ interface BuilderFormProps {
   isPublishing: boolean
   lastSavedAt: Date | null
   autoSaveStatus: 'idle' | 'pending' | 'saving' | 'failed'
-  saveMessage: { type: 'success' | 'error'; text: string } | null
-  publishMessage: { type: 'success' | 'error'; text: string } | null
   onSetGameName: (name: string) => void
   onSetTotalRounds: (n: number) => void
   onSetCategoriesPerRound: (n: number) => void
@@ -37,8 +35,6 @@ interface BuilderFormProps {
   onValidateField: (fieldPath: string) => void
   onSave: () => void
   onPublish: () => void
-  onDismissSaveMessage: () => void
-  onDismissPublishMessage: () => void
 }
 
 // ─── Component ─────────────────────────────────────────────────────────────────
@@ -50,8 +46,6 @@ export function BuilderForm({
   isPublishing,
   lastSavedAt,
   autoSaveStatus,
-  saveMessage,
-  publishMessage,
   onSetGameName,
   onSetTotalRounds,
   onSetCategoriesPerRound,
@@ -61,8 +55,6 @@ export function BuilderForm({
   onValidateField,
   onSave,
   onPublish,
-  onDismissSaveMessage,
-  onDismissPublishMessage,
 }: BuilderFormProps) {
   // ─── Focus management (Req 11.6) ──────────────────────────────────────────
   const prevTotalRoundsRef = useRef(formState.totalRounds)
@@ -268,10 +260,6 @@ export function BuilderForm({
         isPublishing={isPublishing}
         lastSavedAt={lastSavedAt}
         autoSaveStatus={autoSaveStatus}
-        saveMessage={saveMessage}
-        publishMessage={publishMessage}
-        onDismissSaveMessage={onDismissSaveMessage}
-        onDismissPublishMessage={onDismissPublishMessage}
       />
     </div>
   )

@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react'
 import { useNavigate, useBlocker } from '@tanstack/react-router'
+import { toast } from 'react-toastify'
 import {
   generateArchiveGame,
   generateLabsGame,
@@ -66,7 +67,6 @@ export function GenerateGamePage() {
   })
 
   const [gameName, setGameName] = useState('')
-  const [toast, setToast] = useState<string | null>(null)
   const navigatingAfterSuccess = useRef(false)
 
   useBlocker({
@@ -154,8 +154,7 @@ export function GenerateGamePage() {
     }
 
     // First failure - show toast and retry
-    setToast('An error occurred, retrying...')
-    setTimeout(() => setToast(null), 3000)
+    toast.info('An error occurred, retrying...')
 
     // Retry with same params
     const retryResponse = await generateAiGame(params)
@@ -188,12 +187,6 @@ export function GenerateGamePage() {
 
   return (
     <div className="generate-page">
-      {/* Toast notification */}
-      {toast && (
-        <div className="generate-toast" role="status" aria-live="polite">
-          {toast}
-        </div>
-      )}
       <BackgroundGradient containerClassName="generate-gradient-container" className="generate-card">
         {/* Back button */}
         <BackButton onClick={() => navigate({ to: '/home' })} label="Back to home" />

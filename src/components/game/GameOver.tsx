@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import confetti from 'canvas-confetti'
+import { toast } from 'react-toastify'
 import type { Player } from '../../types/game'
 import { updateGameStats } from '../../utils/gameApi'
 import { usePlayerProfileContext } from '../../hooks/usePlayerProfileContext'
-import { Toast } from '../Toast'
 import { BackgroundGradient } from '../ui/background-gradient'
 import './GameOver.css'
 
@@ -14,7 +14,6 @@ interface GameOverProps {
 }
 
 export function GameOver({ players, gameId, onBackToHome }: GameOverProps) {
-  const [warningMessage, setWarningMessage] = useState<string | null>(null)
   const statsCalledRef = useRef(false)
   const confettiFiredRef = useRef(false)
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -39,10 +38,10 @@ export function GameOver({ players, gameId, onBackToHome }: GameOverProps) {
 
     updateGameStats(gameId, players, winnerNames, authenticatedPlayer).then(response => {
       if (!response.success) {
-        setWarningMessage(response.error ?? 'Failed to update game statistics.')
+        toast.warning(response.error ?? 'Failed to update game statistics.')
       }
     }).catch(() => {
-      setWarningMessage('Failed to update game statistics.')
+      toast.warning('Failed to update game statistics.')
     })
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -145,14 +144,6 @@ export function GameOver({ players, gameId, onBackToHome }: GameOverProps) {
           Back to Home Page
         </button>
       </BackgroundGradient>
-
-      {/* Warning toast for failed stats update */}
-      {warningMessage && (
-        <Toast
-          message={warningMessage}
-          onDismiss={() => setWarningMessage(null)}
-        />
-      )}
     </div>
   )
 }

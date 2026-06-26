@@ -15,7 +15,7 @@ export interface UseDraftPersistenceReturn {
 
 // ─── Constants ─────────────────────────────────────────────────────────────────
 
-const AUTO_SAVE_DELAY_MS = 30000
+const AUTO_SAVE_DELAY_MS = 60000
 
 // ─── Hook ──────────────────────────────────────────────────────────────────────
 

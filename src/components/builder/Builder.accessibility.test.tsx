@@ -8,33 +8,28 @@ import { FinalJeopardySection } from './FinalJeopardySection'
 import { BuilderForm } from './BuilderForm'
 import { generateEmptyFormState } from '../../utils/builderFormStructure'
 
+const defaultFormProps = {
+  formState: generateEmptyFormState(1, 1),
+  errors: {} as Record<string, string>,
+  isDirty: false,
+  isSaving: false,
+  isPublishing: false,
+  lastSavedAt: null,
+  autoSaveStatus: 'idle' as const,
+  onSetGameName: vi.fn(),
+  onSetTotalRounds: vi.fn(),
+  onSetCategoriesPerRound: vi.fn(),
+  onSetCategoryName: vi.fn(),
+  onSetClueField: vi.fn(),
+  onSetFinalField: vi.fn(),
+  onValidateField: vi.fn(),
+  onSave: vi.fn(),
+  onPublish: vi.fn(),
+}
+
 describe('Accessibility: Keyboard navigation order (Req 11.1)', () => {
   it('BuilderForm key inputs are focusable and in the document', () => {
-    const formState = generateEmptyFormState(1, 1)
-    render(
-      <BuilderForm
-        formState={formState}
-        errors={{}}
-        isDirty={false}
-        isSaving={false}
-        isPublishing={false}
-        lastSavedAt={null}
-        autoSaveStatus="idle"
-        saveMessage={null}
-        publishMessage={null}
-        onSetGameName={vi.fn()}
-        onSetTotalRounds={vi.fn()}
-        onSetCategoriesPerRound={vi.fn()}
-        onSetCategoryName={vi.fn()}
-        onSetClueField={vi.fn()}
-        onSetFinalField={vi.fn()}
-        onValidateField={vi.fn()}
-        onSave={vi.fn()}
-        onPublish={vi.fn()}
-        onDismissSaveMessage={vi.fn()}
-        onDismissPublishMessage={vi.fn()}
-      />
-    )
+    render(<BuilderForm {...defaultFormProps} />)
 
     // Game name input
     const gameNameInput = screen.getByLabelText(/game name/i)
@@ -62,28 +57,7 @@ describe('Accessibility: Focus management on section add (Req 11.6)', () => {
   it('round sections have data-round-index attributes for focus targeting', () => {
     const formState = generateEmptyFormState(2, 1)
     const { container } = render(
-      <BuilderForm
-        formState={formState}
-        errors={{}}
-        isDirty={false}
-        isSaving={false}
-        isPublishing={false}
-        lastSavedAt={null}
-        autoSaveStatus="idle"
-        saveMessage={null}
-        publishMessage={null}
-        onSetGameName={vi.fn()}
-        onSetTotalRounds={vi.fn()}
-        onSetCategoriesPerRound={vi.fn()}
-        onSetCategoryName={vi.fn()}
-        onSetClueField={vi.fn()}
-        onSetFinalField={vi.fn()}
-        onValidateField={vi.fn()}
-        onSave={vi.fn()}
-        onPublish={vi.fn()}
-        onDismissSaveMessage={vi.fn()}
-        onDismissPublishMessage={vi.fn()}
-      />
+      <BuilderForm {...defaultFormProps} formState={formState} />
     )
 
     const roundSections = container.querySelectorAll('[data-round-index]')
@@ -95,28 +69,7 @@ describe('Accessibility: Focus management on section add (Req 11.6)', () => {
   it('category sections have data-category-index attributes for focus targeting', () => {
     const formState = generateEmptyFormState(1, 3)
     const { container } = render(
-      <BuilderForm
-        formState={formState}
-        errors={{}}
-        isDirty={false}
-        isSaving={false}
-        isPublishing={false}
-        lastSavedAt={null}
-        autoSaveStatus="idle"
-        saveMessage={null}
-        publishMessage={null}
-        onSetGameName={vi.fn()}
-        onSetTotalRounds={vi.fn()}
-        onSetCategoriesPerRound={vi.fn()}
-        onSetCategoryName={vi.fn()}
-        onSetClueField={vi.fn()}
-        onSetFinalField={vi.fn()}
-        onValidateField={vi.fn()}
-        onSave={vi.fn()}
-        onPublish={vi.fn()}
-        onDismissSaveMessage={vi.fn()}
-        onDismissPublishMessage={vi.fn()}
-      />
+      <BuilderForm {...defaultFormProps} formState={formState} />
     )
 
     const categorySections = container.querySelectorAll('[data-category-index]')
@@ -230,31 +183,7 @@ describe('Accessibility: ARIA label associations (Req 11.2)', () => {
   })
 
   it('BuilderForm game name input has associated label', () => {
-    const formState = generateEmptyFormState(1, 1)
-    render(
-      <BuilderForm
-        formState={formState}
-        errors={{}}
-        isDirty={false}
-        isSaving={false}
-        isPublishing={false}
-        lastSavedAt={null}
-        autoSaveStatus="idle"
-        saveMessage={null}
-        publishMessage={null}
-        onSetGameName={vi.fn()}
-        onSetTotalRounds={vi.fn()}
-        onSetCategoriesPerRound={vi.fn()}
-        onSetCategoryName={vi.fn()}
-        onSetClueField={vi.fn()}
-        onSetFinalField={vi.fn()}
-        onValidateField={vi.fn()}
-        onSave={vi.fn()}
-        onPublish={vi.fn()}
-        onDismissSaveMessage={vi.fn()}
-        onDismissPublishMessage={vi.fn()}
-      />
-    )
+    render(<BuilderForm {...defaultFormProps} />)
 
     expect(screen.getByLabelText(/game name/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/number of rounds/i)).toBeInTheDocument()

@@ -15,8 +15,6 @@ const defaultFormProps = {
   isPublishing: false,
   lastSavedAt: null,
   autoSaveStatus: 'idle' as const,
-  saveMessage: null,
-  publishMessage: null,
   onSetGameName: vi.fn(),
   onSetTotalRounds: vi.fn(),
   onSetCategoriesPerRound: vi.fn(),
@@ -26,8 +24,6 @@ const defaultFormProps = {
   onValidateField: vi.fn(),
   onSave: vi.fn(),
   onPublish: vi.fn(),
-  onDismissSaveMessage: vi.fn(),
-  onDismissPublishMessage: vi.fn(),
 }
 
 describe('BuilderForm', () => {
@@ -67,17 +63,6 @@ describe('BuilderForm', () => {
 
     const saveButton = screen.getByRole('button', { name: /saving draft/i })
     expect(saveButton).toBeDisabled()
-  })
-
-  it('shows save success message when saveMessage is provided (Req 3.4)', () => {
-    render(
-      <BuilderForm
-        {...defaultFormProps}
-        saveMessage={{ type: 'success', text: 'Draft saved successfully!' }}
-      />
-    )
-
-    expect(screen.getByText('Draft saved successfully!')).toBeInTheDocument()
   })
 })
 
