@@ -16,7 +16,8 @@ export interface RateLimitErrorResponse {
 
 export async function generateArchiveGame(
   rounds: number,
-  categoriesPerRound: number
+  categoriesPerRound: number,
+  gameName: string
 ): Promise<GenerateResponse | GenerateErrorResponse> {
   const { data: { session } } = await supabase.auth.getSession()
   const token = session?.access_token
@@ -30,7 +31,7 @@ export async function generateArchiveGame(
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ rounds, categoriesPerRound }),
+      body: JSON.stringify({ rounds, categoriesPerRound, gameName }),
     }
   )
 
@@ -38,7 +39,8 @@ export async function generateArchiveGame(
 }
 
 export async function generateLabsGame(
-  keywords: string[]
+  keywords: string[],
+  gameName: string
 ): Promise<GenerateResponse | GenerateErrorResponse> {
   const { data: { session } } = await supabase.auth.getSession()
   const token = session?.access_token
@@ -52,7 +54,7 @@ export async function generateLabsGame(
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ keywords }),
+      body: JSON.stringify({ keywords, gameName }),
     }
   )
 
@@ -65,6 +67,7 @@ export interface GenerateAiGameParams {
   difficulty: 'easy' | 'medium' | 'hard'
   dailyDoublesPerRound: number
   specialRequests: string
+  gameName: string
 }
 
 export async function generateAiGame(

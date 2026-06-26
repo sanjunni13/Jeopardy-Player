@@ -5,7 +5,7 @@ import { supabase } from '../../utils/supabase'
 import { BackgroundGradient } from '../../components/ui/background-gradient'
 import './LoginPage.css'
 
-type Mode = 'sign_in' | 'sign_up'
+type Mode = 'sign_in' | 'sign_up' | 'forgot_password'
 
 export function LoginPage() {
   const { session, loading } = useAuth()
@@ -32,6 +32,10 @@ export function LoginPage() {
     return 'both'
   }
 
+  function isValidEmail(value: string): boolean {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())
+  }
+
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setError(null)
@@ -40,7 +44,24 @@ export function LoginPage() {
     setSubmitting(true)
 
     try {
-      if (mode === 'sign_up') {
+      if (mode === 'forgot_password') {
+        const trimmedEmail = email.trim()
+        if (!trimmedEmail) {
+          setError('Please enter your email address.')
+          setErrorField('email')
+          setSubmitting(false)
+          return
+        }
+        if (!isValidEmail(trimmedEmail)) {
+          setError('Please enter a valid email address (e.g. you@example.com).')
+          setErrorField('email')
+          setSubmitting(false)
+          return
+        }
+        const { error } = await supabase.auth.resetPasswordForEmail(trimmedEmail)
+        if (error) throw error
+        setInfo('If an account exists for that email, you will receive a password reset link. Please check your inbox.')
+      } else if (mode === 'sign_up') {
         const { error } = await supabase.auth.signUp({ email, password })
         if (error) throw error
         setInfo('Check your email for a confirmation link before signing in.')
@@ -51,7 +72,11 @@ export function LoginPage() {
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'An unexpected error occurred.'
       setError(msg)
-      setErrorField(detectErrorField(msg))
+      if (mode === 'forgot_password') {
+        setErrorField('email')
+      } else {
+        setErrorField(detectErrorField(msg))
+      }
     } finally {
       setSubmitting(false)
     }
@@ -80,12 +105,14 @@ export function LoginPage() {
     <main className="login-page">
       <BackgroundGradient containerClassName="login-gradient-container" className="login-card">
         <h1 className="login-title">
-          {mode === 'sign_in' ? 'Sign in' : 'Create account'}
+          {mode === 'sign_in' ? 'Sign in' : mode === 'sign_up' ? 'Create account' : 'Reset your password'}
         </h1>
         <p className="login-subtitle">
           {mode === 'sign_in'
             ? 'Welcome back — enter your email and password.'
-            : 'Sign up with your email and a secure password.'}
+            : mode === 'sign_up'
+            ? 'Sign up with your email and a secure password.'
+            : "Enter your email and we'll send you a reset link."}
         </p>
 
         <form onSubmit={handleSubmit} className="login-form">
@@ -95,7 +122,7 @@ export function LoginPage() {
               id="email"
               type="email"
               autoComplete="email"
-              required
+              required={mode !== 'forgot_password'}
               value={email}
               onChange={handleEmailChange}
               placeholder="you@example.com"
@@ -103,19 +130,30 @@ export function LoginPage() {
             />
           </div>
 
-          <div className="login-field">
-            <label htmlFor="password" className="login-label">Password</label>
-            <input
-              id="password"
-              type="password"
-              autoComplete={mode === 'sign_in' ? 'current-password' : 'new-password'}
-              required
-              value={password}
-              onChange={handlePasswordChange}
-              placeholder="••••••••"
-              className={`login-input ${passwordHasError ? 'login-input-error' : ''}`}
-            />
-          </div>
+          {mode !== 'forgot_password' && (
+            <div className="login-field">
+              <label htmlFor="password" className="login-label">Password</label>
+              <input
+                id="password"
+                type="password"
+                autoComplete={mode === 'sign_in' ? 'current-password' : 'new-password'}
+                required
+                value={password}
+                onChange={handlePasswordChange}
+                placeholder="••••••••"
+                className={`login-input ${passwordHasError ? 'login-input-error' : ''}`}
+              />
+              {mode === 'sign_in' && (
+                <button
+                  type="button"
+                  onClick={() => { setMode('forgot_password'); setError(null); setInfo(null); setErrorField(null) }}
+                  className="login-forgot-btn"
+                >
+                  Forgot password?
+                </button>
+              )}
+            </div>
+          )}
 
           {error && <p role="alert" className="login-error">{error}</p>}
           {info && <p role="status" className="login-info">{info}</p>}
@@ -126,21 +164,33 @@ export function LoginPage() {
             className="login-submit-btn"
           >
             {submitting
-              ? mode === 'sign_in' ? 'Signing in…' : 'Creating account…'
-              : mode === 'sign_in' ? 'Sign in' : 'Create account'}
+              ? mode === 'forgot_password' ? 'Sending…' : mode === 'sign_in' ? 'Signing in…' : 'Creating account…'
+              : mode === 'forgot_password' ? 'Send reset link' : mode === 'sign_in' ? 'Sign in' : 'Create account'}
           </button>
         </form>
 
-        <p className="login-toggle">
-          {mode === 'sign_in' ? "Don't have an account?" : 'Already have an account?'}{' '}
-          <button
-            type="button"
-            onClick={() => { setMode(mode === 'sign_in' ? 'sign_up' : 'sign_in'); setError(null); setInfo(null); setErrorField(null) }}
-            className="login-toggle-btn"
-          >
-            {mode === 'sign_in' ? 'Sign up' : 'Sign in'}
-          </button>
-        </p>
+        {mode === 'forgot_password' ? (
+          <p className="login-toggle">
+            <button
+              type="button"
+              onClick={() => { setMode('sign_in'); setError(null); setInfo(null); setErrorField(null) }}
+              className="login-toggle-btn"
+            >
+              ← Back to sign in
+            </button>
+          </p>
+        ) : (
+          <p className="login-toggle">
+            {mode === 'sign_in' ? "Don't have an account?" : 'Already have an account?'}{' '}
+            <button
+              type="button"
+              onClick={() => { setMode(mode === 'sign_in' ? 'sign_up' : 'sign_in'); setError(null); setInfo(null); setErrorField(null) }}
+              className="login-toggle-btn"
+            >
+              {mode === 'sign_in' ? 'Sign up' : 'Sign in'}
+            </button>
+          </p>
+        )}
       </BackgroundGradient>
     </main>
   )

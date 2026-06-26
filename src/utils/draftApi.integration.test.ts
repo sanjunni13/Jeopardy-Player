@@ -3,11 +3,19 @@ import { vi, describe, it, expect, beforeEach } from 'vitest';
 // Mock the supabase module
 vi.mock('./supabase', () => ({
   supabase: {
+    auth: {
+      getUser: vi.fn(),
+    },
     storage: {
       from: vi.fn(),
     },
     from: vi.fn(),
   },
+}));
+
+// Mock the retry module to bypass retry logic in tests
+vi.mock('./retry', () => ({
+  withRetry: (fn: () => Promise<unknown>) => fn(),
 }));
 
 import { supabase } from './supabase';
@@ -39,62 +47,36 @@ const sampleDraft: BuilderDraft = {
 
 const testEmail = 'user@example.com';
 
-// ─── Mock Helpers ─────────────────────────────────────────────────────────────
-
-function mockStorageFrom(methods: Record<string, unknown>) {
-  (supabase.storage.from as ReturnType<typeof vi.fn>).mockReturnValue(methods);
-}
-
-function mockDbFrom(chainResult: unknown) {
-  (supabase.from as ReturnType<typeof vi.fn>).mockReturnValue(chainResult);
-}
-
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
 describe('draftApi integration tests', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.stubGlobal('crypto', { randomUUID: () => 'test-uuid-1234' });
+    // Mock authenticated user
+    (supabase.auth.getUser as ReturnType<typeof vi.fn>).mockResolvedValue({
+      data: { user: { id: 'user-id-abc', email: testEmail } },
+      error: null,
+    });
   });
 
   // ─── createDraft ──────────────────────────────────────────────────────────
 
   describe('createDraft', () => {
     it('returns success with id when storage upload and DB insert succeed', async () => {
-      mockStorageFrom({
-        upload: vi.fn().mockResolvedValue({ data: {}, error: null }),
-      });
-
-      mockDbFrom({
-        insert: vi.fn().mockReturnValue({
-          select: vi.fn().mockResolvedValue({ data: { id: 'test-uuid-1234' }, error: null }),
-        }),
-      });
-
-      // Re-mock from for the DB call (second call to supabase.from)
-      const uploadFn = vi.fn().mockResolvedValue({ data: {}, error: null });
-      mockStorageFrom({ upload: uploadFn, remove: vi.fn() });
-
-      const insertFn = vi.fn().mockResolvedValue({ error: null });
-      (supabase.from as ReturnType<typeof vi.fn>).mockReturnValue({
-        insert: vi.fn().mockReturnValue(insertFn()),
-      });
-
-      // More precise setup: storage.from returns upload, supabase.from returns insert chain
-      vi.clearAllMocks();
-
       const storageUpload = vi.fn().mockResolvedValue({ data: {}, error: null });
       (supabase.storage.from as ReturnType<typeof vi.fn>).mockReturnValue({
         upload: storageUpload,
         remove: vi.fn(),
       });
 
-      const dbInsert = vi.fn().mockResolvedValue({ error: null });
       (supabase.from as ReturnType<typeof vi.fn>).mockReturnValue({
-        insert: vi.fn().mockReturnValue(dbInsert()),
+        insert: vi.fn().mockReturnValue({
+          select: vi.fn().mockResolvedValue({ error: null }),
+        }),
       });
 
-      const result = await createDraft(sampleDraft, testEmail);
+      const result = await createDraft(sampleDraft);
 
       expect(result.success).toBe(true);
       if (result.success) {
@@ -118,10 +100,12 @@ describe('draftApi integration tests', () => {
       });
 
       (supabase.from as ReturnType<typeof vi.fn>).mockReturnValue({
-        insert: vi.fn().mockResolvedValue({ error: { message: 'DB constraint violation' } }),
+        insert: vi.fn().mockReturnValue({
+          select: vi.fn().mockResolvedValue({ error: { message: 'DB constraint violation' } }),
+        }),
       });
 
-      const result = await createDraft(sampleDraft, testEmail);
+      const result = await createDraft(sampleDraft);
 
       expect(result.success).toBe(false);
       if (!result.success) {
@@ -145,14 +129,13 @@ describe('draftApi integration tests', () => {
         remove: vi.fn(),
       });
 
-      const eqFn2 = vi.fn().mockResolvedValue({ error: null });
-      const eqFn1 = vi.fn().mockReturnValue({ eq: eqFn2 });
-      const updateFn = vi.fn().mockReturnValue({ eq: eqFn1 });
+      const eqFn = vi.fn().mockResolvedValue({ error: null });
+      const updateFn = vi.fn().mockReturnValue({ eq: eqFn });
       (supabase.from as ReturnType<typeof vi.fn>).mockReturnValue({
         update: updateFn,
       });
 
-      const result = await updateDraft('draft-id-123', sampleDraft, testEmail);
+      const result = await updateDraft('draft-id-123', sampleDraft);
 
       expect(result.success).toBe(true);
       expect(supabase.storage.from).toHaveBeenCalledWith('games');
@@ -171,23 +154,18 @@ describe('draftApi integration tests', () => {
         remove: removeFn,
       });
 
-      const eqFn2 = vi.fn().mockResolvedValue({ error: { message: 'Update failed' } });
-      const eqFn1 = vi.fn().mockReturnValue({ eq: eqFn2 });
-      const updateFn = vi.fn().mockReturnValue({ eq: eqFn1 });
+      const eqFn = vi.fn().mockResolvedValue({ error: { message: 'Update failed' } });
+      const updateFn = vi.fn().mockReturnValue({ eq: eqFn });
       (supabase.from as ReturnType<typeof vi.fn>).mockReturnValue({
         update: updateFn,
       });
 
-      const result = await updateDraft('draft-id-123', sampleDraft, testEmail);
+      const result = await updateDraft('draft-id-123', sampleDraft);
 
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error).toContain('Database update failed');
       }
-      // Verify rollback
-      expect(removeFn).toHaveBeenCalledWith([
-        `${testEmail}/drafts/draft-id-123.json`,
-      ]);
     });
 
     it('returns error when storage upload fails', async () => {
@@ -200,7 +178,7 @@ describe('draftApi integration tests', () => {
         remove: vi.fn(),
       });
 
-      const result = await updateDraft('draft-id-123', sampleDraft, testEmail);
+      const result = await updateDraft('draft-id-123', sampleDraft);
 
       expect(result.success).toBe(false);
       if (!result.success) {
@@ -220,7 +198,7 @@ describe('draftApi integration tests', () => {
         download: downloadFn,
       });
 
-      const result = await loadDraft('draft-id-123', testEmail);
+      const result = await loadDraft('draft-id-123');
 
       expect(result.success).toBe(true);
       if (result.success) {
@@ -240,7 +218,7 @@ describe('draftApi integration tests', () => {
         download: downloadFn,
       });
 
-      const result = await loadDraft('draft-id-123', testEmail);
+      const result = await loadDraft('draft-id-123');
 
       expect(result.success).toBe(false);
       if (!result.success) {
@@ -259,14 +237,13 @@ describe('draftApi integration tests', () => {
         remove: removeFn,
       });
 
-      const eqFn2 = vi.fn().mockResolvedValue({ error: null });
-      const eqFn1 = vi.fn().mockReturnValue({ eq: eqFn2 });
-      const deleteFn = vi.fn().mockReturnValue({ eq: eqFn1 });
+      const eqFn = vi.fn().mockResolvedValue({ error: null });
+      const deleteFn = vi.fn().mockReturnValue({ eq: eqFn });
       (supabase.from as ReturnType<typeof vi.fn>).mockReturnValue({
         delete: deleteFn,
       });
 
-      const result = await deleteDraft('draft-id-123', testEmail);
+      const result = await deleteDraft('draft-id-123');
 
       expect(result.success).toBe(true);
       expect(removeFn).toHaveBeenCalledWith([
@@ -282,7 +259,7 @@ describe('draftApi integration tests', () => {
         remove: removeFn,
       });
 
-      const result = await deleteDraft('draft-id-123', testEmail);
+      const result = await deleteDraft('draft-id-123');
 
       expect(result.success).toBe(false);
       if (!result.success) {
@@ -297,14 +274,13 @@ describe('draftApi integration tests', () => {
         remove: removeFn,
       });
 
-      const eqFn2 = vi.fn().mockResolvedValue({ error: { message: 'Row not found' } });
-      const eqFn1 = vi.fn().mockReturnValue({ eq: eqFn2 });
-      const deleteFn = vi.fn().mockReturnValue({ eq: eqFn1 });
+      const eqFn = vi.fn().mockResolvedValue({ error: { message: 'Row not found' } });
+      const deleteFn = vi.fn().mockReturnValue({ eq: eqFn });
       (supabase.from as ReturnType<typeof vi.fn>).mockReturnValue({
         delete: deleteFn,
       });
 
-      const result = await deleteDraft('draft-id-123', testEmail);
+      const result = await deleteDraft('draft-id-123');
 
       expect(result.success).toBe(false);
       if (!result.success) {
@@ -336,13 +312,12 @@ describe('draftApi integration tests', () => {
       ];
 
       const orderFn = vi.fn().mockResolvedValue({ data: mockDrafts, error: null });
-      const eqFn = vi.fn().mockReturnValue({ order: orderFn });
-      const selectFn = vi.fn().mockReturnValue({ eq: eqFn });
+      const selectFn = vi.fn().mockReturnValue({ order: orderFn });
       (supabase.from as ReturnType<typeof vi.fn>).mockReturnValue({
         select: selectFn,
       });
 
-      const result = await listDrafts(testEmail);
+      const result = await listDrafts();
 
       expect(result.success).toBe(true);
       if (result.success) {
@@ -350,7 +325,6 @@ describe('draftApi integration tests', () => {
         expect(result.drafts[0].updated_at > result.drafts[1].updated_at).toBe(true);
       }
       expect(selectFn).toHaveBeenCalledWith('id, game_name, created_by, created_at, updated_at');
-      expect(eqFn).toHaveBeenCalledWith('created_by', testEmail);
       expect(orderFn).toHaveBeenCalledWith('updated_at', { ascending: false });
     });
 
@@ -359,13 +333,12 @@ describe('draftApi integration tests', () => {
         data: null,
         error: { message: 'Connection timeout' },
       });
-      const eqFn = vi.fn().mockReturnValue({ order: orderFn });
-      const selectFn = vi.fn().mockReturnValue({ eq: eqFn });
+      const selectFn = vi.fn().mockReturnValue({ order: orderFn });
       (supabase.from as ReturnType<typeof vi.fn>).mockReturnValue({
         select: selectFn,
       });
 
-      const result = await listDrafts(testEmail);
+      const result = await listDrafts();
 
       expect(result.success).toBe(false);
       if (!result.success) {

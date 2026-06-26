@@ -28,7 +28,7 @@ export function BuilderToolbar({
   return (
     <div className="flex flex-wrap items-center gap-3 py-4">
       <Button
-        variant="default"
+        variant="outline"
         className="min-h-11"
         onClick={onSave}
         disabled={isSaving}
@@ -46,11 +46,11 @@ export function BuilderToolbar({
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
           </svg>
         )}
-        {isSaving ? 'Saving...' : 'Save'}
+        {isSaving ? 'Saving...' : 'Save Draft'}
       </Button>
 
       <Button
-        variant="secondary"
+        variant="default"
         className="min-h-11"
         onClick={onPublish}
         disabled={isPublishing}

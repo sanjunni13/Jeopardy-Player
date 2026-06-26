@@ -148,6 +148,21 @@
 
 /* ─── Toggle mode link ─────────────────────────────────────────────────────── */
 
+.login-forgot-btn {
+  align-self: flex-end;
+  margin-top: 0.25rem;
+  font-size: 0.8rem;
+  color: rgb(148 163 184); /* slate-400 */
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.login-forgot-btn:hover {
+  color: #6A1B9A;
+}
+
 .login-toggle {
   margin-top: 1.5rem;
   text-align: center;

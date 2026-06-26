@@ -5,6 +5,7 @@ import { useBuilderState } from '../../hooks/useBuilderState'
 import { useDraftPersistence } from '../../hooks/useDraftPersistence'
 import { saveGame } from '../../utils/gameApi'
 import { deleteDraft } from '../../utils/draftApi'
+import { validateDraftForPublish } from '../../utils/draftValidation'
 import { BackButton } from '../../components/BackButton'
 import { BackgroundGradient } from '../../components/ui/background-gradient'
 import { BuilderForm } from '../../components/builder/BuilderForm'
@@ -37,7 +38,6 @@ export function BuilderPage() {
     setFinalField,
     validateField,
     validateForPublish,
-    validateForSave,
     resetDirty,
     loadFromDraft,
     toBuildDraft,
@@ -135,14 +135,8 @@ export function BuilderPage() {
     })
   }, [draftId, userEmail, loadDraft])
 
-  // ─── Save handler ────────────────────────────────────────────────────────
+  // ─── Save handler (no validation — saves draft as-is) ─────────────────────
   const handleSave = useCallback(async () => {
-    const valid = validateForSave()
-    if (!valid) {
-      setSaveMessage({ type: 'error', text: 'Fix format errors before saving.' })
-      return
-    }
-
     const result = await save()
     if (result.success) {
       setSaveMessage({ type: 'success', text: 'Draft saved successfully.' })
@@ -156,7 +150,7 @@ export function BuilderPage() {
           : errorText,
       })
     }
-  }, [validateForSave, save])
+  }, [save])
 
   // ─── Auto-dismiss save messages ──────────────────────────────────────────
   useEffect(() => {
@@ -169,9 +163,14 @@ export function BuilderPage() {
 
   // ─── Publish handler ─────────────────────────────────────────────────────
   const handlePublish = useCallback(async () => {
-    // 1. Validate for publish
-    const valid = validateForPublish()
-    if (!valid) {
+    // 1. Run form-level validation (sets inline errors on each invalid field)
+    const formValid = validateForPublish()
+
+    // 2. Also validate the draft object using draftValidation.ts
+    const draft = toBuildDraft()
+    const draftValidation = validateDraftForPublish(draft)
+
+    if (!formValid || !draftValidation.valid) {
       setPublishMessage({ type: 'error', text: 'Please fix all errors before publishing.' })
       return
     }
@@ -214,7 +213,7 @@ export function BuilderPage() {
     } finally {
       setIsPublishing(false)
     }
-  }, [validateForPublish, toNormalizedGame, formState.gameName, currentDraftId, draftId, userEmail, resetDirty, navigate])
+  }, [validateForPublish, toBuildDraft, toNormalizedGame, formState.gameName, currentDraftId, draftId, userEmail, resetDirty, navigate])
 
   // ─── Auto-dismiss publish success message ────────────────────────────────
   useEffect(() => {

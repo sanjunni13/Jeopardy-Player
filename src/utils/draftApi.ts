@@ -22,8 +22,9 @@ export interface DraftMetadata {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 async function getAuthUser() {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return null;
+  // Verify we have a valid session with the server
+  const { data: { user }, error } = await supabase.auth.getUser();
+  if (error || !user) return null;
   return { id: user.id, email: user.email ?? '' };
 }
 
@@ -40,14 +41,27 @@ export async function createDraft(
     const storagePath = `${user.email}/drafts/${id}.json`;
 
     // Upload JSON to Storage
+    console.log('[draftApi] Attempting storage upload:', { path: storagePath, userId: user.id });
     const { error: uploadErr } = await supabase.storage
       .from('games')
       .upload(storagePath, JSON.stringify(draft), {
         contentType: 'application/json',
-        upsert: false,
+        upsert: true,
       });
+    console.log('[draftApi] Storage upload result:', { hasError: !!uploadErr, error: uploadErr });
 
     if (uploadErr) {
+      const { data: { session: debugSession } } = await supabase.auth.getSession();
+      console.error('[draftApi] Storage upload failed:', {
+        path: storagePath,
+        userId: user.id,
+        email: user.email,
+        error: uploadErr,
+        statusCode: (uploadErr as unknown as Record<string, unknown>).statusCode,
+        hasSession: !!debugSession,
+        hasAccessToken: !!debugSession?.access_token,
+        tokenPrefix: debugSession?.access_token?.substring(0, 20),
+      });
       return { success: false, error: `Storage upload failed: ${uploadErr.message}` };
     }
 
@@ -58,7 +72,8 @@ export async function createDraft(
         id,
         game_name: draft.gameName,
         created_by: user.id,
-      });
+      })
+      .select();
 
     if (insertErr) {
       // Rollback: delete the uploaded file
@@ -82,7 +97,7 @@ export async function updateDraft(
 
     const storagePath = `${user.email}/drafts/${draftId}.json`;
 
-    // Overwrite JSON in Storage (upsert: true)
+    // Overwrite JSON in Storage
     const { error: uploadErr } = await supabase.storage
       .from('games')
       .upload(storagePath, JSON.stringify(draft), {
