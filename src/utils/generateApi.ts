@@ -64,7 +64,7 @@ export async function generateLabsGame(
 export interface GenerateAiGameParams {
   rounds: number
   categoriesPerRound: number
-  difficulty: 'easy' | 'medium' | 'hard'
+  difficulty: number
   dailyDoublesPerRound: number
   specialRequests: string
   gameName: string

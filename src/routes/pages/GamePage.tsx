@@ -87,10 +87,25 @@ export function GamePage() {
           return
         }
 
-        // Build storage path: if created_by is set, game is under that folder; otherwise it's at the root
-        const storagePath = gameRow.created_by
-          ? `${gameRow.created_by}/${gameRow.game_name}.json`
-          : `${gameRow.game_name}.json`
+        // Build storage path: games are stored under auth_uuid/{game_name}.json
+        // Look up the creator's auth_uuid from the players table
+        let storagePath: string
+        if (gameRow.created_by) {
+          const { data: creatorData } = await supabase
+            .from('players')
+            .select('auth_uuid')
+            .eq('id', gameRow.created_by)
+            .single()
+
+          if (creatorData?.auth_uuid) {
+            storagePath = `${creatorData.auth_uuid}/${gameRow.game_name}.json`
+          } else {
+            // Fallback: try using the current user's auth UUID
+            storagePath = `${user.id}/${gameRow.game_name}.json`
+          }
+        } else {
+          storagePath = `${gameRow.game_name}.json`
+        }
         const { data: fileData, error: downloadErr } = await supabase.storage
           .from('games')
           .download(storagePath)

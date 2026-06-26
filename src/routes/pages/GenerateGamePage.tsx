@@ -10,6 +10,7 @@ import { usePreferences } from '../../hooks/usePreferences'
 import { BackgroundGradient } from '../../components/ui/background-gradient'
 import { BackButton } from '../../components/BackButton'
 import { CloudSpinner } from '../../components/ui/CloudSpinner'
+import ElasticSlider from '../../components/ui/ElasticSlider'
 import { FAQCard } from '../../components/ui/FAQCard'
 import { generateGameFAQ } from '../../data/faqData'
 import './GenerateGamePage.css'
@@ -32,7 +33,7 @@ interface LabsState {
 interface AiState {
   rounds: string
   categoriesPerRound: string
-  difficulty: string
+  difficulty: number
   dailyDoublesPerRound: number
   specialRequests: string
   loading: boolean
@@ -57,7 +58,7 @@ export function GenerateGamePage() {
   const [aiState, setAiState] = useState<AiState>({
     rounds: String(preferences.defaultRounds),
     categoriesPerRound: '',
-    difficulty: '',
+    difficulty: 5,
     dailyDoublesPerRound: 0,
     specialRequests: '',
     loading: false,
@@ -80,7 +81,7 @@ export function GenerateGamePage() {
     disabled: !aiState.loading && !archiveState.loading && !labsState.loading,
   })
 
-  const isAiGenerateDisabled = aiState.rounds === '' || aiState.categoriesPerRound === '' || aiState.difficulty === '' || aiState.loading || gameName.trim() === ''
+  const isAiGenerateDisabled = aiState.rounds === '' || aiState.categoriesPerRound === '' || aiState.loading || gameName.trim() === ''
 
   const isGenerating = archiveState.loading || labsState.loading || aiState.loading
 
@@ -125,7 +126,7 @@ export function GenerateGamePage() {
     const params = {
       rounds: Number(aiState.rounds),
       categoriesPerRound: Number(aiState.categoriesPerRound),
-      difficulty: aiState.difficulty as 'easy' | 'medium' | 'hard',
+      difficulty: aiState.difficulty,
       dailyDoublesPerRound: aiState.dailyDoublesPerRound,
       specialRequests: aiState.specialRequests,
       gameName: resolvedName,
@@ -420,18 +421,18 @@ export function GenerateGamePage() {
 
             {/* Difficulty */}
             <div>
-              <label className="generate-field-label">Difficulty</label>
-              <select
-                value={aiState.difficulty}
-                onChange={(e) => setAiState((prev) => ({ ...prev, difficulty: e.target.value }))}
-                disabled={aiState.loading}
-                className="generate-select"
-              >
-                <option value="" disabled>Select difficulty…</option>
-                <option value="easy">Easy</option>
-                <option value="medium">Medium</option>
-                <option value="hard">Hard</option>
-              </select>
+              <label className="generate-field-label">Difficulty: <span style={{ fontSize: '1.25rem', fontWeight: 700, color: '#CE93D8' }}>{aiState.difficulty}</span>/10</label>
+              <ElasticSlider
+                defaultValue={5}
+                startingValue={1}
+                maxValue={10}
+                isStepped={true}
+                stepSize={1}
+                leftIcon={<span className="text-xs text-green-400 font-medium">Easy</span>}
+                rightIcon={<span className="text-xs text-red-400 font-medium">Hard</span>}
+                onChange={(val) => setAiState((prev) => ({ ...prev, difficulty: val }))}
+                className="w-full"
+              />
             </div>
 
             {/* Daily Doubles per Round */}
@@ -441,7 +442,7 @@ export function GenerateGamePage() {
                 type="number"
                 value={aiState.dailyDoublesPerRound}
                 onChange={(e) => setAiState((prev) => ({ ...prev, dailyDoublesPerRound: Math.max(0, Math.min(Number(prev.categoriesPerRound) || 0, Number(e.target.value))) }))}
-                disabled={aiState.loading || aiState.rounds === '' || aiState.categoriesPerRound === '' || aiState.difficulty === ''}
+                disabled={aiState.loading || aiState.rounds === '' || aiState.categoriesPerRound === ''}
                 min={0}
                 max={Number(aiState.categoriesPerRound) || 0}
                 className="generate-select"

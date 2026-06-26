@@ -66,13 +66,18 @@ export async function deleteGame(
 ): Promise<{ success: boolean; error?: string }> {
   try {
     // Delete game row from database
-    const { error: deleteErr } = await supabase
+    const { error: deleteErr, count } = await supabase
       .from('games')
-      .delete()
+      .delete({ count: 'exact' })
       .eq('id', gameId);
 
     if (deleteErr) {
       return { success: false, error: 'Failed to delete game' };
+    }
+
+    // If count is 0, the row wasn't actually deleted (likely RLS blocking)
+    if (count === 0) {
+      return { success: false, error: 'Failed to delete game — permission denied' };
     }
 
     // Delete storage file (best-effort — partial failure is acceptable per Req 6.8)

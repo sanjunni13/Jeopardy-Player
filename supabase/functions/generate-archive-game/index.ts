@@ -73,7 +73,7 @@ serve(async (req: Request) => {
     const playerId = playerData.id
 
     // Parse request body
-    const { rounds, categoriesPerRound } = await req.json()
+    const { rounds, categoriesPerRound, gameName: requestedGameName } = await req.json()
 
     // Validate inputs
     if (
@@ -228,7 +228,9 @@ serve(async (req: Request) => {
 
     // Generate timestamp and upload
     const timestamp = Date.now()
-    const gameName = `generated_${timestamp}`
+    const gameName = (typeof requestedGameName === 'string' && requestedGameName.trim())
+      ? requestedGameName.trim()
+      : `generated_${timestamp}`
     const storagePath = `${user.id}/${gameName}.json`
 
     const { error: uploadError } = await supabase.storage

@@ -117,7 +117,7 @@ serve(async (req: Request) => {
       })
     }
 
-    const { rounds, categoriesPerRound, difficulty, dailyDoublesPerRound, specialRequests } = body
+    const { rounds, categoriesPerRound, difficulty, dailyDoublesPerRound, specialRequests, gameName: requestedGameName } = body
 
     // Validate rounds
     if (typeof rounds !== 'number' || !Number.isInteger(rounds) || rounds < 1 || rounds > 6) {
@@ -135,10 +135,9 @@ serve(async (req: Request) => {
       })
     }
 
-    // Validate difficulty
-    const validDifficulties = ['easy', 'medium', 'hard']
-    if (typeof difficulty !== 'string' || !validDifficulties.includes(difficulty)) {
-      return new Response(JSON.stringify({ error: "Invalid 'difficulty': must be 'easy', 'medium', or 'hard'" }), {
+    // Validate difficulty (now a 1-10 scale)
+    if (typeof difficulty !== 'number' || !Number.isInteger(difficulty) || difficulty < 1 || difficulty > 10) {
+      return new Response(JSON.stringify({ error: "Invalid 'difficulty': must be a number between 1 and 10" }), {
         status: 400,
         headers: { ...CORS, 'Content-Type': 'application/json' },
       })
@@ -164,7 +163,7 @@ serve(async (req: Request) => {
     const validatedParams = {
       rounds: rounds as number,
       categoriesPerRound: categoriesPerRound as number,
-      difficulty: difficulty as 'easy' | 'medium' | 'hard',
+      difficulty: difficulty as number,
       dailyDoublesPerRound: dailyDoublesPerRound as number,
       specialRequests: specialRequests as string,
     }
@@ -178,15 +177,30 @@ serve(async (req: Request) => {
     }
 
     const totalCategories = validatedParams.rounds * validatedParams.categoriesPerRound
+    const difficultyLevel = validatedParams.difficulty
+    const difficultyDescriptions: Record<number, string> = {
+      1: 'Very easy — elementary-level trivia that almost anyone would know (e.g., "What color are bananas?")',
+      2: 'Easy — simple facts most people learn by middle school (e.g., "What ocean is on the east coast of the United States?")',
+      3: 'Casual — straightforward general knowledge, like an easy pub quiz (e.g., "What is the largest planet in our solar system?")',
+      4: 'Average — standard trivia night level, requires some general knowledge (e.g., "What year did the Titanic sink?")',
+      5: 'Standard Jeopardy — typical TV show difficulty, a mix of accessible and tricky clues',
+      6: 'Above average — requires solid general knowledge across multiple topics, like a competitive trivia league',
+      7: 'Challenging — clues that require specific knowledge or clever wordplay, like a hard Jeopardy episode',
+      8: 'Difficult — deep but still fun trivia; think Tournament of Champions level where you need broad cultural literacy',
+      9: 'Very challenging — obscure-but-guessable clues that reward well-read players; think final rounds of quiz bowl',
+      10: 'Expert trivia — the hardest clues that are still fun and answerable with deep general knowledge; not academic, but would stump most casual players',
+    }
+    const difficultyDescription = difficultyDescriptions[difficultyLevel] || difficultyDescriptions[5]
+
     const prompt = `You are a Jeopardy game generator. Generate a complete Jeopardy game with the following specifications:
 
 - Total categories needed: ${totalCategories} (${validatedParams.rounds} rounds × ${validatedParams.categoriesPerRound} categories per round)
-- Difficulty level: ${validatedParams.difficulty}
+- Difficulty level: ${difficultyLevel}/10 — ${difficultyDescription}
 - Each category must have exactly 5 clues
 - Clues must be in classic Jeopardy style: the clue is a statement, and the solution is in question form (e.g., clue: "This planet is closest to the sun", solution: "What is Mercury?")
 - All category names must be unique (no duplicates)
 - Include a Final Jeopardy round with a single category, clue, and solution
-- Generate varied, interesting categories appropriate for the ${validatedParams.difficulty} difficulty level
+- Scale the complexity of clues to match difficulty ${difficultyLevel}/10. Make sure the game is fun and engaging at this level — clues should be challenging enough to be satisfying but not so obscure that players can't reasonably guess.
 ${validatedParams.specialRequests ? `- Special requests: ${validatedParams.specialRequests}` : ''}
 
 Return a JSON object with this exact structure:
@@ -212,54 +226,83 @@ Return a JSON object with this exact structure:
 
 The "categories" array must contain exactly ${totalCategories} categories. Each category must have exactly 5 clues.`
 
-    // Call Gemini API with 60-second timeout
-    const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 60000)
+    // Model fallback chain: try each model in order until one succeeds
+    const MODELS = [
+      'gemini-2.5-flash-lite',
+      'gemini-2.5-flash',
+      'gemini-2.5-pro',
+      'gemini-3.5-flash',
+      'gemini-3.1-pro-preview',
+      'gemini-3.1-flash-lite',
+      'gemini-3-flash-preview',
+      'gemini-2.0-flash',
+      'gemini-2.0-flash-lite',
+      'gemini-1.5-flash',
+      'gemini-1.5-flash-8b',
+      'gemini-1.5-pro',
+    ]
 
-    let geminiResponse: Response
-    try {
-      geminiResponse = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${geminiApiKey}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: { responseMimeType: 'application/json' },
-          }),
-          signal: controller.signal,
+    let geminiData: unknown = null
+    let lastError = ''
+
+    for (const model of MODELS) {
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 60000)
+
+      let geminiResponse: Response
+      try {
+        geminiResponse = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: prompt }] }],
+              generationConfig: { responseMimeType: 'application/json' },
+            }),
+            signal: controller.signal,
+          }
+        )
+      } catch (err) {
+        clearTimeout(timeoutId)
+        if (err instanceof DOMException && err.name === 'AbortError') {
+          lastError = `Model ${model} timed out`
+          continue
         }
-      )
-    } catch (err) {
+        lastError = `Model ${model} fetch failed`
+        continue
+      }
       clearTimeout(timeoutId)
-      if (err instanceof DOMException && err.name === 'AbortError') {
-        return new Response(JSON.stringify({ error: 'AI generation timed out. Please retry.' }), {
-          status: 504,
-          headers: { ...CORS, 'Content-Type': 'application/json' },
-        })
-      }
-      return new Response(JSON.stringify({ error: 'AI generation failed. Please retry.' }), {
-        status: 502,
-        headers: { ...CORS, 'Content-Type': 'application/json' },
-      })
-    }
-    clearTimeout(timeoutId)
 
-    // Parse and validate Gemini response
-    let geminiData: unknown
-    try {
-      const geminiBody = await geminiResponse.json()
-      const textContent = geminiBody?.candidates?.[0]?.content?.parts?.[0]?.text
-      if (!textContent) {
-        // Temporarily return more detail
-        return new Response(JSON.stringify({ error: 'AI generation failed. Please retry.', debug: JSON.stringify(geminiBody).slice(0, 500) }), {
-          status: 502,
-          headers: { ...CORS, 'Content-Type': 'application/json' },
-        })
+      // If model is overloaded (503) or rate limited (429), try next model
+      if (geminiResponse.status === 503 || geminiResponse.status === 429) {
+        lastError = `Model ${model} returned ${geminiResponse.status}`
+        continue
       }
-      geminiData = JSON.parse(textContent)
-    } catch (e) {
-      return new Response(JSON.stringify({ error: 'AI generation failed. Please retry.', debug: String(e) }), {
+
+      if (!geminiResponse.ok) {
+        lastError = `Model ${model} returned ${geminiResponse.status}`
+        continue
+      }
+
+      // Parse response
+      try {
+        const geminiBody = await geminiResponse.json()
+        const textContent = geminiBody?.candidates?.[0]?.content?.parts?.[0]?.text
+        if (!textContent) {
+          lastError = `Model ${model} returned no content`
+          continue
+        }
+        geminiData = JSON.parse(textContent)
+        break // Success — exit the loop
+      } catch {
+        lastError = `Model ${model} returned unparseable response`
+        continue
+      }
+    }
+
+    if (!geminiData) {
+      return new Response(JSON.stringify({ error: `AI generation failed after trying all models. Last error: ${lastError}` }), {
         status: 502,
         headers: { ...CORS, 'Content-Type': 'application/json' },
       })
@@ -290,8 +333,9 @@ The "categories" array must contain exactly ${totalCategories} categories. Each 
     )
 
     // Upload game JSON to storage and insert DB row
-    const timestamp = Date.now()
-    const gameName = `ai_${timestamp}`
+    const gameName = (typeof requestedGameName === 'string' && requestedGameName.trim())
+      ? requestedGameName.trim()
+      : `ai_${Date.now()}`
     const storagePath = `${user.id}/${gameName}.json`
 
     // Upload to storage

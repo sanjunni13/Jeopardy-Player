@@ -171,6 +171,11 @@ function formatRoundName(round: string): string {
   }
 }
 
+/** Strips HTML tags from a string for plain-text display */
+function stripHtml(text: string): string {
+  return text.replace(/<[^>]*>/g, '').trim()
+}
+
 function RoundContent({
   game,
   roundName,
@@ -194,7 +199,7 @@ function RoundContent({
               <li key={clueIdx} className="cheatsheet-clue-item">
                 <span className="cheatsheet-clue-value">${clue.value}</span>
                 <span className={`cheatsheet-clue-solution${!clue.solution ? ' unavailable' : ''}`}>
-                  {clue.solution || 'Answer unavailable'}
+                  {clue.solution ? stripHtml(clue.solution) : 'Answer unavailable'}
                 </span>
               </li>
             ))}
@@ -212,7 +217,7 @@ function FinalJeopardyContent({ game }: { game: NormalizedGame }) {
     <div className="cheatsheet-final">
       <h3 className="cheatsheet-final-category">{final.category}</h3>
       <p className={`cheatsheet-final-solution${!final.solution ? ' unavailable' : ''}`}>
-        {final.solution || 'Answer unavailable'}
+        {final.solution ? stripHtml(final.solution) : 'Answer unavailable'}
       </p>
     </div>
   )

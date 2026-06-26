@@ -256,9 +256,10 @@ serve(async (req: Request) => {
     // Parse request body
     const body = await req.json()
     const keywords: string[] = body.keywords
+    const requestedGameName: string | undefined = body.gameName
 
-    // Determine max slugs per keyword
-    const maxPerKeyword = keywords.length > 3 ? 5 : 10
+    // Determine max slugs per keyword — fetch more to compensate for scraping failures
+    const maxPerKeyword = keywords.length > 3 ? 10 : 20
 
     // Fetch game slugs for each keyword
     const allSlugs = new Set<string>()
@@ -293,9 +294,188 @@ serve(async (req: Request) => {
     const validCategories = buildValidCategories(allScrapedCategories)
 
     if (validCategories.length < 12) {
+      // Try with a lower threshold — accept categories with at least 3 clues and pad to 5
+      const relaxedCategories = allScrapedCategories
+        .filter((cat) => cat.clues.length >= 3)
+        .map((cat) => {
+          const clues = cat.clues.slice(0, 5)
+          // Pad to 5 clues if fewer available
+          while (clues.length < 5) {
+            clues.push({ clue: 'No clue available', solution: 'No answer available' })
+          }
+          return { category: cat.category, clues }
+        })
+
+      if (relaxedCategories.length >= 12) {
+        // Use relaxed categories instead
+        const shuffledRelaxed = shuffle(relaxedCategories)
+        const round1Categories = shuffledRelaxed.slice(0, 6)
+        const round2Categories = shuffledRelaxed.slice(6, 12)
+        const unusedCategories = shuffledRelaxed.slice(12)
+
+        const singleRound: Category[] = round1Categories.map((cat) =>
+          assignClues(cat, [200, 400, 600, 800, 1000])
+        )
+        const doubleRound: Category[] = round2Categories.map((cat) =>
+          assignClues(cat, [400, 800, 1200, 1600, 2000])
+        )
+
+        placeDailyDoubles(singleRound, 600)
+        placeDailyDoubles(doubleRound, 1200)
+
+        let finalRound: FinalRound
+        if (unusedCategories.length > 0) {
+          const finalCat = unusedCategories[0]
+          const firstClue = finalCat.clues[0]
+          finalRound = {
+            category: finalCat.category,
+            clue: firstClue.clue,
+            solution: firstClue.solution,
+            html: containsHtml(firstClue.clue) || containsHtml(firstClue.solution),
+          }
+        } else {
+          const fallbackCat = round2Categories[round2Categories.length - 1]
+          const fallbackClue = fallbackCat.clues[fallbackCat.clues.length - 1]
+          finalRound = {
+            category: fallbackCat.category,
+            clue: fallbackClue.clue,
+            solution: fallbackClue.solution,
+            html: containsHtml(fallbackClue.clue) || containsHtml(fallbackClue.solution),
+          }
+        }
+
+        const game = {
+          rounds: { single: singleRound, double: doubleRound },
+          final: finalRound,
+          totalRounds: 2,
+        }
+
+        const fallbackSlug1 = keywords.join('-').replace(/[^a-z0-9-]/gi, '').slice(0, 50)
+        const gameName = (requestedGameName && requestedGameName.trim())
+          ? requestedGameName.trim()
+          : `labs_${fallbackSlug1}_${Date.now()}`
+        const storagePath = `${user.id}/${gameName}.json`
+
+        const { error: uploadError } = await supabase.storage
+          .from('games')
+          .upload(storagePath, JSON.stringify(game), {
+            contentType: 'application/json',
+            upsert: false,
+          })
+
+        if (uploadError) {
+          return new Response(
+            JSON.stringify({ error: `Failed to upload game: ${uploadError.message}` }),
+            { status: 500, headers: { ...CORS, 'Content-Type': 'application/json' } }
+          )
+        }
+
+        const { data: row, error: dbError } = await supabase
+          .from('games')
+          .insert({
+            game_name: gameName,
+            total_rounds: 2,
+            times_played: 0,
+            winners: [],
+            created_by: playerId,
+            source: 'labs',
+          })
+          .select('id')
+          .single()
+
+        if (dbError || !row) {
+          await supabase.storage.from('games').remove([storagePath])
+          return new Response(
+            JSON.stringify({ error: `Database insert failed: ${dbError?.message || 'Unknown error'}` }),
+            { status: 500, headers: { ...CORS, 'Content-Type': 'application/json' } }
+          )
+        }
+
+        return new Response(JSON.stringify({ success: true, id: row.id }), {
+          status: 200,
+          headers: { ...CORS, 'Content-Type': 'application/json' },
+        })
+      }
+
+      // If we have at least 6 categories, build a single-round game (5 categories + 1 for Final)
+      if (relaxedCategories.length >= 6) {
+        const shuffledRelaxed = shuffle(relaxedCategories)
+        const catCount = Math.min(6, shuffledRelaxed.length - 1) // Reserve 1 for Final
+        const round1Categories = shuffledRelaxed.slice(0, catCount)
+        const finalCat = shuffledRelaxed[catCount]
+
+        const singleRound: Category[] = round1Categories.map((cat) =>
+          assignClues(cat, [200, 400, 600, 800, 1000])
+        )
+
+        placeDailyDoubles(singleRound, 600)
+
+        const firstClue = finalCat.clues[0]
+        const finalRound: FinalRound = {
+          category: finalCat.category,
+          clue: firstClue.clue,
+          solution: firstClue.solution,
+          html: containsHtml(firstClue.clue) || containsHtml(firstClue.solution),
+        }
+
+        const game = {
+          rounds: { single: singleRound },
+          final: finalRound,
+          totalRounds: 1,
+        }
+
+        const fallbackSlug2 = keywords.join('-').replace(/[^a-z0-9-]/gi, '').slice(0, 50)
+        const gameName = (requestedGameName && requestedGameName.trim())
+          ? requestedGameName.trim()
+          : `labs_${fallbackSlug2}_${Date.now()}`
+        const storagePath = `${user.id}/${gameName}.json`
+
+        const { error: uploadError } = await supabase.storage
+          .from('games')
+          .upload(storagePath, JSON.stringify(game), {
+            contentType: 'application/json',
+            upsert: false,
+          })
+
+        if (uploadError) {
+          return new Response(
+            JSON.stringify({ error: `Failed to upload game: ${uploadError.message}` }),
+            { status: 500, headers: { ...CORS, 'Content-Type': 'application/json' } }
+          )
+        }
+
+        const { data: row, error: dbError } = await supabase
+          .from('games')
+          .insert({
+            game_name: gameName,
+            total_rounds: 1,
+            times_played: 0,
+            winners: [],
+            created_by: playerId,
+            source: 'labs',
+          })
+          .select('id')
+          .single()
+
+        if (dbError || !row) {
+          await supabase.storage.from('games').remove([storagePath])
+          return new Response(
+            JSON.stringify({ error: `Database insert failed: ${dbError?.message || 'Unknown error'}` }),
+            { status: 500, headers: { ...CORS, 'Content-Type': 'application/json' } }
+          )
+        }
+
+        return new Response(JSON.stringify({ success: true, id: row.id }), {
+          status: 200,
+          headers: { ...CORS, 'Content-Type': 'application/json' },
+        })
+      }
+
       return new Response(
         JSON.stringify({
           error: 'Not enough valid categories found from search results. Try different keywords.',
+          found: relaxedCategories.length,
+          needed: 6,
         }),
         {
           status: 422,
@@ -361,9 +541,10 @@ serve(async (req: Request) => {
     }
 
     // Generate keywords slug and timestamp
-    const slug = keywords.join('-').replace(/[^a-z0-9-]/gi, '').slice(0, 50)
-    const timestamp = Date.now()
-    const gameName = `labs_${slug}_${timestamp}`
+    const fallbackSlug = keywords.join('-').replace(/[^a-z0-9-]/gi, '').slice(0, 50)
+    const gameName = (requestedGameName && requestedGameName.trim())
+      ? requestedGameName.trim()
+      : `labs_${fallbackSlug}_${Date.now()}`
     const storagePath = `${user.id}/${gameName}.json`
 
     // Upload game JSON to games bucket
