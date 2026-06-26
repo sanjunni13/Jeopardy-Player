@@ -215,7 +215,7 @@ export function BuilderPage() {
     } finally {
       setIsPublishing(false)
     }
-  }, [validateForPublish, toBuildDraft, toNormalizedGame, formState.gameName, currentDraftId, draftId, userEmail, resetDirty, navigate])
+  }, [validateForPublish, toBuildDraft, toNormalizedGame, formState.gameName, profile, currentDraftId, draftId, userEmail, resetDirty, navigate])
 
   // ─── Auto-dismiss publish success message ────────────────────────────────
   useEffect(() => {

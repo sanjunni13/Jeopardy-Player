@@ -25,7 +25,7 @@ export function ProfileSection() {
 
   // Player name state
   const [playerName, setPlayerName] = useState('')
-  const [displayedPlayerName, setDisplayedPlayerName] = useState('')
+  const [nameOverride, setNameOverride] = useState<string | null>(null)
   const [nameMessage, setNameMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [nameSubmitting, setNameSubmitting] = useState(false)
   const nameTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -64,11 +64,7 @@ export function ProfileSection() {
   const [deleteAccountError, setDeleteAccountError] = useState<string | null>(null)
 
   // Initialize player name from profile
-  useEffect(() => {
-    if (profile?.playerName) {
-      setDisplayedPlayerName(profile.playerName)
-    }
-  }, [profile?.playerName])
+  const displayedPlayerName = nameOverride ?? profile?.playerName ?? ''
 
   // Fetch current user info (email + created_at)
   useEffect(() => {
@@ -112,17 +108,45 @@ export function ProfileSection() {
       setGames(filtered)
     }
     setGamesLoading(false)
-  }, [profile?.playerId])
+  }, [profile])
 
+  // Fetch games on mount and when profile changes
+  const playerId = profile?.playerId
   useEffect(() => {
-    fetchGames()
-  }, [fetchGames])
+    if (!playerId) return
+    let cancelled = false
+
+    async function load() {
+      setGamesLoading(true)
+      setGamesError(null)
+
+      const { data, error } = await supabase
+        .from('games')
+        .select('id, game_name')
+        .eq('created_by', playerId)
+        .order('game_name', { ascending: true })
+
+      if (cancelled) return
+
+      if (error) {
+        setGamesError('Failed to load games')
+        setGames([])
+      } else {
+        const filtered = (data ?? []).filter(g => !deletedGameIds.has(g.id))
+        setGames(filtered)
+      }
+      setGamesLoading(false)
+    }
+
+    load()
+    return () => { cancelled = true }
+  }, [playerId])
 
   // Re-fetch games when returning to the page (window focus)
   useEffect(() => {
     function handleFocus() {
       if (profile?.playerId) {
-        fetchGames()
+        void fetchGames()
       }
     }
     window.addEventListener('focus', handleFocus)
@@ -131,11 +155,15 @@ export function ProfileSection() {
 
   // Cleanup timers on unmount
   useEffect(() => {
+    const nameTimer = nameTimerRef
+    const emailTimer = emailTimerRef
+    const passwordTimer = passwordTimerRef
+    const gamesTimer = gamesTimerRef
     return () => {
-      if (nameTimerRef.current) clearTimeout(nameTimerRef.current)
-      if (emailTimerRef.current) clearTimeout(emailTimerRef.current)
-      if (passwordTimerRef.current) clearTimeout(passwordTimerRef.current)
-      if (gamesTimerRef.current) clearTimeout(gamesTimerRef.current)
+      if (nameTimer.current) clearTimeout(nameTimer.current)
+      if (emailTimer.current) clearTimeout(emailTimer.current)
+      if (passwordTimer.current) clearTimeout(passwordTimer.current)
+      if (gamesTimer.current) clearTimeout(gamesTimer.current)
     }
   }, [])
 
@@ -168,7 +196,7 @@ export function ProfileSection() {
 
     if (result.success) {
       const newName = playerName.trim()
-      setDisplayedPlayerName(newName)
+      setNameOverride(newName)
       setPlayerName('')
       setSuccessWithTimeout(setNameMessage, nameTimerRef, 'Player name updated successfully')
     } else {

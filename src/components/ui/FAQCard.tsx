@@ -40,7 +40,7 @@ export function FAQCard({ items }: FAQCardProps) {
               </h3>
             </Accordion.Header>
             <Accordion.Content className="faq-content">
-              <p className="faq-answer">{item.answer}</p>
+              <p className="faq-answer" style={{ whiteSpace: 'pre-line' }}>{item.answer}</p>
             </Accordion.Content>
           </Accordion.Item>
         ))}

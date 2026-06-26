@@ -42,6 +42,7 @@ const mockStorageFrom = vi.fn().mockReturnValue({
   remove: vi.fn().mockResolvedValue({ data: null, error: null }),
 })
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 let mockUserId = ''
 const mockGetUser = vi.fn()
 

@@ -192,200 +192,45 @@ describe('deleteGame', () => {
 describe('deleteAccount', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    // Default: all operations succeed
-    mockSelectQuery.mockReturnValue({ ilike: mockIlike })
-    mockFunctionsInvoke.mockResolvedValue({ error: null })
-    mockStorageRemove.mockResolvedValue({ error: null })
+    mockFunctionsInvoke.mockResolvedValue({ data: { success: true }, error: null })
   })
 
-  it('returns success when all steps complete', async () => {
+  it('returns success when edge function succeeds', async () => {
     const { deleteAccount } = await import('./settingsApi')
 
-    // Step 1: query games → returns games list
-    const mockGamesSelectEq = vi.fn().mockResolvedValue({
-      data: [{ id: 1, game_name: 'Game1' }],
-      error: null,
-    })
-    const mockGamesSelect = vi.fn().mockReturnValue({ eq: mockGamesSelectEq })
-
-    // Step 2: delete games → success
-    const mockGamesDeleteEq = vi.fn().mockResolvedValue({ error: null })
-    const mockGamesDelete = vi.fn().mockReturnValue({ eq: mockGamesDeleteEq })
-
-    // Step 4: delete player → success
-    const mockPlayerDeleteEq = vi.fn().mockResolvedValue({ error: null })
-    const mockPlayerDelete = vi.fn().mockReturnValue({ eq: mockPlayerDeleteEq })
-
-    let callCount = 0
-    mockFrom.mockImplementation((table: string) => {
-      if (table === 'games') {
-        callCount++
-        if (callCount === 1) {
-          return { select: mockGamesSelect }
-        }
-        return { delete: mockGamesDelete }
-      }
-      if (table === 'players') {
-        return { delete: mockPlayerDelete }
-      }
-      return {}
-    })
-
-    mockStorageRemove.mockResolvedValue({ error: null })
-    mockFunctionsInvoke.mockResolvedValue({ error: null })
+    mockFunctionsInvoke.mockResolvedValue({ data: { success: true }, error: null })
 
     const result = await deleteAccount('auth-uuid-123', 10)
 
     expect(result).toEqual({ success: true })
     expect(mockFunctionsInvoke).toHaveBeenCalledWith('delete-user', {
-      body: { userId: 'auth-uuid-123' },
+      body: { userId: 'auth-uuid-123', playerId: 10 },
     })
   })
 
-  it('returns error with failedStep="delete_games" when game query fails', async () => {
+  it('returns error when edge function invoke fails', async () => {
     const { deleteAccount } = await import('./settingsApi')
 
-    const mockGamesSelectEq = vi.fn().mockResolvedValue({
-      data: null,
-      error: { message: 'DB error' },
-    })
-    const mockGamesSelect = vi.fn().mockReturnValue({ eq: mockGamesSelectEq })
-
-    mockFrom.mockImplementation((table: string) => {
-      if (table === 'games') {
-        return { select: mockGamesSelect }
-      }
-      return {}
-    })
-
-    const result = await deleteAccount('auth-uuid-123', 10)
-
-    expect(result.success).toBe(false)
-    expect(result.failedStep).toBe('delete_games')
-    expect(result.error).toContain('games')
-  })
-
-  it('returns error with failedStep="delete_games" when game deletion fails', async () => {
-    const { deleteAccount } = await import('./settingsApi')
-
-    const mockGamesSelectEq = vi.fn().mockResolvedValue({
-      data: [{ id: 1, game_name: 'Game1' }],
-      error: null,
-    })
-    const mockGamesSelect = vi.fn().mockReturnValue({ eq: mockGamesSelectEq })
-
-    const mockGamesDeleteEq = vi.fn().mockResolvedValue({
-      error: { message: 'Delete constraint error' },
-    })
-    const mockGamesDelete = vi.fn().mockReturnValue({ eq: mockGamesDeleteEq })
-
-    let callCount = 0
-    mockFrom.mockImplementation((table: string) => {
-      if (table === 'games') {
-        callCount++
-        if (callCount === 1) {
-          return { select: mockGamesSelect }
-        }
-        return { delete: mockGamesDelete }
-      }
-      return {}
-    })
-
-    const result = await deleteAccount('auth-uuid-123', 10)
-
-    expect(result.success).toBe(false)
-    expect(result.failedStep).toBe('delete_games')
-  })
-
-  it('returns error with failedStep="delete_storage" when storage deletion fails', async () => {
-    const { deleteAccount } = await import('./settingsApi')
-
-    const mockGamesSelectEq = vi.fn().mockResolvedValue({
-      data: [{ id: 1, game_name: 'Game1' }],
-      error: null,
-    })
-    const mockGamesSelect = vi.fn().mockReturnValue({ eq: mockGamesSelectEq })
-
-    const mockGamesDeleteEq = vi.fn().mockResolvedValue({ error: null })
-    const mockGamesDelete = vi.fn().mockReturnValue({ eq: mockGamesDeleteEq })
-
-    let callCount = 0
-    mockFrom.mockImplementation((table: string) => {
-      if (table === 'games') {
-        callCount++
-        if (callCount === 1) {
-          return { select: mockGamesSelect }
-        }
-        return { delete: mockGamesDelete }
-      }
-      return {}
-    })
-
-    mockStorageRemove.mockResolvedValue({ error: { message: 'Storage quota exceeded' } })
-
-    const result = await deleteAccount('auth-uuid-123', 10)
-
-    expect(result.success).toBe(false)
-    expect(result.failedStep).toBe('delete_storage')
-  })
-
-  it('returns error with failedStep="delete_player" when player deletion fails', async () => {
-    const { deleteAccount } = await import('./settingsApi')
-
-    const mockGamesSelectEq = vi.fn().mockResolvedValue({
-      data: [],
-      error: null,
-    })
-    const mockGamesSelect = vi.fn().mockReturnValue({ eq: mockGamesSelectEq })
-
-    const mockPlayerDeleteEq = vi.fn().mockResolvedValue({
-      error: { message: 'Cannot delete player' },
-    })
-    const mockPlayerDelete = vi.fn().mockReturnValue({ eq: mockPlayerDeleteEq })
-
-    mockFrom.mockImplementation((table: string) => {
-      if (table === 'games') {
-        return { select: mockGamesSelect }
-      }
-      if (table === 'players') {
-        return { delete: mockPlayerDelete }
-      }
-      return {}
-    })
-
-    const result = await deleteAccount('auth-uuid-123', 10)
-
-    expect(result.success).toBe(false)
-    expect(result.failedStep).toBe('delete_player')
-  })
-
-  it('returns error with failedStep="delete_auth" when Edge Function fails', async () => {
-    const { deleteAccount } = await import('./settingsApi')
-
-    const mockGamesSelectEq = vi.fn().mockResolvedValue({
-      data: [],
-      error: null,
-    })
-    const mockGamesSelect = vi.fn().mockReturnValue({ eq: mockGamesSelectEq })
-
-    const mockPlayerDeleteEq = vi.fn().mockResolvedValue({ error: null })
-    const mockPlayerDelete = vi.fn().mockReturnValue({ eq: mockPlayerDeleteEq })
-
-    mockFrom.mockImplementation((table: string) => {
-      if (table === 'games') {
-        return { select: mockGamesSelect }
-      }
-      if (table === 'players') {
-        return { delete: mockPlayerDelete }
-      }
-      return {}
-    })
-
-    mockFunctionsInvoke.mockResolvedValue({ error: { message: 'Function timeout' } })
+    mockFunctionsInvoke.mockResolvedValue({ data: null, error: { message: 'Function timeout' } })
 
     const result = await deleteAccount('auth-uuid-123', 10)
 
     expect(result.success).toBe(false)
     expect(result.failedStep).toBe('delete_auth')
+  })
+
+  it('returns error with failedStep when edge function returns error in data', async () => {
+    const { deleteAccount } = await import('./settingsApi')
+
+    mockFunctionsInvoke.mockResolvedValue({
+      data: { error: 'Failed to delete games', failedStep: 'delete_games' },
+      error: null,
+    })
+
+    const result = await deleteAccount('auth-uuid-123', 10)
+
+    expect(result.success).toBe(false)
+    expect(result.error).toBe('Failed to delete games')
+    expect(result.failedStep).toBe('delete_games')
   })
 })

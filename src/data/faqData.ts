@@ -45,7 +45,7 @@ export const generateGameFAQ: FAQItem[] = [
   {
     question: 'What difficulty levels are available for AI-generated games?',
     answer:
-      'You can choose from multiple difficulty levels when using AI generation. The difficulty affects how challenging the clues will be, ranging from casual trivia to expert-level questions.',
+      'AI generation uses a 1–10 difficulty slider:\n\n1 — Very easy: elementary-level trivia almost anyone would know\n2 — Easy: simple facts most people learn by middle school\n3 — Casual: straightforward general knowledge, like an easy pub quiz\n4 — Average: standard trivia night level\n5 — Standard Jeopardy: typical TV show difficulty\n6 — Above average: competitive trivia league level\n7 — Challenging: requires specific knowledge or clever wordplay\n8 — Difficult: deep but fun, Tournament of Champions level\n9 — Very challenging: obscure-but-guessable, rewards well-read players\n10 — Expert trivia: the hardest fun trivia that would stump most casual players',
   },
   {
     question: 'How many keywords can I use for JeopardyLabs generation?',

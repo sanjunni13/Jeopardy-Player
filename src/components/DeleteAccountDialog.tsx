@@ -22,14 +22,10 @@ export function DeleteAccountDialog({
 
   const isConfirmEnabled = inputValue === CONFIRMATION_PHRASE
 
-  // Reset input when dialog opens/closes
-  useEffect(() => {
-    setInputValue('')
-  }, [isOpen])
-
   // Focus the input when dialog opens
   useEffect(() => {
     if (isOpen && inputRef.current) {
+      setInputValue('')
       inputRef.current.focus()
     }
   }, [isOpen])
