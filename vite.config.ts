@@ -6,7 +6,8 @@ import tailwindcss from '@tailwindcss/vite'
 import pkg from './package.json' with { type: 'json' }
 
 // https://vite.dev/config/
-export default defineConfig({
+export default defineConfig(({ command }) => ({
+  base: command === 'serve' ? '/' : '/Jeopardy-Player/',
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version),
   },
@@ -44,4 +45,4 @@ export default defineConfig({
     globals: true,
     exclude: ['**/node_modules/**', '**/dist/**', '**/repos/**'],
   },
-})
+}))
