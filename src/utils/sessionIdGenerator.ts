@@ -26,5 +26,6 @@ export function generateSessionId(): string {
  * @returns The full URL in the format `{origin}/play/{sessionId}`
  */
 export function buildSessionLink(sessionId: string): string {
-  return `${window.location.origin}/play/${sessionId}`;
+  const base = import.meta.env.BASE_URL;
+  return `${window.location.origin}${base}play/${sessionId}`;
 }
