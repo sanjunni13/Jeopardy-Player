@@ -130,10 +130,16 @@ describe('checkPlayerNameAvailable', () => {
     expect(result).toBe(true);
   });
 
-  it('returns false when a matching player name exists', async () => {
-    const supabase = createMockSupabase([{ id: 1 }]);
+  it('returns false when a matching player name exists and is claimed', async () => {
+    const supabase = createMockSupabase([{ id: 1, auth_uuid: 'some-uuid' }]);
     const result = await checkPlayerNameAvailable('ExistingPlayer', supabase);
     expect(result).toBe(false);
+  });
+
+  it('returns true when a matching player name exists but is unclaimed', async () => {
+    const supabase = createMockSupabase([{ id: 1, auth_uuid: null }]);
+    const result = await checkPlayerNameAvailable('UnclaimedPlayer', supabase);
+    expect(result).toBe(true);
   });
 
   it('trims the input name before querying', async () => {

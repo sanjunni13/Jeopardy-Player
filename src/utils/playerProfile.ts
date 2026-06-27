@@ -59,21 +59,31 @@ export function validatePlayerName(input: string): ValidationResult {
 
 // ─── Duplicate Check ──────────────────────────────────────────────────────────
 
+export interface NameAvailabilityResult {
+  available: boolean;
+  /** If a matching unclaimed row exists (auth_uuid is null), this is its id */
+  unclaimedPlayerId?: number;
+}
+
 /**
- * Checks whether a player name is available (not already taken).
+ * Checks whether a player name is available for use during signup.
  *
- * Performs a case-insensitive comparison against the `players` table.
- * Returns `true` if the name is available, `false` if it is already taken.
+ * A name is considered available if:
+ * - No row exists with that name (case-insensitive), OR
+ * - A row exists but has no `auth_uuid` (unclaimed player from game stats).
+ *
+ * If the row is unclaimed, the caller can claim it by setting auth_uuid.
+ * If the row already has an auth_uuid, the name is truly taken.
  */
-export async function checkPlayerNameAvailable(
+export async function checkPlayerNameAvailability(
   name: string,
   supabase: SupabaseClient
-): Promise<boolean> {
+): Promise<NameAvailabilityResult> {
   const trimmed = name.trim();
 
   const { data, error } = await supabase
     .from('players')
-    .select('id')
+    .select('id, auth_uuid')
     .ilike('player_name', trimmed)
     .limit(1);
 
@@ -81,7 +91,58 @@ export async function checkPlayerNameAvailable(
     throw error;
   }
 
-  return data.length === 0;
+  // No existing row — name is fully available
+  if (data.length === 0) {
+    return { available: true };
+  }
+
+  const existing = data[0];
+
+  // Row exists but is unclaimed (no auth account linked) — can be claimed
+  if (!existing.auth_uuid) {
+    return { available: true, unclaimedPlayerId: existing.id };
+  }
+
+  // Row exists and is already claimed by another account
+  return { available: false };
+}
+
+/**
+ * @deprecated Use checkPlayerNameAvailability instead.
+ * Kept for backward compatibility — returns simple boolean.
+ */
+export async function checkPlayerNameAvailable(
+  name: string,
+  supabase: SupabaseClient
+): Promise<boolean> {
+  const result = await checkPlayerNameAvailability(name, supabase);
+  return result.available;
+}
+
+// ─── Claim Existing Player ────────────────────────────────────────────────────
+
+/**
+ * Claims an existing unclaimed player row by setting its auth_uuid.
+ * This links the existing leaderboard stats to the newly signed-up user.
+ *
+ * Returns true on success, throws on error.
+ */
+export async function claimExistingPlayer(
+  playerId: number,
+  authUuid: string,
+  supabase: SupabaseClient
+): Promise<boolean> {
+  const { error } = await supabase
+    .from('players')
+    .update({ auth_uuid: authUuid })
+    .eq('id', playerId)
+    .is('auth_uuid', null); // Safety: only claim if still unclaimed
+
+  if (error) {
+    throw error;
+  }
+
+  return true;
 }
 
 // ─── Player Record Types ──────────────────────────────────────────────────────
