@@ -65,7 +65,7 @@ export function CheatSheet({
     windowRef.current = popup
 
     // Set up the popup document
-    popup.document.title = 'Cheat Sheet'
+    popup.document.title = 'Answer Sheet'
     popup.document.body.innerHTML = ''
     popup.document.body.style.margin = '0'
     popup.document.body.style.padding = '0'
@@ -130,7 +130,7 @@ function CheatSheetContent({
   return (
     <div className="cheatsheet-container">
       <div className="cheatsheet-header">
-        <h1 className="cheatsheet-title">Cheat Sheet</h1>
+        <h1 className="cheatsheet-title">Answer Sheet</h1>
       </div>
 
       {/* Round Tabs */}

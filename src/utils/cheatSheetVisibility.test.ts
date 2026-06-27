@@ -17,7 +17,7 @@ const sourceArb = fc.oneof(
 
 // ─── Property Tests ───────────────────────────────────────────────────────────
 
-describe('shouldShowCheatSheet — Property 6: Cheat Sheet visible for all Library-launched games', () => {
+describe('shouldShowCheatSheet — Property 6: Answer Sheet visible for all Library-launched games', () => {
   it('returns true for any source when fromLibrary is true', () => {
     fc.assert(
       fc.property(sourceArb, (source) => {

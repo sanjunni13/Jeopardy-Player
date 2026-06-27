@@ -7,60 +7,60 @@ import {
   type FAQItem,
 } from './faqData'
 
-// ─── Cheat Sheet FAQ Entry Tests (Requirements 1.1-1.3, 2.1-2.3) ─────────────
+// ─── Answer Sheet FAQ Entry Tests (Requirements 1.1-1.3, 2.1-2.3) ─────────────
 
-describe('gameLibraryFAQ — Cheat Sheet entry', () => {
-  const cheatSheetEntry = gameLibraryFAQ.find(
-    (item) => item.question.toLowerCase().includes('cheat sheet')
+describe('gameLibraryFAQ — Answer Sheet entry', () => {
+  const answerSheetEntry = gameLibraryFAQ.find(
+    (item) => item.question.toLowerCase().includes('answer sheet')
   )
 
-  it('contains a Cheat Sheet FAQ entry', () => {
-    expect(cheatSheetEntry).toBeDefined()
+  it('contains an Answer Sheet FAQ entry', () => {
+    expect(answerSheetEntry).toBeDefined()
   })
 
-  it('question identifies the Cheat Sheet by name', () => {
-    expect(cheatSheetEntry!.question).toMatch(/cheat sheet/i)
+  it('question identifies the Answer Sheet by name', () => {
+    expect(answerSheetEntry!.question).toMatch(/answer sheet/i)
   })
 
   it('answer states it opens as a modal overlay within the game window', () => {
-    expect(cheatSheetEntry!.answer.toLowerCase()).toContain('modal overlay')
-    expect(cheatSheetEntry!.answer.toLowerCase()).toContain('game window')
+    expect(answerSheetEntry!.answer.toLowerCase()).toContain('modal overlay')
+    expect(answerSheetEntry!.answer.toLowerCase()).toContain('game window')
   })
 
   it('answer states answers are organized by round and category', () => {
-    expect(cheatSheetEntry!.answer.toLowerCase()).toContain('organized by round')
-    expect(cheatSheetEntry!.answer.toLowerCase()).toContain('category')
+    expect(answerSheetEntry!.answer.toLowerCase()).toContain('organized by round')
+    expect(answerSheetEntry!.answer.toLowerCase()).toContain('category')
   })
 
   it('answer mentions availability for generated games (AI, JeopardyLabs, J! Archive)', () => {
-    const answerLower = cheatSheetEntry!.answer.toLowerCase()
+    const answerLower = answerSheetEntry!.answer.toLowerCase()
     expect(answerLower).toContain('ai')
     expect(answerLower).toMatch(/jeopardylabs/i)
     expect(answerLower).toMatch(/archive/i)
   })
 
-  it('answer instructs host to click the "Cheat Sheet" button during active gameplay', () => {
-    const answer = cheatSheetEntry!.answer
-    expect(answer).toContain('"Cheat Sheet" button')
+  it('answer instructs host to click the "Answer Sheet" button during active gameplay', () => {
+    const answer = answerSheetEntry!.answer
+    expect(answer).toContain('"Answer Sheet" button')
     expect(answer.toLowerCase()).toContain('gameplay')
   })
 })
 
-describe('generateGameFAQ — Cheat Sheet entry', () => {
-  const cheatSheetEntry = generateGameFAQ.find(
-    (item) => item.question.toLowerCase().includes('cheat sheet')
+describe('generateGameFAQ — Answer Sheet entry', () => {
+  const answerSheetEntry = generateGameFAQ.find(
+    (item) => item.question.toLowerCase().includes('answer sheet')
   )
 
-  it('contains a Cheat Sheet FAQ entry', () => {
-    expect(cheatSheetEntry).toBeDefined()
+  it('contains an Answer Sheet FAQ entry', () => {
+    expect(answerSheetEntry).toBeDefined()
   })
 
-  it('question asks what the Cheat Sheet is', () => {
-    expect(cheatSheetEntry!.question).toMatch(/cheat sheet/i)
+  it('question asks what the Answer Sheet is', () => {
+    expect(answerSheetEntry!.question).toMatch(/answer sheet/i)
   })
 
   it('answer describes it as allowing the host to view all correct answers during gameplay without affecting game state', () => {
-    const answerLower = cheatSheetEntry!.answer.toLowerCase()
+    const answerLower = answerSheetEntry!.answer.toLowerCase()
     expect(answerLower).toContain('host')
     expect(answerLower).toContain('correct answers')
     expect(answerLower).toContain('gameplay')
@@ -68,21 +68,21 @@ describe('generateGameFAQ — Cheat Sheet entry', () => {
   })
 
   it('answer states it opens as a modal overlay within the game page displaying answers organized by round and grouped by category', () => {
-    const answerLower = cheatSheetEntry!.answer.toLowerCase()
+    const answerLower = answerSheetEntry!.answer.toLowerCase()
     expect(answerLower).toContain('modal overlay')
     expect(answerLower).toContain('game page')
     expect(answerLower).toContain('organized by round')
     expect(answerLower).toContain('grouped by category')
   })
 
-  it('answer instructs accessing via the "Cheat Sheet" button visible during gameplay', () => {
-    const answer = cheatSheetEntry!.answer
-    expect(answer).toContain('"Cheat Sheet" button')
+  it('answer instructs accessing via the "Answer Sheet" button visible during gameplay', () => {
+    const answer = answerSheetEntry!.answer
+    expect(answer).toContain('"Answer Sheet" button')
     expect(answer.toLowerCase()).toContain('during gameplay')
   })
 
   it('answer states button is only available for generated games (J! Archive, JeopardyLabs, AI Generation)', () => {
-    const answerLower = cheatSheetEntry!.answer.toLowerCase()
+    const answerLower = answerSheetEntry!.answer.toLowerCase()
     expect(answerLower).toMatch(/archive/i)
     expect(answerLower).toMatch(/jeopardylabs/i)
     expect(answerLower).toMatch(/ai generation/i)
@@ -101,17 +101,17 @@ describe('FAQ Data Validation', () => {
 
   describe('FAQ array length constraints', () => {
     it.each(allFAQs)(
-      '$name has between 2 and 10 items',
+      '$name has between 2 and 20 items',
       ({ items }) => {
         expect(items.length).toBeGreaterThanOrEqual(2)
-        expect(items.length).toBeLessThanOrEqual(10)
+        expect(items.length).toBeLessThanOrEqual(20)
       }
     )
 
     it.each(allFAQs)(
-      '$name has no more than 8 items',
+      '$name has no more than 20 items',
       ({ items }) => {
-        expect(items.length).toBeLessThanOrEqual(8)
+        expect(items.length).toBeLessThanOrEqual(20)
       }
     )
   })

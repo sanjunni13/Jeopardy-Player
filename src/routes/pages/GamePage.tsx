@@ -60,7 +60,7 @@ export function GamePage() {
   // Fix #11: Track whether categories have been revealed per round
   const [categoriesRevealed, setCategoriesRevealed] = useState<Record<number, boolean>>({})
 
-  // Game source for cheat sheet visibility
+  // Game source for answer sheet visibility
   const [gameSource, setGameSource] = useState<string | null>(null)
   const [cheatSheetOpen, setCheatSheetOpen] = useState(false)
   const [qrPopupOpen, setQrPopupOpen] = useState(false)
@@ -109,7 +109,7 @@ export function GamePage() {
           return
         }
 
-        // Store game source for cheat sheet visibility
+        // Store game source for answer sheet visibility
         setGameSource(gameRow.source ?? null)
 
         // Get current user to verify authentication
@@ -691,7 +691,7 @@ export function GamePage() {
           />
         </div>
       )}
-      {/* QR Code popup button — next to cheat sheet button */}
+      {/* QR Code popup button — next to answer sheet button */}
       {sessionId && (phase === 'category-reveal' || phase === 'board') && (
         <button
           type="button"

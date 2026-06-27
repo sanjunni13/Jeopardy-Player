@@ -45,7 +45,7 @@ export const generateGameFAQ: FAQItem[] = [
   {
     question: 'What difficulty levels are available for AI-generated games?',
     answer:
-      'AI generation uses a 1–10 difficulty slider:\n\n1 — Very easy: elementary-level trivia almost anyone would know\n2 — Easy: simple facts most people learn by middle school\n3 — Casual: straightforward general knowledge, like an easy pub quiz\n4 — Average: standard trivia night level\n5 — Standard Jeopardy: typical TV show difficulty\n6 — Above average: competitive trivia league level\n7 — Challenging: requires specific knowledge or clever wordplay\n8 — Difficult: deep but fun, Tournament of Champions level\n9 — Very challenging: obscure-but-guessable, rewards well-read players\n10 — Expert trivia: the hardest fun trivia that would stump most casual players',
+      'AI generation uses a 1 to 10 difficulty slider:\n\n1 — Very easy: elementary-level trivia almost anyone would know\n2 — Easy: simple facts most people learn by middle school\n3 — Casual: straightforward general knowledge, like an easy pub quiz\n4 — Average: standard trivia night level\n5 — Standard Jeopardy: typical TV show difficulty\n6 — Above average: competitive trivia league level\n7 — Challenging: requires specific knowledge or clever wordplay\n8 — Difficult: deep but fun, Tournament of Champions level\n9 — Very challenging: obscure-but-guessable, rewards well-read players\n10 — Expert trivia: the hardest fun trivia that would stump most casual players',
   },
   {
     question: 'How many keywords can I use for JeopardyLabs generation?',
@@ -58,9 +58,39 @@ export const generateGameFAQ: FAQItem[] = [
       'For J! Archive generation, you can select the number of rounds and the number of categories per round. The generator pulls real historical clues from past Jeopardy episodes to fill your game.',
   },
   {
-    question: 'What is the Cheat Sheet?',
+    question: 'What is the Answer Sheet?',
     answer:
-      'The Cheat Sheet is a feature that allows the host to view all correct answers during gameplay without affecting the game state. It opens as a modal overlay within the game page displaying all answers organized by round and grouped by category. The host can access it by clicking the "Cheat Sheet" button visible during gameplay. This button is only available for generated games (games created via J! Archive, JeopardyLabs, or AI Generation).',
+      'The Answer Sheet is a feature that allows the host to view all correct answers during gameplay without affecting the game state. It opens as a modal overlay within the game page displaying all answers organized by round and grouped by category. The host can access it by clicking the "Answer Sheet" button visible during gameplay. This button is only available for generated games (games created via J! Archive, JeopardyLabs, or AI Generation).',
+  },
+  {
+    question: 'How does the buzzer system work for generated games?',
+    answer:
+      'The buzzer system allows players to buzz in from their own phones during gameplay. When a clue is displayed, the host unlocks the buzzers, and players can tap the BUZZ button on their device. The host sees a Buzz Queue showing who buzzed in and in what order.',
+  },
+  {
+    question: 'How do players connect to the buzzer for generated games?',
+    answer:
+      'A QR code is displayed on the player entry screen and is also accessible via the "Buzzer Code" button during the game. Players scan the QR code on their phone, enter their name, and they are connected to the session. Their phone will show the buzzer interface.',
+  },
+  {
+    question: 'What do the Buzz Queue buttons do in generated games?',
+    answer:
+      'The Buzz Queue panel shows who buzzed in first. "Unlock Buzzers" enables players to buzz in. "Lock Buzzers" prevents buzzing. "Clear Queue" resets the queue for a fresh round of buzzing. The buzzers automatically lock when a new clue is selected and when the answer is revealed.',
+  },
+  {
+    question: 'How does Final Jeopardy answer submission work in generated games?',
+    answer:
+      'During Final Jeopardy, connected players can submit their answer from their phone. The submission form unlocks once the host reveals the Final Jeopardy clue. After submitting, players see a confirmation and cannot change their answer. The host sees all submissions on the answer reveal screen.',
+  },
+  {
+    question: 'Do players need to reconnect for Final Jeopardy in generated games?',
+    answer:
+      'No. If a player is already connected via the buzzer, their phone will automatically transition to the Final Jeopardy answer submission page when the host enters the Final Jeopardy phase. Players do not need to scan the QR code again.',
+  },
+  {
+    question: 'What if a player has not connected before Final Jeopardy in a generated game?',
+    answer:
+      'A QR code is shown on the screen just before Final Jeopardy begins as a last chance to join. Players can scan it at that point and will land directly on the answer submission page.',
   },
 ]
 
@@ -84,6 +114,41 @@ export const uploadGameFAQ: FAQItem[] = [
     question: 'What happens if I upload a game with a duplicate name?',
     answer:
       'If a game with the same name already exists in your library, the upload will be rejected with an error message. You can rename your JSON file and try again, or find the existing game in your library.',
+  },
+  {
+    question: 'What is the Answer Sheet and what does it do?',
+    answer:
+      'The Answer Sheet opens as a modal overlay within the game window displaying all answers organized by round and category. The host can open it by clicking the "Answer Sheet" button visible during active gameplay phases after player entry.',
+  },
+  {
+    question: 'How does the buzzer system work?',
+    answer:
+      'The buzzer system allows players to buzz in from their own phones during gameplay. When a clue is displayed, the host unlocks the buzzers, and players can tap the BUZZ button on their device. The host sees a Buzz Queue showing who buzzed in and in what order.',
+  },
+  {
+    question: 'How do players connect to the buzzer?',
+    answer:
+      'A QR code is displayed on the player entry screen and is also accessible via the "Buzzer Code" button during the game. Players scan the QR code on their phone, enter their name, and they are connected to the session. Their phone will show the buzzer interface.',
+  },
+  {
+    question: 'What do the buttons in the Buzz Queue do?',
+    answer:
+      'The Buzz Queue panel shows who buzzed in first. "Unlock Buzzers" enables players to buzz in. "Lock Buzzers" prevents buzzing. "Clear Queue" resets the queue for a fresh round of buzzing. The buzzers automatically lock when a new clue is selected and when the answer is revealed.',
+  },
+  {
+    question: 'How does Final Jeopardy answer submission work?',
+    answer:
+      'During Final Jeopardy, connected players can submit their answer from their phone. The submission form unlocks once the host reveals the Final Jeopardy clue. After submitting, players see a confirmation and cannot change their answer. The host sees all submissions on the answer reveal screen.',
+  },
+  {
+    question: 'Do players need to reconnect for Final Jeopardy?',
+    answer:
+      'No. If a player is already connected via the buzzer, their phone will automatically transition to the Final Jeopardy answer submission page when the host enters the Final Jeopardy phase. Players do not need to scan the QR code again.',
+  },
+  {
+    question: 'What if a player has not connected before Final Jeopardy?',
+    answer:
+      'A QR code is shown on the screen just before Final Jeopardy begins as a last chance to join. Players can scan it at that point and will land directly on the answer submission page.',
   },
 ]
 
@@ -114,8 +179,38 @@ export const gameLibraryFAQ: FAQItem[] = [
       'Yes, you can play any game in your library as many times as you like. Each play session starts fresh with new players and scores. Your game data is never modified by playing it.',
   },
   {
-    question: 'What is the Cheat Sheet and what does it do?',
+    question: 'What is the Answer Sheet and what does it do?',
     answer:
-      'The Cheat Sheet opens as a modal overlay within the game window displaying all answers organized by round and category. The host can open it by clicking the "Cheat Sheet" button visible during active gameplay phases after player entry. It is available for generated games created via AI Generation, JeopardyLabs, or J! Archive.',
+      'The Answer Sheet opens as a modal overlay within the game window displaying all answers organized by round and category. The host can open it by clicking the "Answer Sheet" button visible during active gameplay phases after player entry.',
+  },
+  {
+    question: 'How does the buzzer system work?',
+    answer:
+      'The buzzer system allows players to buzz in from their own phones during gameplay. When a clue is displayed, the host unlocks the buzzers, and players can tap the BUZZ button on their device. The host sees a Buzz Queue showing who buzzed in and in what order.',
+  },
+  {
+    question: 'How do players connect to the buzzer?',
+    answer:
+      'A QR code is displayed on the player entry screen and is also accessible via the "Buzzer Code" button during the game. Players scan the QR code on their phone, enter their name, and they are connected to the session. Their phone will show the buzzer interface.',
+  },
+  {
+    question: 'What do the buttons in the Buzz Queue do?',
+    answer:
+      'The Buzz Queue panel shows who buzzed in first. "Unlock Buzzers" enables players to buzz in. "Lock Buzzers" prevents buzzing. "Clear Queue" resets the queue for a fresh round of buzzing. The buzzers automatically lock when a new clue is selected and when the answer is revealed.',
+  },
+  {
+    question: 'How does Final Jeopardy answer submission work?',
+    answer:
+      'During Final Jeopardy, connected players can submit their answer from their phone. The submission form unlocks once the host reveals the Final Jeopardy clue. After submitting, players see a confirmation and cannot change their answer. The host sees all submissions on the answer reveal screen.',
+  },
+  {
+    question: 'Do players need to reconnect for Final Jeopardy?',
+    answer:
+      'No. If a player is already connected via the buzzer, their phone will automatically transition to the Final Jeopardy answer submission page when the host enters the Final Jeopardy phase. Players do not need to scan the QR code again.',
+  },
+  {
+    question: 'What if a player has not connected before Final Jeopardy?',
+    answer:
+      'A QR code is shown on the screen just before Final Jeopardy begins as a last chance to join. Players can scan it at that point and will land directly on the answer submission page.',
   },
 ]
