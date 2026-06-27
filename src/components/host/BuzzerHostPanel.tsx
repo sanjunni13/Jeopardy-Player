@@ -1,0 +1,86 @@
+import type { BuzzState } from '../../types/session'
+import { orderBuzzQueue } from '../../utils/buzzerLogic'
+import './BuzzerHostPanel.css'
+
+interface BuzzerHostPanelProps {
+  buzzState: BuzzState
+  onClearQueue: () => void
+  onLock: () => void
+  onUnlock: () => void
+}
+
+export function BuzzerHostPanel({
+  buzzState,
+  onClearQueue,
+  onLock,
+  onUnlock,
+}: BuzzerHostPanelProps) {
+  const sortedQueue = orderBuzzQueue(buzzState.queue).slice(0, 8)
+
+  return (
+    <div className="buzzer-host-panel" aria-label="Buzzer host controls">
+      <div className="buzzer-host-panel__header">
+        <h2 className="buzzer-host-panel__title">Buzz Queue</h2>
+        {buzzState.systemLocked && (
+          <span className="buzzer-host-panel__locked-indicator" aria-live="polite">
+            Locked
+          </span>
+        )}
+      </div>
+
+      <div className="buzzer-host-panel__queue" aria-label="Buzz queue">
+        {sortedQueue.length === 0 ? (
+          <p className="buzzer-host-panel__queue-empty">Waiting for buzzes…</p>
+        ) : (
+          <ol className="buzzer-host-panel__queue-list">
+            {sortedQueue.map((event, index) => {
+              const isFirst = index === 0
+              return (
+                <li
+                  key={`${event.playerName}-${event.timestamp}`}
+                  className={`buzzer-host-panel__queue-item${isFirst ? ' buzzer-host-panel__queue-item--active' : ''}`}
+                >
+                  <div className="buzzer-host-panel__queue-item-info">
+                    <span className="buzzer-host-panel__queue-position">
+                      {index + 1}.
+                    </span>
+                    <span className="buzzer-host-panel__queue-name">
+                      {event.playerName}
+                    </span>
+                  </div>
+                </li>
+              )
+            })}
+          </ol>
+        )}
+      </div>
+
+      <div className="buzzer-host-panel__controls">
+        {buzzState.systemLocked ? (
+          <button
+            type="button"
+            className="buzzer-host-panel__btn buzzer-host-panel__btn--unlock"
+            onClick={onUnlock}
+          >
+            Unlock Buzzers
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="buzzer-host-panel__btn buzzer-host-panel__btn--lock"
+            onClick={onLock}
+          >
+            Lock Buzzers
+          </button>
+        )}
+        <button
+          type="button"
+          className="buzzer-host-panel__btn buzzer-host-panel__btn--clear"
+          onClick={onClearQueue}
+        >
+          Clear Queue
+        </button>
+      </div>
+    </div>
+  )
+}

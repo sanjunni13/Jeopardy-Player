@@ -1,0 +1,198 @@
+/* ─── Final Jeopardy Host Panel ──────────────────────────────────────────────── */
+
+.fj-host-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding: 1.5rem;
+}
+
+.fj-host-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.fj-host-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: rgb(241 245 249); /* slate-100 */
+  margin: 0;
+}
+
+.fj-all-submitted-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: rgb(34 197 94); /* green-500 */
+  background: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  border-radius: 9999px;
+  padding: 0.25rem 0.75rem;
+}
+
+/* ── Player list ── */
+.fj-host-players {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.fj-host-player-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  background: rgb(15 23 42); /* slate-900 */
+  border: 1px solid rgb(51 65 85); /* slate-700 */
+  border-radius: 0.75rem;
+  padding: 0.75rem 1rem;
+}
+
+.fj-host-player-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.fj-host-player-name {
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: rgb(241 245 249); /* slate-100 */
+  flex: 1;
+}
+
+.fj-host-player-score {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: rgb(148 163 184); /* slate-400 */
+  font-variant-numeric: tabular-nums;
+}
+
+.fj-host-submission-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+  border-radius: 50%;
+}
+
+.fj-host-submission-status.fj-submitted {
+  color: rgb(34 197 94); /* green-500 */
+  background: rgba(34, 197, 94, 0.15);
+}
+
+.fj-host-submission-status.fj-not-submitted {
+  color: rgb(239 68 68); /* red-500 */
+  background: rgba(239, 68, 68, 0.15);
+}
+
+/* ── Reveal details ── */
+.fj-host-reveal-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.5rem 0 0;
+  border-top: 1px solid rgb(51 65 85); /* slate-700 */
+}
+
+.fj-host-wager,
+.fj-host-answer {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.fj-host-detail-label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: rgb(100 116 139); /* slate-500 */
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.fj-host-detail-value {
+  font-size: 0.9375rem;
+  color: rgb(226 232 240); /* slate-200 */
+}
+
+/* ── Mark buttons ── */
+.fj-host-mark-buttons {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+.fj-mark-btn {
+  padding: 0.375rem 0.75rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  border-radius: 0.5rem;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s;
+}
+
+.fj-mark-correct {
+  color: rgb(34 197 94); /* green-500 */
+  background: rgba(34, 197, 94, 0.1);
+  border-color: rgba(34, 197, 94, 0.3);
+}
+
+.fj-mark-correct:hover {
+  background: rgba(34, 197, 94, 0.2);
+}
+
+.fj-mark-correct.fj-mark-active {
+  background: rgba(34, 197, 94, 0.3);
+  border-color: rgb(34 197 94);
+}
+
+.fj-mark-incorrect {
+  color: rgb(239 68 68); /* red-500 */
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.fj-mark-incorrect:hover {
+  background: rgba(239, 68, 68, 0.2);
+}
+
+.fj-mark-incorrect.fj-mark-active {
+  background: rgba(239, 68, 68, 0.3);
+  border-color: rgb(239 68 68);
+}
+
+/* ── Not submitted label ── */
+.fj-host-not-submitted-label {
+  font-size: 0.8125rem;
+  font-style: italic;
+  color: rgb(100 116 139); /* slate-500 */
+  padding-top: 0.25rem;
+}
+
+/* ── Reveal button ── */
+.fj-host-reveal-btn {
+  align-self: flex-start;
+  padding: 0.5rem 1.25rem;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: white;
+  background: #6A1B9A;
+  border: none;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.fj-host-reveal-btn:hover {
+  background: #7B1FA2;
+}
+
+.fj-host-reveal-btn:active {
+  background: #4A148C;
+}

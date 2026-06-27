@@ -1,0 +1,126 @@
+.buzzer-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100dvh;
+  padding: 1.5rem;
+  box-sizing: border-box;
+  background: #1a1a2e;
+  color: #fff;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+.buzzer-page__player-name {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 2rem;
+  text-align: center;
+  opacity: 0.9;
+}
+
+.buzzer-page__button-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  width: 100%;
+}
+
+.buzzer-page__button {
+  /* Minimum 44x44px touch target, ideally much larger for mobile */
+  min-width: 180px;
+  min-height: 180px;
+  width: 60vw;
+  height: 60vw;
+  max-width: 320px;
+  max-height: 320px;
+  border-radius: 50%;
+  border: 4px solid #fff;
+  background: #e63946;
+  color: #fff;
+  font-size: 1.5rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: transform 0.1s ease, box-shadow 0.1s ease, opacity 0.2s ease;
+  box-shadow: 0 6px 24px rgba(230, 57, 70, 0.4);
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.buzzer-page__button:hover:not(:disabled) {
+  transform: scale(1.03);
+  box-shadow: 0 8px 32px rgba(230, 57, 70, 0.6);
+}
+
+.buzzer-page__button:active:not(:disabled) {
+  transform: scale(0.96);
+  box-shadow: 0 2px 12px rgba(230, 57, 70, 0.3);
+}
+
+/* Disabled state: distinct without relying on color alone (WCAG) */
+.buzzer-page__button:disabled {
+  background: #3a3a5c;
+  border: 4px dashed #666;
+  color: #999;
+  opacity: 0.6;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
+/* Buzzed confirmation state */
+.buzzer-page__button--buzzed {
+  background: #2a9d8f;
+  border: 4px solid #fff;
+  box-shadow: 0 0 24px rgba(42, 157, 143, 0.5);
+  cursor: default;
+}
+
+.buzzer-page__status {
+  margin-top: 1.5rem;
+  font-size: 1rem;
+  text-align: center;
+  min-height: 1.5rem;
+}
+
+.buzzer-page__status--buzzed {
+  color: #2a9d8f;
+  font-weight: 600;
+  font-size: 1.125rem;
+}
+
+.buzzer-page__status--waiting {
+  color: #999;
+  font-style: italic;
+}
+
+.buzzer-page__error {
+  margin-top: 1rem;
+  padding: 0.75rem 1rem;
+  background: rgba(230, 57, 70, 0.15);
+  border: 1px solid #e63946;
+  border-radius: 0.5rem;
+  color: #ff6b6b;
+  text-align: center;
+  font-size: 0.875rem;
+}
+
+.buzzer-page__retry-button {
+  margin-top: 0.75rem;
+  padding: 0.5rem 1.25rem;
+  background: transparent;
+  border: 1px solid #e63946;
+  border-radius: 0.375rem;
+  color: #e63946;
+  font-size: 0.875rem;
+  cursor: pointer;
+  min-width: 44px;
+  min-height: 44px;
+}
+
+.buzzer-page__retry-button:hover {
+  background: rgba(230, 57, 70, 0.1);
+}

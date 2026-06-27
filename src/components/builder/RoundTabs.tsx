@@ -1,4 +1,5 @@
-import { useRef, useCallback } from 'react'
+import { useRef } from 'react'
+import { generateTabLabels, getNextFocusIndex } from './roundTabsHelpers'
 
 // ─── Props ─────────────────────────────────────────────────────────────────────
 
@@ -8,33 +9,6 @@ export interface RoundTabsProps {
   onTabChange: (index: number) => void
 }
 
-// ─── Helpers ───────────────────────────────────────────────────────────────────
-
-/**
- * Generate tab labels for a given number of rounds.
- * Returns ["Round 1", "Round 2", ..., "Final Jeopardy"]
- */
-export function generateTabLabels(totalRounds: number): string[] {
-  const labels: string[] = []
-  for (let i = 1; i <= totalRounds; i++) {
-    labels.push(`Round ${i}`)
-  }
-  labels.push('Final Jeopardy')
-  return labels
-}
-
-/**
- * Compute the next focus index when navigating with arrow keys, with wrapping.
- * direction: -1 for left, +1 for right
- */
-export function getNextFocusIndex(
-  currentIndex: number,
-  direction: number,
-  tabCount: number
-): number {
-  return (currentIndex + direction + tabCount) % tabCount
-}
-
 // ─── Component ─────────────────────────────────────────────────────────────────
 
 export function RoundTabs({ totalRounds, activeTab, onTabChange }: RoundTabsProps) {
@@ -42,32 +16,29 @@ export function RoundTabs({ totalRounds, activeTab, onTabChange }: RoundTabsProp
   const labels = generateTabLabels(totalRounds)
   const tabCount = labels.length
 
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLDivElement>) => {
-      const target = e.target as HTMLElement
-      if (target.role !== 'tab') return
+  function handleKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
+    const target = e.target as HTMLElement
+    if (target.role !== 'tab') return
 
-      const currentIndex = Number(target.dataset.index)
-      let nextIndex: number | null = null
+    const currentIndex = Number(target.dataset.index)
+    let nextIndex: number | null = null
 
-      if (e.key === 'ArrowRight') {
-        e.preventDefault()
-        nextIndex = getNextFocusIndex(currentIndex, 1, tabCount)
-      } else if (e.key === 'ArrowLeft') {
-        e.preventDefault()
-        nextIndex = getNextFocusIndex(currentIndex, -1, tabCount)
-      } else if (e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault()
-        onTabChange(currentIndex)
-        return
-      }
+    if (e.key === 'ArrowRight') {
+      e.preventDefault()
+      nextIndex = getNextFocusIndex(currentIndex, 1, tabCount)
+    } else if (e.key === 'ArrowLeft') {
+      e.preventDefault()
+      nextIndex = getNextFocusIndex(currentIndex, -1, tabCount)
+    } else if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault()
+      onTabChange(currentIndex)
+      return
+    }
 
-      if (nextIndex !== null) {
-        tabRefs.current[nextIndex]?.focus()
-      }
-    },
-    [tabCount, onTabChange]
-  )
+    if (nextIndex !== null) {
+      tabRefs.current[nextIndex]?.focus()
+    }
+  }
 
   return (
     <div

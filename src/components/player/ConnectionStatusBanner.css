@@ -1,0 +1,82 @@
+/* ─── Connection Status Banner ──────────────────────────────────────────────── */
+
+.connection-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-align: center;
+  animation: banner-slide-down 0.3s ease-out;
+}
+
+@keyframes banner-slide-down {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.connection-banner--connecting {
+  background: rgba(59, 130, 246, 0.9);
+  color: #fff;
+}
+
+.connection-banner--disconnected,
+.connection-banner--reconnecting {
+  background: rgba(234, 179, 8, 0.9);
+  color: #1a1a2e;
+}
+
+.connection-banner--failed {
+  background: rgba(239, 68, 68, 0.9);
+  color: #fff;
+}
+
+.connection-banner__spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: banner-spin 0.8s linear infinite;
+}
+
+@keyframes banner-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.connection-banner__retry-button {
+  margin-left: 0.5rem;
+  padding: 0.25rem 0.75rem;
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 4px;
+  color: inherit;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.connection-banner__retry-button:hover {
+  background: rgba(255, 255, 255, 0.35);
+}
+
+.connection-banner__retry-button:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}

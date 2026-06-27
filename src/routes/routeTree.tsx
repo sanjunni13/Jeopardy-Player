@@ -22,6 +22,7 @@ const GenerateGamePage = lazy(() => import('./pages/GenerateGamePage').then(m =>
 const CreateGamePage = lazy(() => import('./pages/CreateGamePage').then(m => ({ default: m.CreateGamePage })))
 const BuilderPage = lazy(() => import('./pages/BuilderPage').then(m => ({ default: m.BuilderPage })))
 const SettingsPage = lazy(() => import('./pages/SettingsPage').then(m => ({ default: m.SettingsPage })))
+const PlaySessionPage = lazy(() => import('./pages/PlaySessionPage').then(m => ({ default: m.PlaySessionPage })))
 
 function LazyFallback() {
   return <p className="p-6 text-slate-300">Loading…</p>
@@ -125,6 +126,12 @@ const settingsRoute = createRoute({
   component: withSuspense(SettingsPage),
 })
 
+const playSessionRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/play/$sessionId',
+  component: withSuspense(PlaySessionPage),
+})
+
 const unauthorizedRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/401',
@@ -141,6 +148,7 @@ const routeTree = rootRoute.addChildren([
   indexRoute,
   loginRoute,
   profileSetupRoute,
+  playSessionRoute,
   protectedRoute.addChildren([
     homeIndexRoute,
     uploadRoute,

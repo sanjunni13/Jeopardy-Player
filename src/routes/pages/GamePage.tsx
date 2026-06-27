@@ -1,7 +1,15 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams, useRouterState } from '@tanstack/react-router'
 import { supabase } from '../../utils/supabase'
 import { normalizeGame } from '../../utils/gameNormalizer'
+import { createSession, endSession, updateSessionPhase, updateBuzzState, updateFinalJeopardyState, updateSessionPlayers } from '../../utils/sessionApi'
+import { createSessionChannel, subscribeToChannel, unsubscribeFromChannel, broadcastMessage, onChannelMessage } from '../../utils/sessionChannel'
+import { reverseAndApplyMark, applyScoreMark } from '../../utils/finalJeopardyScoring'
+import { SessionQRCode } from '../../components/host/SessionQRCode'
+import { BuzzerHostPanel } from '../../components/host/BuzzerHostPanel'
+import { FinalJeopardyHostPanel } from '../../components/host/FinalJeopardyHostPanel'
+import { BackgroundGradient } from '../../components/ui/background-gradient'
+import { BackButton } from '../../components/BackButton'
 import type {
   ActiveClue,
   ClueState,
@@ -11,6 +19,8 @@ import type {
   Player,
   RoundName,
 } from '../../types/game'
+import type { BuzzState, FinalJeopardyState, SessionPlayer, ChannelMessage } from '../../types/session'
+import type { RealtimeChannel } from '@supabase/supabase-js'
 import { PlayerEntry } from '../../components/game/PlayerEntry'
 import { GameBoard } from '../../components/game/GameBoard'
 import { ClueScreen } from '../../components/game/ClueScreen'
@@ -54,10 +64,35 @@ export function GamePage() {
   // Game source for cheat sheet visibility
   const [gameSource, setGameSource] = useState<string | null>(null)
   const [cheatSheetOpen, setCheatSheetOpen] = useState(false)
+  const [qrPopupOpen, setQrPopupOpen] = useState(false)
+
+  // Session system state
+  const [sessionId, setSessionId] = useState<string | null>(null)
+  const [hostUserId, setHostUserId] = useState<string | null>(null)
+  const sessionChannelRef = useRef<RealtimeChannel | null>(null)
+
+  // Session realtime state (for host panels)
+  const [sessionPlayers, setSessionPlayers] = useState<SessionPlayer[]>([])
+  const [buzzState, setBuzzState] = useState<BuzzState>({
+    clueActive: false,
+    queue: [],
+    lockedOut: [],
+    systemLocked: false,
+  })
+  const [finalJeopardyState, setFinalJeopardyState] = useState<FinalJeopardyState>({
+    submissions: [],
+    revealedIndex: -1,
+  })
+
+  // Track FJ marks for reversal support (requirement 6.9)
+  const [fjMarks, setFjMarks] = useState<Record<string, boolean>>({})
 
   // Fix #7: Daily Double state
   const [ddSelectedPlayer, setDdSelectedPlayer] = useState<string | null>(null)
   const [ddWager, setDdWager] = useState<number | null>(null)
+  // Track whether the current clue is a daily double (for buzzer logic)
+  const [isDailyDouble, setIsDailyDouble] = useState(false)
+  const [clueAnswerRevealed, setClueAnswerRevealed] = useState(false)
 
   // Load game from Supabase Storage on mount
   useEffect(() => {
@@ -86,6 +121,9 @@ export function GamePage() {
           setLoading(false)
           return
         }
+
+        // Store the user ID for session creation
+        setHostUserId(user.id)
 
         // Build storage path: games are stored under auth_uuid/{game_name}.json
         // Look up the creator's auth_uuid from the players table
@@ -142,6 +180,253 @@ export function GamePage() {
     loadGame()
   }, [gameId])
 
+  // ─── Create session once game is loaded and user is authenticated ─────────
+  useEffect(() => {
+    if (loading || !hostUserId || sessionId) return
+
+    createSession(hostUserId, gameId)
+      .then(async (gameSessionRow) => {
+        setSessionId(gameSessionRow.id)
+        try {
+          const ch = createSessionChannel(gameSessionRow.id)
+          await subscribeToChannel(ch)
+          sessionChannelRef.current = ch
+          // Register message listener immediately after subscription
+          onChannelMessage(ch, (message: ChannelMessage) => {
+            switch (message.type) {
+              case 'player_joined':
+                setSessionPlayers(prev => [...prev, message.player])
+                break
+              case 'buzz':
+                setBuzzState(prev => {
+                  // Prevent duplicate buzzes from same player
+                  if (prev.queue.some(e => e.playerName === message.playerName)) {
+                    return prev
+                  }
+                  return {
+                    ...prev,
+                    queue: [...prev.queue, { playerName: message.playerName, timestamp: message.timestamp }],
+                  }
+                })
+                break
+              case 'buzz_queue_update':
+                setBuzzState(prev => ({ ...prev, queue: message.queue }))
+                break
+              case 'buzzer_locked':
+                setBuzzState(prev => ({ ...prev, systemLocked: true, queue: [] }))
+                break
+              case 'buzzer_unlocked':
+                setBuzzState(prev => ({ ...prev, systemLocked: false }))
+                break
+              case 'buzz_state_sync':
+                setBuzzState(message.buzzState)
+                break
+              case 'buzz_queue_cleared':
+                setBuzzState(prev => ({ ...prev, queue: [], lockedOut: message.lockedOut }))
+                break
+              case 'player_incorrect':
+                setBuzzState(prev => ({
+                  ...prev,
+                  lockedOut: [...prev.lockedOut, message.playerName],
+                }))
+                break
+              case 'fj_submission_received':
+                break
+              case 'fj_reveal':
+                setFinalJeopardyState(prev => ({
+                  ...prev,
+                  revealedIndex: message.index,
+                  submissions: prev.submissions.map((s, i) =>
+                    i === message.index ? message.submission : s
+                  ),
+                }))
+                break
+              case 'fj_score_update':
+                setSessionPlayers(prev =>
+                  prev.map(p => p.name === message.playerName ? { ...p, score: message.newScore } : p)
+                )
+                break
+              default:
+                break
+            }
+          })
+        } catch (err) {
+          console.warn('[Session] Channel subscription failed:', err)
+        }
+      })
+      .catch((err) => {
+        console.error('[Session] Failed to create game session:', err)
+      })
+  }, [loading, hostUserId, gameId, sessionId])
+
+  // ─── Session lifecycle: cleanup on unmount/navigation ────────────────────
+  useEffect(() => {
+    return () => {
+      // End session and broadcast session_ended when component unmounts
+      if (sessionId) {
+        // Fire-and-forget cleanup
+        endSession(sessionId).catch(() => {})
+        if (sessionChannelRef.current) {
+          broadcastMessage(sessionChannelRef.current, { type: 'session_ended' }).catch(() => {})
+          unsubscribeFromChannel(sessionChannelRef.current).catch(() => {})
+          sessionChannelRef.current = null
+        }
+      }
+    }
+  }, [sessionId])
+
+  // ─── Session phase sync: update session phase when game phase changes ────
+  useEffect(() => {
+    if (!sessionId) return
+
+    if (phase === 'final-jeopardy') {
+      updateSessionPhase(sessionId, 'final-jeopardy').catch(() => {})
+      if (sessionChannelRef.current) {
+        broadcastMessage(sessionChannelRef.current, { type: 'phase_change', phase: 'final-jeopardy' }).catch(() => {})
+      }
+    } else if (phase === 'clue' || phase === 'board' || phase === 'category-reveal' || phase === 'daily-double' || phase === 'daily-double-wager' || phase === 'round-transition') {
+      updateSessionPhase(sessionId, 'buzzer').catch(() => {})
+      if (sessionChannelRef.current) {
+        broadcastMessage(sessionChannelRef.current, { type: 'phase_change', phase: 'buzzer' }).catch(() => {})
+      }
+    } else if (phase === 'game-over') {
+      endSession(sessionId).catch(() => {})
+      if (sessionChannelRef.current) {
+        broadcastMessage(sessionChannelRef.current, { type: 'session_ended' }).catch(() => {})
+      }
+    }
+  }, [sessionId, phase])
+
+  // ─── Activate/deactivate clue for buzzer system ──────────────────────────
+  // This effect synchronizes local buzz state with the external Supabase system
+  // when the game phase changes.
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    if (!sessionId) return
+
+    if (phase === 'clue' && activeClue && !isDailyDouble) {
+      // Enter clue screen: buzzers start LOCKED, queue cleared
+      const newBuzzState: BuzzState = {
+        clueActive: true,
+        queue: [],
+        lockedOut: [],
+        systemLocked: true,
+      }
+      setBuzzState(newBuzzState)
+      updateBuzzState(sessionId, newBuzzState).catch(() => {})
+      if (sessionChannelRef.current) {
+        broadcastMessage(sessionChannelRef.current, { type: 'buzz_state_sync', buzzState: newBuzzState }).catch(() => {})
+      }
+    } else if (phase === 'board' || phase === 'category-reveal') {
+      // Deactivate — always reset to clean idle state
+      const newBuzzState: BuzzState = {
+        clueActive: false,
+        queue: [],
+        lockedOut: [],
+        systemLocked: false,
+      }
+      setBuzzState(newBuzzState)
+      updateBuzzState(sessionId, newBuzzState).catch(() => {})
+      if (sessionChannelRef.current) {
+        broadcastMessage(sessionChannelRef.current, { type: 'buzz_state_sync', buzzState: newBuzzState }).catch(() => {})
+      }
+    }
+  }, [sessionId, phase, activeClue, isDailyDouble])
+  /* eslint-enable react-hooks/set-state-in-effect */
+
+  // ─── Host panel handlers ─────────────────────────────────────────────────
+
+  const handleBuzzerClearQueue = useCallback(() => {
+    if (!sessionId) return
+    setBuzzState(prev => {
+      const currentLockedOut = [...prev.lockedOut, ...prev.queue.map(e => e.playerName)]
+      const newBuzzState: BuzzState = {
+        ...prev,
+        queue: [],
+        lockedOut: currentLockedOut,
+      }
+      updateBuzzState(sessionId, newBuzzState).catch(() => {})
+      if (sessionChannelRef.current) {
+        broadcastMessage(sessionChannelRef.current, { type: 'buzz_state_sync', buzzState: newBuzzState }).catch(() => {})
+      }
+      return newBuzzState
+    })
+  }, [sessionId])
+
+  const handleBuzzerLock = useCallback(() => {
+    if (!sessionId) return
+    setBuzzState(prev => {
+      const newBuzzState: BuzzState = { ...prev, systemLocked: true, queue: [] }
+      updateBuzzState(sessionId, newBuzzState).catch(() => {})
+      if (sessionChannelRef.current) {
+        broadcastMessage(sessionChannelRef.current, { type: 'buzz_state_sync', buzzState: newBuzzState }).catch(() => {})
+      }
+      return newBuzzState
+    })
+  }, [sessionId])
+
+  const handleBuzzerUnlock = useCallback(() => {
+    if (!sessionId) return
+    setBuzzState(prev => {
+      const newBuzzState: BuzzState = { ...prev, systemLocked: false }
+      updateBuzzState(sessionId, newBuzzState).catch(() => {})
+      if (sessionChannelRef.current) {
+        broadcastMessage(sessionChannelRef.current, { type: 'buzz_state_sync', buzzState: newBuzzState }).catch(() => {})
+      }
+      return newBuzzState
+    })
+  }, [sessionId])
+
+  const handleFJReveal = useCallback((index: number) => {
+    if (!sessionId) return
+    const submission = finalJeopardyState.submissions[index]
+    const newFJState: FinalJeopardyState = {
+      ...finalJeopardyState,
+      revealedIndex: index,
+    }
+    setFinalJeopardyState(newFJState)
+    updateFinalJeopardyState(sessionId, newFJState).catch(() => {})
+    if (sessionChannelRef.current && submission) {
+      broadcastMessage(sessionChannelRef.current, { type: 'fj_reveal', index, submission }).catch(() => {})
+    }
+  }, [sessionId, finalJeopardyState])
+
+  const handleFJMark = useCallback((playerName: string, isCorrect: boolean) => {
+    if (!sessionId) return
+    const submission = finalJeopardyState.submissions.find(s => s.playerName === playerName)
+    if (!submission) return
+    const player = sessionPlayers.find(p => p.name === playerName)
+    if (!player) return
+
+    const previousMark = fjMarks[playerName]
+    let newScore: number
+
+    if (previousMark !== undefined) {
+      // Mark change: reverse previous and apply new (requirement 6.9)
+      newScore = reverseAndApplyMark(player.score, submission.wager, previousMark, isCorrect)
+    } else {
+      // First-time mark
+      newScore = applyScoreMark(player.score, submission.wager, isCorrect)
+    }
+
+    // Update local mark tracking
+    setFjMarks(prev => ({ ...prev, [playerName]: isCorrect }))
+
+    // Update local player scores
+    const updatedPlayers = sessionPlayers.map(p =>
+      p.name === playerName ? { ...p, score: newScore } : p
+    )
+    setSessionPlayers(updatedPlayers)
+
+    // Persist score update to database
+    updateSessionPlayers(sessionId, updatedPlayers).catch(() => {})
+
+    // Broadcast score update to all connected devices
+    if (sessionChannelRef.current) {
+      broadcastMessage(sessionChannelRef.current, { type: 'fj_score_update', playerName, newScore }).catch(() => {})
+    }
+  }, [sessionId, finalJeopardyState, sessionPlayers, fjMarks])
+
   // ─── Phase transition handlers ───────────────────────────────────────────
 
   function handlePlay(players: Player[]) {
@@ -178,6 +463,8 @@ export function GamePage() {
   function handleClueSelect(categoryIndex: number, clueIndex: number) {
     if (!session) return
 
+    setClueAnswerRevealed(false)
+
     const roundName = session.orderedRoundNames[session.currentRoundIndex]
     const categories = session.game.rounds[roundName]
     const clue = categories[categoryIndex].clues[clueIndex]
@@ -185,10 +472,12 @@ export function GamePage() {
     setActiveClue({ roundName, categoryIndex, clueIndex })
 
     if (clue.dailyDouble) {
+      setIsDailyDouble(true)
       setDdSelectedPlayer(null)
       setDdWager(null)
       setPhase('daily-double')
     } else {
+      setIsDailyDouble(false)
       setPhase('clue')
     }
   }
@@ -268,6 +557,8 @@ export function GamePage() {
 
   function handleReturnToBoard() {
     if (!session || !activeClue) return
+
+    setClueAnswerRevealed(false)
 
     const key = `${activeClue.roundName}-${activeClue.categoryIndex}-${activeClue.clueIndex}`
 
@@ -369,10 +660,29 @@ export function GamePage() {
 
   if (phase === 'player-entry') {
     return (
-      <PlayerEntry
-        onPlay={handlePlay}
-        onBack={() => navigate({ to: '/home/library' })}
-      />
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'center', gap: '4rem', padding: '2rem', minHeight: '100vh', boxSizing: 'border-box' }}>
+        <div style={{ flex: '0 1 auto' }}>
+          <PlayerEntry
+            onPlay={handlePlay}
+            onBack={() => navigate({ to: '/home/library' })}
+          />
+        </div>
+        {sessionId && (
+          <div style={{ flex: '0 0 auto', paddingTop: '2rem' }}>
+            <BackgroundGradient>
+              <div style={{ maxWidth: '18rem', padding: '2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', borderRadius: '1.5rem', border: '1px solid rgb(30 41 59)', background: 'rgb(15 23 42 / 0.95)', boxShadow: '0 25px 50px -12px rgb(15 23 42 / 0.3)' }}>
+                <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#f1f5f9', margin: 0, textAlign: 'center' }}>
+                  Buzzer Code
+                </h2>
+                <p style={{ color: '#94a3b8', fontSize: '0.875rem', margin: 0, textAlign: 'center', lineHeight: 1.5 }}>
+                  Scan this QR code to join the game as a buzzer player
+                </p>
+                <SessionQRCode sessionId={sessionId} />
+              </div>
+            </BackgroundGradient>
+          </div>
+        )}
+      </div>
     )
   }
 
@@ -386,8 +696,64 @@ export function GamePage() {
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 50, background: 'black' }}>
       {gameContent}
+      {/* Buzzer host panel — top right on clue page, hidden when answer revealed or daily double */}
+      {sessionId && phase === 'clue' && !clueAnswerRevealed && !isDailyDouble && (
+        <div style={{ position: 'fixed', top: 8, right: 8, zIndex: 60, maxWidth: 280 }}>
+          <BuzzerHostPanel
+            buzzState={buzzState}
+            onClearQueue={handleBuzzerClearQueue}
+            onLock={handleBuzzerLock}
+            onUnlock={handleBuzzerUnlock}
+          />
+        </div>
+      )}
+      {sessionId && phase === 'final-jeopardy' && (
+        <div style={{ position: 'fixed', top: 8, right: 8, zIndex: 60, maxWidth: 400, maxHeight: 'calc(100vh - 80px)', overflowY: 'auto' }}>
+          <FinalJeopardyHostPanel
+            players={sessionPlayers}
+            finalJeopardyState={finalJeopardyState}
+            onReveal={handleFJReveal}
+            onMark={handleFJMark}
+          />
+        </div>
+      )}
+      {/* QR Code popup button — next to cheat sheet button */}
+      {sessionId && (phase === 'category-reveal' || phase === 'board') && (
+        <button
+          type="button"
+          onClick={() => setQrPopupOpen(true)}
+          className="fixed bottom-4 z-40 rounded-full bg-[#6A1B9A] px-4 py-2 text-sm font-semibold text-white shadow-lg transition hover:bg-[#7B1FA2] hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#CE93D8] focus-visible:ring-offset-2 focus-visible:ring-offset-black"
+          style={{ right: showCheatSheet ? '10rem' : '1rem' }}
+        >
+          Buzzer Code
+        </button>
+      )}
       {showCheatSheet && (
         <CheatSheetButton onClick={() => setCheatSheetOpen(true)} />
+      )}
+      {/* QR Code popup overlay */}
+      {qrPopupOpen && sessionId && (
+        <div
+          style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.7)' }}
+          onClick={() => setQrPopupOpen(false)}
+        >
+          <div onClick={(e) => e.stopPropagation()}>
+            <BackgroundGradient>
+              <div style={{ maxWidth: '20rem', padding: '2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', borderRadius: '1.5rem', border: '1px solid rgb(30 41 59)', background: 'rgb(15 23 42 / 0.95)', boxShadow: '0 25px 50px -12px rgb(15 23 42 / 0.3)', position: 'relative' }}>
+                <div style={{ alignSelf: 'flex-start' }}>
+                  <BackButton onClick={() => setQrPopupOpen(false)} label="Close QR code" />
+                </div>
+                <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#f1f5f9', margin: 0, textAlign: 'center', marginTop: '1rem' }}>
+                  Join on Your Phone
+                </h2>
+                <p style={{ color: '#94a3b8', fontSize: '0.875rem', margin: 0, textAlign: 'center', lineHeight: 1.5 }}>
+                  Scan this QR code to join the game as a buzzer player
+                </p>
+                <SessionQRCode sessionId={sessionId} />
+              </div>
+            </BackgroundGradient>
+          </div>
+        </div>
       )}
       {showCheatSheet && (
         <CheatSheet
@@ -468,6 +834,23 @@ export function GamePage() {
           onMark={handleMark}
           onReturn={handleReturnToBoard}
           ddPlayer={clue.dailyDouble ? ddSelectedPlayer : null}
+          onAnswerRevealed={() => {
+            setClueAnswerRevealed(true)
+            // Lock buzzers and clear queue when answer is revealed
+            if (sessionId) {
+              const newBuzzState: BuzzState = {
+                clueActive: false,
+                queue: [],
+                lockedOut: [],
+                systemLocked: true,
+              }
+              setBuzzState(newBuzzState)
+              updateBuzzState(sessionId, newBuzzState).catch(() => {})
+              if (sessionChannelRef.current) {
+                broadcastMessage(sessionChannelRef.current, { type: 'buzz_state_sync', buzzState: newBuzzState }).catch(() => {})
+              }
+            }
+          }}
         />
       )
     }

@@ -26,9 +26,9 @@ const validPlayerName = fc
   .map(([first, middle, last]) => [first, ...middle, last].join(''))
   .filter(s => s.trim().length >= 1 && s.trim().length <= 50)
 
-/** Generate a string from valid chars that exceeds 50 characters */
+/** Generate a string from valid chars whose trimmed length exceeds 50 characters */
 const tooLongValidCharsName = fc
-  .array(validChar, { minLength: 51, maxLength: 100 })
+  .array(validNonSpaceChar, { minLength: 51, maxLength: 100 })
   .map(chars => chars.join(''))
 
 /** Characters outside the allowed set */

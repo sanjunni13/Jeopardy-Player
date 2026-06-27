@@ -11,6 +11,7 @@ interface ClueScreenProps {
   onMark: (playerName: string, result: 'correct' | 'incorrect' | null) => void
   onReturn: () => void
   ddPlayer?: string | null
+  onAnswerRevealed?: () => void
 }
 
 export function ClueScreen({
@@ -22,8 +23,15 @@ export function ClueScreen({
   onMark,
   onReturn,
   ddPlayer,
+  onAnswerRevealed,
 }: ClueScreenProps) {
   const [answerRevealed, setAnswerRevealed] = useState(false)
+
+  useEffect(() => {
+    if (answerRevealed && onAnswerRevealed) {
+      onAnswerRevealed()
+    }
+  }, [answerRevealed, onAnswerRevealed])
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {

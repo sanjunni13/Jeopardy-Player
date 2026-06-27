@@ -7,6 +7,14 @@ interface BuilderToolbarProps {
   autoSaveStatus: 'idle' | 'pending' | 'saving' | 'failed'
 }
 
+function formatLastSaved(lastSavedAt: Date): string {
+  const DAY_MS = 24 * 60 * 60 * 1000
+  const isOlderThanDay = lastSavedAt.getTime() < Date.now() - DAY_MS
+  return isOlderThanDay
+    ? `${lastSavedAt.toLocaleDateString()} ${lastSavedAt.toLocaleTimeString()}`
+    : lastSavedAt.toLocaleTimeString()
+}
+
 export function BuilderToolbar({
   onSave,
   onPublish,
@@ -76,11 +84,7 @@ export function BuilderToolbar({
       {/* Last saved label */}
       {autoSaveStatus === 'idle' && lastSavedAt && (
         <span className="text-sm text-muted-foreground" role="status">
-          Last saved at {
-            Date.now() - lastSavedAt.getTime() > 24 * 60 * 60 * 1000
-              ? `${lastSavedAt.toLocaleDateString()} ${lastSavedAt.toLocaleTimeString()}`
-              : lastSavedAt.toLocaleTimeString()
-          }
+          Last saved at {formatLastSaved(lastSavedAt)}
         </span>
       )}
     </div>

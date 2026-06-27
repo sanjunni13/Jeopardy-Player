@@ -67,12 +67,10 @@ export function BuilderForm({
   mediaErrors = {},
 }: BuilderFormProps) {
   // ─── Tab navigation (Req 1.2, 1.3, 1.5, 1.6) ─────────────────────────────
-  const [activeTab, setActiveTab] = useState(0)
+  const [activeTabRaw, setActiveTab] = useState(0)
 
   // Clamp activeTab when totalRounds decreases (Property 2: active tab fallback)
-  useEffect(() => {
-    setActiveTab((prev) => Math.min(prev, formState.totalRounds))
-  }, [formState.totalRounds])
+  const activeTab = Math.min(activeTabRaw, formState.totalRounds)
 
   // ─── Focus management (Req 11.6) ──────────────────────────────────────────
   const prevTotalRoundsRef = useRef(formState.totalRounds)
