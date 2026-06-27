@@ -32,13 +32,15 @@ vi.mock('../../utils/supabase', () => ({
   },
 }))
 
-const mockCheckPlayerNameAvailable = vi.fn()
+const mockCheckPlayerNameAvailability = vi.fn()
+const mockClaimExistingPlayer = vi.fn()
 
 vi.mock('../../utils/playerProfile', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../utils/playerProfile')>()
   return {
     ...actual,
-    checkPlayerNameAvailable: (...args: unknown[]) => mockCheckPlayerNameAvailable(...args),
+    checkPlayerNameAvailability: (...args: unknown[]) => mockCheckPlayerNameAvailability(...args),
+    claimExistingPlayer: (...args: unknown[]) => mockClaimExistingPlayer(...args),
   }
 })
 
@@ -70,7 +72,8 @@ function renderWithProfileContext(profileCtx?: Partial<PlayerProfileContextValue
 describe('ProfileSetupPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockCheckPlayerNameAvailable.mockResolvedValue(true)
+    mockCheckPlayerNameAvailability.mockResolvedValue({ available: true })
+    mockClaimExistingPlayer.mockResolvedValue(true)
     mockInsert.mockResolvedValue({ error: null })
   })
 
@@ -96,7 +99,7 @@ describe('ProfileSetupPage', () => {
     })
 
     // Should not call the availability check or insert
-    expect(mockCheckPlayerNameAvailable).not.toHaveBeenCalled()
+    expect(mockCheckPlayerNameAvailability).not.toHaveBeenCalled()
     expect(mockInsert).not.toHaveBeenCalled()
   })
 
@@ -115,14 +118,14 @@ describe('ProfileSetupPage', () => {
       )
     })
 
-    expect(mockCheckPlayerNameAvailable).not.toHaveBeenCalled()
+    expect(mockCheckPlayerNameAvailability).not.toHaveBeenCalled()
     expect(mockInsert).not.toHaveBeenCalled()
   })
 
   // ─── Requirement 1.6: Duplicate name error ─────────────────────────────────
 
-  it('shows "name is already taken" error when checkPlayerNameAvailable returns false', async () => {
-    mockCheckPlayerNameAvailable.mockResolvedValue(false)
+  it('shows "name is already taken" error when checkPlayerNameAvailability returns unavailable', async () => {
+    mockCheckPlayerNameAvailability.mockResolvedValue({ available: false })
 
     renderWithProfileContext()
 
@@ -175,8 +178,8 @@ describe('ProfileSetupPage', () => {
 
   // ─── Requirement 1.7: Network exception shows generic error ────────────────
 
-  it('shows generic error when checkPlayerNameAvailable throws a network error', async () => {
-    mockCheckPlayerNameAvailable.mockRejectedValue(new Error('fetch failed'))
+  it('shows generic error when checkPlayerNameAvailability throws a network error', async () => {
+    mockCheckPlayerNameAvailability.mockRejectedValue(new Error('fetch failed'))
 
     renderWithProfileContext()
 
@@ -206,5 +209,45 @@ describe('ProfileSetupPage', () => {
 
     expect(mockNavigate).toHaveBeenCalledWith({ to: '/home', replace: true })
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  // ─── Claiming an existing unclaimed player ─────────────────────────────────
+
+  it('claims an existing unclaimed player row instead of inserting a new one', async () => {
+    mockCheckPlayerNameAvailability.mockResolvedValue({ available: true, unclaimedPlayerId: 42 })
+    const mockRefreshProfile = vi.fn().mockResolvedValue(undefined)
+
+    renderWithProfileContext({ refreshProfile: mockRefreshProfile })
+
+    const input = screen.getByLabelText('Player Name')
+    fireEvent.change(input, { target: { value: 'Luis' } })
+    fireEvent.submit(screen.getByRole('button', { name: 'Continue' }).closest('form')!)
+
+    await waitFor(() => {
+      expect(mockClaimExistingPlayer).toHaveBeenCalledWith(42, 'test-auth-uuid-123', expect.anything())
+    })
+
+    // Should NOT insert a new row
+    expect(mockInsert).not.toHaveBeenCalled()
+
+    expect(mockRefreshProfile).toHaveBeenCalled()
+    expect(mockNavigate).toHaveBeenCalledWith({ to: '/home', replace: true })
+  })
+
+  it('shows error when claiming an existing player fails', async () => {
+    mockCheckPlayerNameAvailability.mockResolvedValue({ available: true, unclaimedPlayerId: 42 })
+    mockClaimExistingPlayer.mockRejectedValue(new Error('DB error'))
+
+    renderWithProfileContext()
+
+    const input = screen.getByLabelText('Player Name')
+    fireEvent.change(input, { target: { value: 'Luis' } })
+    fireEvent.submit(screen.getByRole('button', { name: 'Continue' }).closest('form')!)
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent('Something went wrong, please try again')
+    })
+
+    expect(mockInsert).not.toHaveBeenCalled()
   })
 })

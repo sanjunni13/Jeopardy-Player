@@ -299,7 +299,7 @@ describe('Property 3: Case-insensitive player name uniqueness', () => {
         await checkPlayerNameAvailable(name, client)
 
         expect(fromSpy).toHaveBeenCalledWith('players')
-        expect(selectSpy).toHaveBeenCalledWith('id')
+        expect(selectSpy).toHaveBeenCalledWith('id, auth_uuid')
         expect(ilikeSpy).toHaveBeenCalledWith('player_name', name.trim())
       }),
       { numRuns: 100 }
@@ -332,14 +332,27 @@ describe('Property 3: Case-insensitive player name uniqueness', () => {
     )
   })
 
-  it('returns false (not available) when .ilike() finds a matching record', async () => {
+  it('returns false (not available) when .ilike() finds a claimed record', async () => {
     await fc.assert(
       fc.asyncProperty(validPlayerName, async (name) => {
-        const { client } = createMockSupabaseClient([{ id: 1 }])
+        const { client } = createMockSupabaseClient([{ id: 1, auth_uuid: 'some-uuid' }])
 
         const result = await checkPlayerNameAvailable(name, client)
 
         expect(result).toBe(false)
+      }),
+      { numRuns: 100 }
+    )
+  })
+
+  it('returns true (available) when .ilike() finds an unclaimed record', async () => {
+    await fc.assert(
+      fc.asyncProperty(validPlayerName, async (name) => {
+        const { client } = createMockSupabaseClient([{ id: 1, auth_uuid: null }])
+
+        const result = await checkPlayerNameAvailable(name, client)
+
+        expect(result).toBe(true)
       }),
       { numRuns: 100 }
     )

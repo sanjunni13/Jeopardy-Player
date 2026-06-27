@@ -5,7 +5,8 @@ import { supabase } from '../../utils/supabase'
 import { PlayerProfileContext } from '../../contexts/PlayerProfileContext'
 import {
   validatePlayerName,
-  checkPlayerNameAvailable,
+  checkPlayerNameAvailability,
+  claimExistingPlayer,
   buildPlayerInsertPayload,
 } from '../../utils/playerProfile'
 import { BackgroundGradient } from '../../components/ui/background-gradient'
@@ -43,31 +44,43 @@ export function ProfileSetupPage() {
     setSubmitting(true)
 
     try {
-      // Check if name is available (case-insensitive)
-      const isAvailable = await checkPlayerNameAvailable(playerName, supabase)
-      if (!isAvailable) {
+      // Check if name is available or claimable (case-insensitive)
+      const availability = await checkPlayerNameAvailability(playerName, supabase)
+      if (!availability.available) {
         setError('This name is already taken')
         setHasError(true)
         setSubmitting(false)
         return
       }
 
-      // Build and insert the player record
-      const payload = buildPlayerInsertPayload(playerName, session.user.id)
-      const { error: insertError } = await supabase
-        .from('players')
-        .insert(payload)
-
-      if (insertError) {
-        // Handle unique constraint violation (race condition on duplicate name)
-        if (insertError.code === '23505') {
-          setError('This name is already taken')
-        } else {
+      if (availability.unclaimedPlayerId) {
+        // Claim the existing unclaimed player row (preserves leaderboard stats)
+        try {
+          await claimExistingPlayer(availability.unclaimedPlayerId, session.user.id, supabase)
+        } catch {
           setError('Something went wrong, please try again')
+          setHasError(true)
+          setSubmitting(false)
+          return
         }
-        setHasError(true)
-        setSubmitting(false)
-        return
+      } else {
+        // No existing row — insert a new player record
+        const payload = buildPlayerInsertPayload(playerName, session.user.id)
+        const { error: insertError } = await supabase
+          .from('players')
+          .insert(payload)
+
+        if (insertError) {
+          // Handle unique constraint violation (race condition on duplicate name)
+          if (insertError.code === '23505') {
+            setError('This name is already taken')
+          } else {
+            setError('Something went wrong, please try again')
+          }
+          setHasError(true)
+          setSubmitting(false)
+          return
+        }
       }
 
       // Refresh the profile context so the app knows we have a profile now
