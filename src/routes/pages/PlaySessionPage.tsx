@@ -56,6 +56,7 @@ export function PlaySessionPage() {
             playerName={playerName}
             playerScore={playerScore}
             channel={channel}
+            submissionsLocked={!session.buzz_state.clueActive}
           />
         );
 

@@ -54,7 +54,7 @@ export async function broadcastMessage(
   channel: RealtimeChannel,
   message: ChannelMessage
 ): Promise<void> {
-  channel.send({
+  await channel.send({
     type: 'broadcast',
     event: 'session_event',
     payload: message,

@@ -6,11 +6,13 @@ interface FinalJeopardyProps {
   finalRound: FinalRound
   players: Player[]
   onComplete: (updatedPlayers: Player[]) => void
+  onClueRevealed?: () => void
+  onAnswerRevealed?: () => void
 }
 
 type FJPhase = 'category' | 'wager' | 'clue' | 'scoring'
 
-export function FinalJeopardy({ finalRound, players, onComplete }: FinalJeopardyProps) {
+export function FinalJeopardy({ finalRound, players, onComplete, onClueRevealed, onAnswerRevealed }: FinalJeopardyProps) {
   const [phase, setPhase] = useState<FJPhase>('category')
   const [wagers, setWagers] = useState<Record<string, string>>(() => {
     const initial: Record<string, string> = {}
@@ -19,6 +21,14 @@ export function FinalJeopardy({ finalRound, players, onComplete }: FinalJeopardy
   })
   const [wagerErrors, setWagerErrors] = useState<Record<string, string>>({})
   const [answerRevealed, setAnswerRevealed] = useState(false)
+
+  function revealAnswer() {
+    if (!answerRevealed) {
+      setAnswerRevealed(true)
+      onAnswerRevealed?.()
+    }
+  }
+
   const [markings, setMarkings] = useState<Record<string, 'correct' | 'incorrect' | null>>(() => {
     const initial: Record<string, 'correct' | 'incorrect' | null> = {}
     players.forEach(p => { initial[p.name] = null })
@@ -36,7 +46,7 @@ export function FinalJeopardy({ finalRound, players, onComplete }: FinalJeopardy
         if (phase === 'category') {
           setPhase('wager')
         } else if (phase === 'clue' && !answerRevealed) {
-          setAnswerRevealed(true)
+          revealAnswer()
         }
       }
     }
@@ -83,6 +93,7 @@ export function FinalJeopardy({ finalRound, players, onComplete }: FinalJeopardy
   function handleRevealClue() {
     if (validateWagers()) {
       setPhase('clue')
+      onClueRevealed?.()
     }
   }
 
@@ -201,7 +212,7 @@ export function FinalJeopardy({ finalRound, players, onComplete }: FinalJeopardy
 
       <div
         className="fj-clue-area"
-        onClick={() => { if (!answerRevealed) setAnswerRevealed(true) }}
+        onClick={() => { if (!answerRevealed) revealAnswer() }}
       >
         <div className="fj-clue-content">
           {!answerRevealed ? (

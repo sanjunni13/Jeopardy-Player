@@ -2,9 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams, useRouterState } from '@tanstack/react-router'
 import { supabase } from '../../utils/supabase'
 import { normalizeGame } from '../../utils/gameNormalizer'
-import { createSession, endSession, updateSessionPhase, updateBuzzState, updateFinalJeopardyState, updateSessionPlayers } from '../../utils/sessionApi'
+import { createSession, endSession, updateSessionPhase, updateBuzzState, fetchSession } from '../../utils/sessionApi'
 import { createSessionChannel, subscribeToChannel, unsubscribeFromChannel, broadcastMessage, onChannelMessage } from '../../utils/sessionChannel'
-import { reverseAndApplyMark, applyScoreMark } from '../../utils/finalJeopardyScoring'
 import { SessionQRCode } from '../../components/host/SessionQRCode'
 import { BuzzerHostPanel } from '../../components/host/BuzzerHostPanel'
 import { FinalJeopardyHostPanel } from '../../components/host/FinalJeopardyHostPanel'
@@ -84,15 +83,14 @@ export function GamePage() {
     revealedIndex: -1,
   })
 
-  // Track FJ marks for reversal support (requirement 6.9)
-  const [fjMarks, setFjMarks] = useState<Record<string, boolean>>({})
-
   // Fix #7: Daily Double state
   const [ddSelectedPlayer, setDdSelectedPlayer] = useState<string | null>(null)
   const [ddWager, setDdWager] = useState<number | null>(null)
   // Track whether the current clue is a daily double (for buzzer logic)
   const [isDailyDouble, setIsDailyDouble] = useState(false)
   const [clueAnswerRevealed, setClueAnswerRevealed] = useState(false)
+  const [fjClueRevealed, setFjClueRevealed] = useState(false)
+  const [fjAnswerRevealed, setFjAnswerRevealed] = useState(false)
 
   // Load game from Supabase Storage on mount
   useEffect(() => {
@@ -231,6 +229,13 @@ export function GamePage() {
                 }))
                 break
               case 'fj_submission_received':
+                // Fetch latest submissions from DB when a player submits
+                fetchSession(gameSessionRow.id).then(s => {
+                  if (s) {
+                    setFinalJeopardyState(s.final_jeopardy_state)
+                    setSessionPlayers(s.players)
+                  }
+                }).catch(() => {})
                 break
               case 'fj_reveal':
                 setFinalJeopardyState(prev => ({
@@ -377,55 +382,25 @@ export function GamePage() {
     })
   }, [sessionId])
 
-  const handleFJReveal = useCallback((index: number) => {
-    if (!sessionId) return
-    const submission = finalJeopardyState.submissions[index]
-    const newFJState: FinalJeopardyState = {
-      ...finalJeopardyState,
-      revealedIndex: index,
-    }
-    setFinalJeopardyState(newFJState)
-    updateFinalJeopardyState(sessionId, newFJState).catch(() => {})
-    if (sessionChannelRef.current && submission) {
-      broadcastMessage(sessionChannelRef.current, { type: 'fj_reveal', index, submission }).catch(() => {})
-    }
-  }, [sessionId, finalJeopardyState])
-
-  const handleFJMark = useCallback((playerName: string, isCorrect: boolean) => {
-    if (!sessionId) return
-    const submission = finalJeopardyState.submissions.find(s => s.playerName === playerName)
-    if (!submission) return
-    const player = sessionPlayers.find(p => p.name === playerName)
-    if (!player) return
-
-    const previousMark = fjMarks[playerName]
-    let newScore: number
-
-    if (previousMark !== undefined) {
-      // Mark change: reverse previous and apply new (requirement 6.9)
-      newScore = reverseAndApplyMark(player.score, submission.wager, previousMark, isCorrect)
+  const handleFJClueRevealed = useCallback(() => {
+    setFjClueRevealed(true)
+    console.log('[FJ] Clue revealed, broadcasting buzz_state_sync with clueActive: true')
+    if (sessionId && sessionChannelRef.current) {
+      const newBuzzState: BuzzState = {
+        clueActive: true,
+        queue: [],
+        lockedOut: [],
+        systemLocked: false,
+      }
+      setBuzzState(newBuzzState)
+      updateBuzzState(sessionId, newBuzzState).catch(() => {})
+      broadcastMessage(sessionChannelRef.current, { type: 'buzz_state_sync', buzzState: newBuzzState }).catch((err) => {
+        console.error('[FJ] Failed to broadcast buzz_state_sync:', err)
+      })
     } else {
-      // First-time mark
-      newScore = applyScoreMark(player.score, submission.wager, isCorrect)
+      console.warn('[FJ] Cannot broadcast: sessionId=', sessionId, 'channel=', sessionChannelRef.current)
     }
-
-    // Update local mark tracking
-    setFjMarks(prev => ({ ...prev, [playerName]: isCorrect }))
-
-    // Update local player scores
-    const updatedPlayers = sessionPlayers.map(p =>
-      p.name === playerName ? { ...p, score: newScore } : p
-    )
-    setSessionPlayers(updatedPlayers)
-
-    // Persist score update to database
-    updateSessionPlayers(sessionId, updatedPlayers).catch(() => {})
-
-    // Broadcast score update to all connected devices
-    if (sessionChannelRef.current) {
-      broadcastMessage(sessionChannelRef.current, { type: 'fj_score_update', playerName, newScore }).catch(() => {})
-    }
-  }, [sessionId, finalJeopardyState, sessionPlayers, fjMarks])
+  }, [sessionId])
 
   // ─── Phase transition handlers ───────────────────────────────────────────
 
@@ -707,13 +682,12 @@ export function GamePage() {
           />
         </div>
       )}
-      {sessionId && phase === 'final-jeopardy' && (
+      {sessionId && phase === 'final-jeopardy' && fjClueRevealed && (
         <div style={{ position: 'fixed', top: 8, right: 8, zIndex: 60, maxWidth: 400, maxHeight: 'calc(100vh - 80px)', overflowY: 'auto' }}>
           <FinalJeopardyHostPanel
             players={sessionPlayers}
             finalJeopardyState={finalJeopardyState}
-            onReveal={handleFJReveal}
-            onMark={handleFJMark}
+            showAnswers={fjAnswerRevealed}
           />
         </div>
       )}
@@ -857,11 +831,27 @@ export function GamePage() {
 
     if (phase === 'round-transition') {
       const nextIndex = session!.currentRoundIndex + 1
-      const label = nextIndex >= session!.orderedRoundNames.length
+      const isFinalJeopardyNext = nextIndex >= session!.orderedRoundNames.length
+      const label = isFinalJeopardyNext
         ? ROUND_LABELS.final
         : ROUND_LABELS[session!.orderedRoundNames[nextIndex]]
 
-      return <RoundTransition label={label} onContinue={handleContinueRound} />
+      return (
+        <>
+          <RoundTransition label={label} onContinue={handleContinueRound} />
+          {isFinalJeopardyNext && sessionId && (
+            <div style={{ position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)', zIndex: 60, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, padding: '1.5rem', borderRadius: '1rem', background: 'rgba(15, 23, 42, 0.95)', border: '1px solid rgb(51 65 85)', maxWidth: '22rem'}}>
+              <p style={{ color: '#f1f5f9', fontSize: '0.875rem', textAlign: 'center', margin: 0, lineHeight: 1.5 }}>
+                <strong>Last chance to join!</strong> Scan this QR code to submit your Final Jeopardy answer on your phone.
+              </p>
+              <SessionQRCode sessionId={sessionId} />
+              <p style={{ color: '#94a3b8', fontSize: '0.75rem', textAlign: 'center', margin: 0, lineHeight: 1.4 }}>
+                If you're already on the buzzer page, stay there — it will automatically switch to the answer submission page.
+              </p>
+            </div>
+          )}
+        </>
+      )
     }
 
     if (phase === 'final-jeopardy') {
@@ -870,6 +860,22 @@ export function GamePage() {
           finalRound={session!.game.final}
           players={session!.players}
           onComplete={handleFJComplete}
+          onClueRevealed={handleFJClueRevealed}
+          onAnswerRevealed={() => {
+            setFjAnswerRevealed(true)
+            // Lock submissions when answer is revealed
+            if (sessionId && sessionChannelRef.current) {
+              const newBuzzState: BuzzState = {
+                clueActive: false,
+                queue: [],
+                lockedOut: [],
+                systemLocked: true,
+              }
+              setBuzzState(newBuzzState)
+              updateBuzzState(sessionId, newBuzzState).catch(() => {})
+              broadcastMessage(sessionChannelRef.current, { type: 'buzz_state_sync', buzzState: newBuzzState }).catch(() => {})
+            }
+          }}
         />
       )
     }

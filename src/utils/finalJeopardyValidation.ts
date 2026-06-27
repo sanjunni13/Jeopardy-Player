@@ -53,7 +53,9 @@ export function canSubmitFinalJeopardy(submissions: FinalJeopardySubmission[], p
 
 /**
  * Returns true if every registered player has exactly one submission.
+ * Returns false if there are no players (avoids vacuous truth).
  */
 export function allPlayersSubmitted(players: SessionPlayer[], submissions: FinalJeopardySubmission[]): boolean {
+  if (players.length === 0) return false;
   return players.every(p => submissions.some(s => s.playerName === p.name));
 }
