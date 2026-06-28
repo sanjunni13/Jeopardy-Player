@@ -33,7 +33,7 @@ interface BuilderFormProps {
     field: keyof ClueFormState,
     value: string | boolean | MediaData | null
   ) => void
-  onSetFinalField: (field: keyof FinalRoundFormState, value: string) => void
+  onSetFinalField: (field: keyof FinalRoundFormState, value: string | MediaData | null) => void
   onValidateField: (fieldPath: string) => void
   onSave: () => void
   onPublish: () => void
@@ -286,6 +286,7 @@ export function BuilderForm({
             solution: errors['final.solution'],
           }}
           onFieldChange={onSetFinalField}
+          media={formState.finalRound.media ?? null}
           onMediaAttach={onMediaAttach ? (file) => onMediaAttach(formState.totalRounds, 0, 0, file) : undefined}
           onMediaRemove={onMediaRemove ? () => onMediaRemove(formState.totalRounds, 0, 0) : undefined}
         />

@@ -2,6 +2,7 @@ import type {
   BuilderFormState,
   CategoryFormState,
   ClueFormState,
+  FinalRoundFormState,
 } from './builderFormStructure'
 import type { BuilderDraft } from './draftApi'
 import type { NormalizedGame, RoundName, Category } from '../types/game'
@@ -30,26 +31,73 @@ export function builderStateToNormalizedGame(state: BuilderFormState): Normalize
     const roundName = ROUND_NAMES[r]
     rounds[roundName] = state.rounds[r].map(cat => ({
       category: cat.name,
-      clues: cat.clues.map(c => ({
-        value: Number(c.value),
-        clue: c.clue,
-        solution: c.solution,
-        dailyDouble: c.dailyDouble,
-        html: false,
-      })),
+      clues: cat.clues.map(c => {
+        const { clueHtml, hasHtml } = buildClueHtml(c.clue, c.media)
+        return {
+          value: Number(c.value),
+          clue: clueHtml,
+          solution: c.solution,
+          dailyDouble: c.dailyDouble,
+          html: hasHtml,
+        }
+      }),
     }))
   }
+
+  const { clueHtml: finalClueHtml, hasHtml: finalHasHtml } = buildClueHtml(
+    state.finalRound.clue,
+    state.finalRound.media
+  )
 
   return {
     rounds: rounds as Record<RoundName, Category[]>,
     final: {
       category: state.finalRound.category,
-      clue: state.finalRound.clue,
+      clue: finalClueHtml,
       solution: state.finalRound.solution,
-      html: false,
+      html: finalHasHtml,
     },
     totalRounds: state.totalRounds,
   }
+}
+
+/** Convert media + text into an HTML clue string for the published game */
+function buildClueHtml(
+  text: string,
+  media: BuilderFormState['finalRound']['media']
+): { clueHtml: string; hasHtml: boolean } {
+  if (!media) {
+    return { clueHtml: text, hasHtml: false }
+  }
+
+  let mediaHtml = ''
+  switch (media.type) {
+    case 'image':
+      mediaHtml = `<img src="${media.url}" alt="Clue media" style="max-width:100%;max-height:50vh;object-fit:contain;border-radius:0.5rem;" />`
+      break
+    case 'audio':
+      mediaHtml = `<audio controls src="${media.url}"></audio>`
+      break
+    case 'youtube': {
+      // Extract video ID for iframe embed
+      const videoId = extractYouTubeId(media.url)
+      if (videoId) {
+        mediaHtml = `<iframe src="https://www.youtube.com/embed/${videoId}" style="width:80vw;max-width:900px;height:50vh;border-radius:0.5rem;" frameborder="0" allowfullscreen allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"></iframe>`
+      }
+      break
+    }
+  }
+
+  const textPart = text.trim() ? `<p>${text}</p>` : ''
+  const combined = mediaHtml + textPart
+
+  return { clueHtml: combined, hasHtml: true }
+}
+
+/** Extract YouTube video ID from various URL formats */
+function extractYouTubeId(url: string): string | null {
+  const match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]+)/)
+  return match ? match[1] : null
 }
 
 /**
@@ -84,6 +132,7 @@ export function builderStateToDraft(state: BuilderFormState): BuilderDraft {
       clue: state.finalRound.clue,
       solution: state.finalRound.solution,
       html: false,
+      ...(state.finalRound.media ? { media: state.finalRound.media } : {}),
     },
   }
 }
@@ -119,6 +168,8 @@ export function draftToBuilderState(draft: BuilderDraft): BuilderFormState {
     )
   }
 
+  const finalMedia = (draft.final as Record<string, unknown>).media as FinalRoundFormState['media'] | undefined
+
   return {
     gameName: draft.gameName,
     totalRounds: draft.totalRounds,
@@ -128,6 +179,7 @@ export function draftToBuilderState(draft: BuilderDraft): BuilderFormState {
       category: draft.final.category,
       clue: draft.final.clue,
       solution: draft.final.solution,
+      ...(finalMedia !== undefined ? { media: finalMedia } : {}),
     },
   }
 }

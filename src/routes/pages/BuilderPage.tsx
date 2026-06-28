@@ -6,7 +6,7 @@ import { useBuilderState } from '../../hooks/useBuilderState'
 import { useDraftPersistence } from '../../hooks/useDraftPersistence'
 import { saveGame } from '../../utils/gameApi'
 import { deleteDraft } from '../../utils/draftApi'
-import { uploadClueMedia, deleteClueMedia } from '../../utils/mediaApi'
+import { uploadClueMedia, deleteClueMedia, refreshMediaUrl } from '../../utils/mediaApi'
 import { validateDraftForPublish } from '../../utils/draftValidation'
 import { usePlayerProfileContext } from '../../hooks/usePlayerProfileContext'
 import { BackButton } from '../../components/BackButton'
@@ -94,17 +94,24 @@ export function BuilderPage() {
     fileOrUrl: File | string
   ) => {
     const key = getMediaKey(roundIdx, catIdx, clueIdx)
+    const isFinalJeopardy = roundIdx >= formState.totalRounds
 
     // If it's a YouTube URL string, just set the media field directly
     if (typeof fileOrUrl === 'string') {
       // If existing media is an uploaded file, delete it first
-      const existingMedia = formState.rounds[roundIdx]?.[catIdx]?.clues[clueIdx]?.media
+      const existingMedia = isFinalJeopardy
+        ? formState.finalRound.media
+        : formState.rounds[roundIdx]?.[catIdx]?.clues[clueIdx]?.media
       if (existingMedia && (existingMedia.type === 'image' || existingMedia.type === 'audio')) {
-        deleteClueMedia(existingMedia.url) // fire and forget for replacement
+        deleteClueMedia(existingMedia.url, existingMedia.storagePath) // fire and forget for replacement
       }
 
       const mediaData: MediaData = { type: 'youtube', url: fileOrUrl }
-      setClueField(roundIdx, catIdx, clueIdx, 'media', mediaData)
+      if (isFinalJeopardy) {
+        setFinalField('media', mediaData)
+      } else {
+        setClueField(roundIdx, catIdx, clueIdx, 'media', mediaData)
+      }
       // Clear any previous error for this clue
       setMediaUploadStates(prev => {
         const next = { ...prev }
@@ -138,9 +145,11 @@ export function BuilderPage() {
     }
 
     // If existing media is an uploaded file, delete it first
-    const existingMedia = formState.rounds[roundIdx]?.[catIdx]?.clues[clueIdx]?.media
+    const existingMedia = isFinalJeopardy
+      ? formState.finalRound.media
+      : formState.rounds[roundIdx]?.[catIdx]?.clues[clueIdx]?.media
     if (existingMedia && (existingMedia.type === 'image' || existingMedia.type === 'audio')) {
-      await deleteClueMedia(existingMedia.url)
+      await deleteClueMedia(existingMedia.url, existingMedia.storagePath)
     }
 
     // Set uploading state
@@ -156,10 +165,14 @@ export function BuilderPage() {
       const ext = fileOrUrl.name.toLowerCase().split('.').pop() ?? ''
       const isAudio = ext === 'mp3'
       const mediaData: MediaData = isAudio
-        ? { type: 'audio', url: result.url, fileName: fileOrUrl.name }
-        : { type: 'image', url: result.url, fileName: fileOrUrl.name }
+        ? { type: 'audio', url: result.url, fileName: fileOrUrl.name, storagePath: result.storagePath }
+        : { type: 'image', url: result.url, fileName: fileOrUrl.name, storagePath: result.storagePath }
 
-      setClueField(roundIdx, catIdx, clueIdx, 'media', mediaData)
+      if (isFinalJeopardy) {
+        setFinalField('media', mediaData)
+      } else {
+        setClueField(roundIdx, catIdx, clueIdx, 'media', mediaData)
+      }
       setMediaUploadStates(prev => {
         const next = { ...prev }
         delete next[key]
@@ -171,19 +184,22 @@ export function BuilderPage() {
         [key]: { isUploading: false, error: result.error },
       }))
     }
-  }, [formState, currentDraftId, draftId, save, setClueField])
+  }, [formState, currentDraftId, draftId, save, setClueField, setFinalField])
 
   const handleMediaRemove = useCallback(async (
     roundIdx: number,
     catIdx: number,
     clueIdx: number
   ) => {
-    const media = formState.rounds[roundIdx]?.[catIdx]?.clues[clueIdx]?.media
+    const isFinalJeopardy = roundIdx >= formState.totalRounds
+    const media = isFinalJeopardy
+      ? formState.finalRound.media
+      : formState.rounds[roundIdx]?.[catIdx]?.clues[clueIdx]?.media
     if (!media) return
 
     // If it's an uploaded file (image/audio), delete from storage
     if (media.type === 'image' || media.type === 'audio') {
-      const result = await deleteClueMedia(media.url)
+      const result = await deleteClueMedia(media.url, media.storagePath)
       if (!result.success) {
         const key = getMediaKey(roundIdx, catIdx, clueIdx)
         setMediaUploadStates(prev => ({
@@ -195,7 +211,11 @@ export function BuilderPage() {
     }
 
     // Clear the media field
-    setClueField(roundIdx, catIdx, clueIdx, 'media', null)
+    if (isFinalJeopardy) {
+      setFinalField('media', null)
+    } else {
+      setClueField(roundIdx, catIdx, clueIdx, 'media', null)
+    }
     // Clear any error state
     const key = getMediaKey(roundIdx, catIdx, clueIdx)
     setMediaUploadStates(prev => {
@@ -203,7 +223,7 @@ export function BuilderPage() {
       delete next[key]
       return next
     })
-  }, [formState, setClueField])
+  }, [formState, setClueField, setFinalField])
 
   // ─── Exit guard (in-app navigation) ──────────────────────────────────────
   const { proceed, reset, status } = useBlocker({ condition: isDirty })
@@ -262,6 +282,40 @@ export function BuilderPage() {
       }
     })
   }, [draftId, userEmail, loadDraft])
+
+  // ─── Refresh expired media URLs after draft loads ─────────────────────────
+  const hasRefreshedMediaRef = useRef(false)
+  useEffect(() => {
+    if (isLoadingDraft || hasRefreshedMediaRef.current) return
+    if (!formState.rounds.length) return
+    hasRefreshedMediaRef.current = true
+
+    // Walk all clues and refresh any media with a storagePath
+    const refreshAll = async () => {
+      for (let rIdx = 0; rIdx < formState.rounds.length; rIdx++) {
+        for (let cIdx = 0; cIdx < formState.rounds[rIdx].length; cIdx++) {
+          for (let qIdx = 0; qIdx < formState.rounds[rIdx][cIdx].clues.length; qIdx++) {
+            const media = formState.rounds[rIdx][cIdx].clues[qIdx].media
+            if (media && (media.type === 'image' || media.type === 'audio') && media.storagePath) {
+              const freshUrl = await refreshMediaUrl(media.storagePath)
+              if (freshUrl) {
+                setClueField(rIdx, cIdx, qIdx, 'media', { ...media, url: freshUrl })
+              }
+            }
+          }
+        }
+      }
+      // Also refresh Final Jeopardy media
+      const finalMedia = formState.finalRound.media
+      if (finalMedia && (finalMedia.type === 'image' || finalMedia.type === 'audio') && finalMedia.storagePath) {
+        const freshUrl = await refreshMediaUrl(finalMedia.storagePath)
+        if (freshUrl) {
+          setFinalField('media', { ...finalMedia, url: freshUrl })
+        }
+      }
+    }
+    refreshAll()
+  }, [isLoadingDraft, formState.rounds, formState.finalRound.media, setClueField, setFinalField])
 
   // ─── Retry draft load ────────────────────────────────────────────────────
   const handleRetryLoad = useCallback(() => {

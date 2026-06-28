@@ -216,21 +216,17 @@ export function FinalJeopardy({ finalRound, players, onComplete, onClueRevealed,
       >
         <div className="fj-clue-content">
           {!answerRevealed ? (
-            <p className="fj-clue-text">
-              {finalRound.html ? (
-                <span dangerouslySetInnerHTML={{ __html: finalRound.clue }} />
-              ) : (
-                finalRound.clue
-              )}
-            </p>
+            finalRound.html ? (
+              <div className="fj-clue-text" dangerouslySetInnerHTML={{ __html: finalRound.clue }} onClick={(e) => e.stopPropagation()} />
+            ) : (
+              <p className="fj-clue-text">{finalRound.clue}</p>
+            )
           ) : (
-            <p className="fj-clue-answer">
-              {finalRound.html ? (
-                <span dangerouslySetInnerHTML={{ __html: finalRound.solution }} />
-              ) : (
-                finalRound.solution
-              )}
-            </p>
+            finalRound.html ? (
+              <div className="fj-clue-answer" dangerouslySetInnerHTML={{ __html: finalRound.solution }} />
+            ) : (
+              <p className="fj-clue-answer">{finalRound.solution}</p>
+            )
           )}
         </div>
       </div>

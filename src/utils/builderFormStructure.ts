@@ -5,8 +5,8 @@ import { computeClueValue } from './clueValues'
 
 /** Discriminated union for media attached to a clue */
 export type MediaData =
-  | { type: 'image'; url: string; fileName: string }
-  | { type: 'audio'; url: string; fileName: string }
+  | { type: 'image'; url: string; fileName: string; storagePath?: string }
+  | { type: 'audio'; url: string; fileName: string; storagePath?: string }
   | { type: 'youtube'; url: string }
 
 /** Form-level state for a single clue row */
@@ -29,6 +29,7 @@ export interface FinalRoundFormState {
   category: string
   clue: string
   solution: string
+  media?: MediaData | null
 }
 
 /** Top-level builder form state */

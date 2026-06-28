@@ -33,7 +33,39 @@
 
 .clue-content {
   max-width: 48rem;
+  width: 100%;
   text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+/* ── Media ── */
+.clue-media {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+}
+
+.clue-media-image {
+  max-width: 100%;
+  max-height: 50vh;
+  object-fit: contain;
+  border-radius: 0.5rem;
+}
+
+.clue-media-audio {
+  width: 100%;
+  max-width: 500px;
+  height: 48px;
+}
+
+.clue-media-youtube {
+  width: 100%;
+  max-width: 640px;
+  aspect-ratio: 16 / 9;
 }
 
 .clue-text {
@@ -44,6 +76,26 @@
   color: white;
   text-shadow: 2px 2px black;
   line-height: 1.4;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.clue-text audio,
+.clue-text iframe {
+  display: block;
+  margin: 0 auto 1rem;
+  text-transform: none;
+  font-weight: normal;
+  text-shadow: none;
+  color-scheme: dark;
+  min-height: 54px;
+}
+
+.clue-text img {
+  display: block;
+  margin: 0 auto 1rem;
 }
 
 @media (min-width: 768px) {

@@ -72,8 +72,9 @@ export function validateDraftForPublish(draft: BuilderDraft): ValidationResult {
           });
         }
 
-        // Clue text must be non-empty
-        if (!clue.clue || clue.clue.trim() === '') {
+        // Clue text must be non-empty (unless media is attached)
+        const hasMedia = !!(clue as Record<string, unknown>).media
+        if ((!clue.clue || clue.clue.trim() === '') && !hasMedia) {
           errors.push({
             field: `${clueFieldBase}.clue`,
             message: 'Clue text cannot be empty',
@@ -99,7 +100,8 @@ export function validateDraftForPublish(draft: BuilderDraft): ValidationResult {
     });
   }
 
-  if (!draft.final.clue || draft.final.clue.trim() === '') {
+  const finalHasMedia = !!(draft.final as Record<string, unknown>).media
+  if ((!draft.final.clue || draft.final.clue.trim() === '') && !finalHasMedia) {
     errors.push({
       field: 'final.clue',
       message: 'Final Jeopardy clue cannot be empty',
