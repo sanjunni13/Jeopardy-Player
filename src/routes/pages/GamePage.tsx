@@ -125,7 +125,7 @@ export function GamePage() {
 
         // Build storage path: games are stored under auth_uuid/{game_name}.json
         // Look up the creator's auth_uuid from the players table
-        let storagePath: string
+        let authFolder: string
         if (gameRow.created_by) {
           const { data: creatorData } = await supabase
             .from('players')
@@ -133,18 +133,35 @@ export function GamePage() {
             .eq('id', gameRow.created_by)
             .single()
 
-          if (creatorData?.auth_uuid) {
-            storagePath = `${creatorData.auth_uuid}/${gameRow.game_name}.json`
-          } else {
-            // Fallback: try using the current user's auth UUID
-            storagePath = `${user.id}/${gameRow.game_name}.json`
-          }
+          authFolder = creatorData?.auth_uuid ?? user.id
         } else {
-          storagePath = `${gameRow.game_name}.json`
+          // No created_by — default to current user's folder
+          authFolder = user.id
         }
-        const { data: fileData, error: downloadErr } = await supabase.storage
+
+        const gameName = gameRow.game_name as string
+        const basePath = `${authFolder}/${gameName}.json`
+
+        // Try downloading with the resolved auth folder
+        let { data: fileData, error: downloadErr } = await supabase.storage
           .from('games')
-          .download(storagePath)
+          .download(basePath)
+
+        // If that fails and we used a creator's folder, fall back to current user's folder
+        if ((downloadErr || !fileData) && authFolder !== user.id) {
+          const fallbackPath = `${user.id}/${gameName}.json`
+          const retry = await supabase.storage.from('games').download(fallbackPath)
+          fileData = retry.data
+          downloadErr = retry.error
+        }
+
+        // Last resort: try the bucket root (legacy games without folder prefix)
+        if (downloadErr || !fileData) {
+          const rootPath = `${gameName}.json`
+          const retry = await supabase.storage.from('games').download(rootPath)
+          fileData = retry.data
+          downloadErr = retry.error
+        }
 
         if (downloadErr || !fileData) {
           setError('Could not load game file.')
