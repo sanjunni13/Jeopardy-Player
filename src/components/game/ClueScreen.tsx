@@ -90,21 +90,17 @@ export function ClueScreen({
       >
         <div className="clue-content">
           {!answerRevealed ? (
-            <p className="clue-text">
-              {clue.html ? (
-                <span dangerouslySetInnerHTML={{ __html: clue.clue }} />
-              ) : (
-                clue.clue
-              )}
-            </p>
+            clue.html ? (
+              <div className="clue-text" dangerouslySetInnerHTML={{ __html: clue.clue }} onClick={(e) => e.stopPropagation()} />
+            ) : (
+              <p className="clue-text">{clue.clue}</p>
+            )
           ) : (
-            <p className="clue-answer">
-              {clue.html ? (
-                <span dangerouslySetInnerHTML={{ __html: clue.solution }} />
-              ) : (
-                clue.solution
-              )}
-            </p>
+            clue.html ? (
+              <div className="clue-answer" dangerouslySetInnerHTML={{ __html: clue.solution }} />
+            ) : (
+              <p className="clue-answer">{clue.solution}</p>
+            )
           )}
         </div>
       </div>

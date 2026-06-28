@@ -81,29 +81,41 @@ export function ClueRow({
           <label htmlFor={clueId} className="sr-only">
             Clue {clueNumber} clue text - {roundName} Round, {categoryLabel}
           </label>
-          <div className="relative">
-            <textarea
-              ref={textareaRef}
-              id={clueId}
-              placeholder="Clue text"
-              value={clue.clue}
-              onChange={(e) => { onFieldChange('clue', e.target.value); autoResize(e) }}
-              onInput={autoResize}
-              rows={1}
-              aria-invalid={errors.clue ? true : undefined}
-              aria-describedby={errors.clue ? clueErrorId : undefined}
-              className={`${inputClasses} pr-10 ${errors.clue ? 'border-red-500' : ''}`}
-            />
-            <div className="absolute right-1 top-2">
+          {clue.media ? (
+            <div className="w-full min-h-11 py-2 flex items-center">
               <MediaAttachment
-                media={clue.media ?? null}
+                media={clue.media}
                 onAttach={onMediaAttach}
                 onRemove={onMediaRemove}
                 isUploading={isMediaUploading}
                 error={mediaError}
+                renderMode="preview"
               />
             </div>
-          </div>
+          ) : (
+            <MediaAttachment
+              media={null}
+              onAttach={onMediaAttach}
+              onRemove={onMediaRemove}
+              isUploading={isMediaUploading}
+              error={mediaError}
+              renderMode="inline"
+              clueInputElement={
+                <textarea
+                  ref={textareaRef}
+                  id={clueId}
+                  placeholder="Clue text"
+                  value={clue.clue}
+                  onChange={(e) => { onFieldChange('clue', e.target.value); autoResize(e) }}
+                  onInput={autoResize}
+                  rows={1}
+                  aria-invalid={errors.clue ? true : undefined}
+                  aria-describedby={errors.clue ? clueErrorId : undefined}
+                  className={`${inputClasses} pr-10 ${errors.clue ? 'border-red-500' : ''}`}
+                />
+              }
+            />
+          )}
           {errors.clue && (
             <p id={clueErrorId} className="text-sm text-red-500 mt-1">
               {errors.clue}

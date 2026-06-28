@@ -68,27 +68,47 @@ export function FinalJeopardySection({
           >
             Final Jeopardy Clue
           </label>
-          <div className="relative">
+          {media && onMediaAttach && onMediaRemove ? (
+            <div className="w-full py-2">
+              <MediaAttachment
+                media={media}
+                onAttach={onMediaAttach}
+                onRemove={onMediaRemove}
+                isUploading={isMediaUploading}
+                error={mediaError}
+                renderMode="preview"
+                size="large"
+              />
+            </div>
+          ) : onMediaAttach && onMediaRemove ? (
+            <MediaAttachment
+              media={null}
+              onAttach={onMediaAttach}
+              onRemove={onMediaRemove}
+              isUploading={isMediaUploading}
+              error={mediaError}
+              renderMode="inline"
+              clueInputElement={
+                <textarea
+                  id="final-jeopardy-clue"
+                  value={finalRound.clue}
+                  onChange={(e) => onFieldChange('clue', e.target.value)}
+                  aria-invalid={!!errors.clue}
+                  aria-describedby={errors.clue ? 'final-jeopardy-clue-error' : undefined}
+                  className="w-full px-3 py-2 pr-10 rounded-lg border border-border bg-input/30 text-sm focus:outline-none focus:ring-2 focus:ring-ring min-h-24 resize-y"
+                />
+              }
+            />
+          ) : (
             <textarea
               id="final-jeopardy-clue"
               value={finalRound.clue}
               onChange={(e) => onFieldChange('clue', e.target.value)}
               aria-invalid={!!errors.clue}
               aria-describedby={errors.clue ? 'final-jeopardy-clue-error' : undefined}
-              className="w-full px-3 py-2 pr-10 rounded-lg border border-border bg-input/30 text-sm focus:outline-none focus:ring-2 focus:ring-ring min-h-24 resize-y"
+              className="w-full px-3 py-2 rounded-lg border border-border bg-input/30 text-sm focus:outline-none focus:ring-2 focus:ring-ring min-h-24 resize-y"
             />
-            {onMediaAttach && onMediaRemove && (
-              <div className="absolute right-1 top-2">
-                <MediaAttachment
-                  media={media}
-                  onAttach={onMediaAttach}
-                  onRemove={onMediaRemove}
-                  isUploading={isMediaUploading}
-                  error={mediaError}
-                />
-              </div>
-            )}
-          </div>
+          )}
           {errors.clue && (
             <p id="final-jeopardy-clue-error" className="text-sm text-red-500 mt-1">
               {errors.clue}

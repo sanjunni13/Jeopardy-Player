@@ -2,3 +2,12 @@
   min-height: 100vh;
   padding: 2rem;
 }
+
+/* Hide the three-dot options menu on audio players in the builder */
+.builder-page audio::-webkit-media-controls-enclosure {
+  overflow: hidden;
+}
+
+.builder-page audio::-webkit-media-controls-overflow-button {
+  display: none !important;
+}

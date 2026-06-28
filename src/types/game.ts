@@ -54,6 +54,7 @@ export interface FinalRound {
   solution: string;
   html: boolean;
 }
+}
 
 /** Game object after normalisation — always word-descriptor keys */
 export interface NormalizedGame {

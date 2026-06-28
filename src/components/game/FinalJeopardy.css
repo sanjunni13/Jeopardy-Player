@@ -183,7 +183,12 @@
 
 .fj-clue-content {
   max-width: 48rem;
+  width: 100%;
   text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
 }
 
 .fj-clue-text {
@@ -194,6 +199,26 @@
   color: white;
   text-shadow: 2px 2px black;
   line-height: 1.4;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.fj-clue-text audio,
+.fj-clue-text iframe {
+  display: block;
+  margin: 0 auto 1rem;
+  text-transform: none;
+  font-weight: normal;
+  text-shadow: none;
+  color-scheme: dark;
+  min-height: 54px;
+}
+
+.fj-clue-text img {
+  display: block;
+  margin: 0 auto 1rem;
 }
 
 @media (min-width: 768px) {

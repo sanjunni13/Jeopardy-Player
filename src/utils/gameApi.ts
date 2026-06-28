@@ -40,7 +40,7 @@ export async function saveGame(
 
     // Upload to Storage using Auth UUID as folder prefix
     const storagePath = `${user.id}/${gameName}.json`;
-    const { data: uploadData, error: uploadErr } = await supabase.storage
+    const { error: uploadErr } = await supabase.storage
       .from('games')
       .upload(storagePath, JSON.stringify(gameData), {
         contentType: 'application/json',
@@ -50,8 +50,6 @@ export async function saveGame(
     if (uploadErr) {
       return { error: `Storage upload failed: ${uploadErr.message}` } as SaveGameResponse;
     }
-
-    console.log('Storage upload successful:', storagePath, uploadData);
 
     // Count rounds
     const totalRounds = Object.keys(gameData.rounds).length;

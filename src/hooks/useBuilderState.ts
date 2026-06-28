@@ -22,7 +22,7 @@ export interface UseBuilderStateReturn {
   setCategoriesPerRound: (n: number) => void
   setCategoryName: (roundIdx: number, catIdx: number, name: string) => void
   setClueField: (roundIdx: number, catIdx: number, clueIdx: number, field: keyof ClueFormState, value: ClueFieldValue) => void
-  setFinalField: (field: keyof FinalRoundFormState, value: string) => void
+  setFinalField: (field: keyof FinalRoundFormState, value: string | MediaData | null) => void
   validateField: (fieldPath: string) => void
   validateForPublish: () => boolean
   validateForSave: () => boolean
@@ -177,7 +177,7 @@ export function useBuilderState(): UseBuilderStateReturn {
     })
   }, [])
 
-  const setFinalField = useCallback((field: keyof FinalRoundFormState, value: string) => {
+  const setFinalField = useCallback((field: keyof FinalRoundFormState, value: string | MediaData | null) => {
     setFormState(prev => ({
       ...prev,
       finalRound: { ...prev.finalRound, [field]: value },

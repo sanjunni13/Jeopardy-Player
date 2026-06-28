@@ -106,8 +106,9 @@ export function validateForPublish(state: BuilderFormState): ValidationErrors {
           }
         }
 
-        // Clue text must be non-empty
-        if (clue.clue.trim() === '') {
+        // Clue text must be non-empty (unless media is attached)
+        const hasMedia = !!(clue as Record<string, unknown>).media
+        if (clue.clue.trim() === '' && !hasMedia) {
           errors[`rounds.${roundIdx}.${catIdx}.clues.${clueIdx}.clue`] = 'Clue text is required'
         }
 
@@ -123,7 +124,7 @@ export function validateForPublish(state: BuilderFormState): ValidationErrors {
   if (state.finalRound.category.trim() === '') {
     errors['final.category'] = 'Final Jeopardy category is required'
   }
-  if (state.finalRound.clue.trim() === '') {
+  if (state.finalRound.clue.trim() === '' && !(state.finalRound as Record<string, unknown>).media) {
     errors['final.clue'] = 'Final Jeopardy clue is required'
   }
   if (state.finalRound.solution.trim() === '') {
