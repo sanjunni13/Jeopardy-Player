@@ -1,48 +1,92 @@
-import { useEffect } from 'react'
-import { Link, useNavigate } from '@tanstack/react-router'
+import { Link } from '@tanstack/react-router'
 import { useAuth } from '../../hooks/useAuth'
+import './NotFoundPage.css'
 
 export function NotFoundPage() {
   const { session, loading } = useAuth()
-  const navigate = useNavigate()
-
-  // Auto-redirect once auth state is known
-  useEffect(() => {
-    if (!loading) {
-      if (session) {
-        navigate({ to: '/home', replace: true })
-      } else {
-        navigate({ to: '/login', replace: true })
-      }
-    }
-  }, [loading, session, navigate])
 
   if (loading) {
-    return <p className="p-6 text-slate-300">Redirecting…</p>
+    return <p className="p-6 text-slate-300">Loading…</p>
   }
 
-  // Fallback UI shown briefly before the redirect fires, or if JS is slow
   return (
-    <main className="min-h-screen bg-slate-950 text-slate-100 p-8 flex items-center justify-center">
-      <div className="max-w-xl rounded-3xl border border-slate-800 bg-slate-900/95 p-10 text-center shadow-2xl shadow-slate-900/30">
-        <h1 className="text-5xl font-bold text-amber-400 mb-4">404</h1>
-        <p className="text-slate-300 mb-6">This page doesn't exist.</p>
-        {session ? (
-          <Link
-            to="/home"
-            className="inline-flex rounded-full bg-emerald-500 px-6 py-3 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400"
-          >
-            Back to Home
-          </Link>
-        ) : (
-          <Link
-            to="/login"
-            className="inline-flex rounded-full bg-emerald-500 px-6 py-3 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400"
-          >
-            Go to Login
-          </Link>
-        )}
+    <main className="not-found-page">
+      {/* Animated TV */}
+      <div className="main_wrapper">
+        <div className="main">
+          <div className="antenna">
+            <div className="antenna_shadow"></div>
+            <div className="a1"></div>
+            <div className="a1d"></div>
+            <div className="a2"></div>
+            <div className="a2d"></div>
+            <div className="a_base"></div>
+          </div>
+          <div className="tv">
+            <div className="cruve">
+              <svg
+                className="curve_svg"
+                version="1.1"
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 189.929 189.929"
+              >
+                <path d="M70.343,70.343c-30.554,30.553-44.806,72.7-39.102,115.635l-29.738,3.951C-5.442,137.659,11.917,86.34,49.129,49.13C86.34,11.918,137.664-5.445,189.928,1.502l-3.95,29.738C143.041,25.54,100.895,39.789,70.343,70.343z" />
+              </svg>
+            </div>
+            <div className="display_div">
+              <div className="screen_out">
+                <div className="screen_out1">
+                  <div className="screen">
+                    <span className="notfound_text">NOT FOUND</span>
+                  </div>
+                  <div className="screenM">
+                    <span className="notfound_text">NOT FOUND</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="lines">
+              <div className="line1"></div>
+              <div className="line2"></div>
+              <div className="line3"></div>
+            </div>
+            <div className="buttons_div">
+              <div className="b1"><div></div></div>
+              <div className="b2"></div>
+              <div className="speakers">
+                <div className="g1">
+                  <div className="g11"></div>
+                  <div className="g12"></div>
+                  <div className="g13"></div>
+                </div>
+                <div className="g"></div>
+                <div className="g"></div>
+              </div>
+            </div>
+          </div>
+          <div className="bottom">
+            <div className="base1"></div>
+            <div className="base2"></div>
+            <div className="base3"></div>
+          </div>
+        </div>
+        <div className="text_404">
+          <div className="text_4041">4</div>
+          <div className="text_4042">0</div>
+          <div className="text_4043">4</div>
+        </div>
       </div>
+
+      {/* Message and navigation */}
+      {session ? (
+        <Link to="/home" className="not-found-btn">
+          Back to Home
+        </Link>
+      ) : (
+        <Link to="/login" className="not-found-btn">
+          Go to Login
+        </Link>
+      )}
     </main>
   )
 }
