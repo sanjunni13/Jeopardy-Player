@@ -173,7 +173,15 @@ function formatRoundName(round: string): string {
 
 /** Strips HTML tags from a string for plain-text display */
 function stripHtml(text: string): string {
-  return text.replace(/<[^>]*>/g, '').trim()
+  let sanitized = text
+  let previous: string
+
+  do {
+    previous = sanitized
+    sanitized = sanitized.replace(/<[^>]*>/g, '')
+  } while (sanitized !== previous)
+
+  return sanitized.trim()
 }
 
 function RoundContent({
