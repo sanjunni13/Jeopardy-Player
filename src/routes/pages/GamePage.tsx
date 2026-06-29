@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams, useRouterState } from '@tanstack/react-router'
 import { supabase } from '../../utils/supabase'
 import { normalizeGame } from '../../utils/gameNormalizer'
-import { createSession, endSession, updateSessionPhase, updateBuzzState, fetchSession, cleanupStaleSessions } from '../../utils/sessionApi'
+import { createSession, endSession, updateSessionPhase, updateBuzzState, fetchSession, cleanupStaleSessions, updateSessionPlayers } from '../../utils/sessionApi'
 import { createSessionChannel, subscribeToChannel, unsubscribeFromChannel, broadcastMessage, onChannelMessage, onPresenceChange } from '../../utils/sessionChannel'
 import { SessionQRCode } from '../../components/host/SessionQRCode'
 import { BuzzerHostPanel } from '../../components/host/BuzzerHostPanel'
@@ -69,6 +69,7 @@ export function GamePage() {
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [hostUserId, setHostUserId] = useState<string | null>(null)
   const sessionChannelRef = useRef<RealtimeChannel | null>(null)
+  const playerEntryNamesRef = useRef<string[]>([])
 
   // Session realtime state (for host panels)
   const [sessionPlayers, setSessionPlayers] = useState<SessionPlayer[]>([])
@@ -80,6 +81,7 @@ export function GamePage() {
     systemLocked: false,
   })
   const [finalJeopardyState, setFinalJeopardyState] = useState<FinalJeopardyState>({
+    wagers: [],
     submissions: [],
     revealedIndex: -1,
   })
@@ -90,7 +92,6 @@ export function GamePage() {
   // Track whether the current clue is a daily double (for buzzer logic)
   const [isDailyDouble, setIsDailyDouble] = useState(false)
   const [clueAnswerRevealed, setClueAnswerRevealed] = useState(false)
-  const [fjClueRevealed, setFjClueRevealed] = useState(false)
   const [fjAnswerRevealed, setFjAnswerRevealed] = useState(false)
 
   // Load game from Supabase Storage on mount
@@ -225,6 +226,10 @@ export function GamePage() {
               case 'player_rejoined':
                 // Player reconnected — no action needed on host, they're already in the list
                 break
+              case 'player_removed':
+                // Host initiated — remove from session players list
+                setSessionPlayers(prev => prev.filter(p => p.name.toLowerCase() !== message.playerName.toLowerCase()))
+                break
               case 'buzz':
                 setBuzzState(prev => {
                   // Prevent duplicate buzzes from same player
@@ -260,6 +265,14 @@ export function GamePage() {
                   ...prev,
                   lockedOut: [...prev.lockedOut, message.playerName],
                 }))
+                break
+              case 'fj_wager_received':
+                // Fetch latest wagers from DB when a player submits their wager
+                fetchSession(gameSessionRow.id).then(s => {
+                  if (s) {
+                    setFinalJeopardyState(s.final_jeopardy_state)
+                  }
+                }).catch(() => {})
                 break
               case 'fj_submission_received':
                 // Fetch latest submissions from DB when a player submits
@@ -322,6 +335,15 @@ export function GamePage() {
 
     if (phase === 'final-jeopardy') {
       updateSessionPhase(sessionId, 'final-jeopardy').catch(() => {})
+      // Sync current player scores to the session DB so buzzer players know their max wager
+      if (session) {
+        const sessionPlayersWithScores = session.players.map(p => ({
+          name: p.name,
+          score: p.score,
+          joinedAt: new Date().toISOString(),
+        }))
+        updateSessionPlayers(sessionId, sessionPlayersWithScores).catch(() => {})
+      }
       if (sessionChannelRef.current) {
         broadcastMessage(sessionChannelRef.current, { type: 'phase_change', phase: 'final-jeopardy' }).catch(() => {})
       }
@@ -336,6 +358,20 @@ export function GamePage() {
         broadcastMessage(sessionChannelRef.current, { type: 'session_ended' }).catch(() => {})
       }
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionId, phase])
+
+  // ─── FJ state polling: periodically fetch latest FJ state during Final Jeopardy ──
+  useEffect(() => {
+    if (!sessionId || phase !== 'final-jeopardy') return
+    const interval = setInterval(() => {
+      fetchSession(sessionId).then(s => {
+        if (s) {
+          setFinalJeopardyState(s.final_jeopardy_state)
+        }
+      }).catch(() => {})
+    }, 3000)
+    return () => clearInterval(interval)
   }, [sessionId, phase])
 
   // ─── Activate/deactivate clue for buzzer system ──────────────────────────
@@ -419,7 +455,6 @@ export function GamePage() {
   }, [sessionId])
 
   const handleFJClueRevealed = useCallback(() => {
-    setFjClueRevealed(true)
     console.log('[FJ] Clue revealed, broadcasting buzz_state_sync with clueActive: true')
     if (sessionId && sessionChannelRef.current) {
       const newBuzzState: BuzzState = {
@@ -676,6 +711,36 @@ export function GamePage() {
           <PlayerEntry
             onPlay={handlePlay}
             onBack={() => navigate({ to: '/home/library' })}
+            onPlayerAdded={(playerName) => {
+              playerEntryNamesRef.current = [...playerEntryNamesRef.current, playerName]
+              if (sessionId) {
+                const sessionPlayers = playerEntryNamesRef.current.map(n => ({
+                  name: n, score: 0, joinedAt: new Date().toISOString(),
+                }))
+                updateSessionPlayers(sessionId, sessionPlayers).catch(() => {})
+              }
+              // Broadcast so buzzer players see the updated list
+              if (sessionChannelRef.current) {
+                broadcastMessage(sessionChannelRef.current, {
+                  type: 'player_joined',
+                  player: { name: playerName, score: 0, joinedAt: new Date().toISOString() },
+                }).catch(() => {})
+              }
+            }}
+            onPlayerRemoved={(playerName) => {
+              playerEntryNamesRef.current = playerEntryNamesRef.current.filter(
+                n => n.toLowerCase() !== playerName.toLowerCase()
+              )
+              if (sessionId) {
+                const sessionPlayers = playerEntryNamesRef.current.map(n => ({
+                  name: n, score: 0, joinedAt: new Date().toISOString(),
+                }))
+                updateSessionPlayers(sessionId, sessionPlayers).catch(() => {})
+              }
+              if (sessionChannelRef.current) {
+                broadcastMessage(sessionChannelRef.current, { type: 'player_removed', playerName }).catch(() => {})
+              }
+            }}
           />
         </div>
         {sessionId && (
@@ -689,6 +754,9 @@ export function GamePage() {
                   Scan this QR code to join the game as a buzzer player
                 </p>
                 <SessionQRCode sessionId={sessionId} />
+                <p style={{ color: '#94a3b8', fontSize: '0.75rem', margin: 0, textAlign: 'center', lineHeight: 1.4 }}>
+                  Player names <strong style={{ color: '#f1f5f9' }}>MUST</strong> match exactly when joining.
+                </p>
               </div>
             </BackgroundGradient>
           </div>
@@ -719,7 +787,7 @@ export function GamePage() {
           />
         </div>
       )}
-      {sessionId && phase === 'final-jeopardy' && fjClueRevealed && (
+      {sessionId && phase === 'final-jeopardy' && (
         <div style={{ position: 'fixed', top: 8, right: 8, zIndex: 60, maxWidth: 400, maxHeight: 'calc(100vh - 80px)', overflowY: 'auto' }}>
           <FinalJeopardyHostPanel
             players={sessionPlayers}
@@ -884,7 +952,7 @@ export function GamePage() {
               </p>
               <SessionQRCode sessionId={sessionId} />
               <p style={{ color: '#94a3b8', fontSize: '0.75rem', textAlign: 'center', margin: 0, lineHeight: 1.4 }}>
-                If you're already on the buzzer page, stay there — it will automatically switch to the answer submission page.
+                If you're already on the buzzer page, stay there — it will automatically switch to the wager submission page.
               </p>
             </div>
           )}
@@ -899,6 +967,9 @@ export function GamePage() {
           players={session!.players}
           onComplete={handleFJComplete}
           onClueRevealed={handleFJClueRevealed}
+          wagers={finalJeopardyState.wagers}
+          allWagersSubmitted={finalJeopardyState.wagers.length >= session!.players.length}
+          allAnswersSubmitted={finalJeopardyState.submissions.length >= session!.players.length}
           onAnswerRevealed={() => {
             setFjAnswerRevealed(true)
             // Lock submissions when answer is revealed

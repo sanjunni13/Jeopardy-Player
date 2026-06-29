@@ -50,7 +50,14 @@ export interface BuzzEvent {
 
 // ─── Final Jeopardy Types ─────────────────────────────────────────────────────
 
+export interface FinalJeopardyWager {
+  playerName: string;
+  wager: number;
+  submittedAt: string;      // ISO timestamp
+}
+
 export interface FinalJeopardyState {
+  wagers: FinalJeopardyWager[];
   submissions: FinalJeopardySubmission[];
   revealedIndex: number;    // -1 = none revealed, 0+ = revealing in sequence
 }
@@ -68,6 +75,7 @@ export type ChannelMessage =
   | { type: 'phase_change'; phase: SessionPhase }
   | { type: 'player_joined'; player: SessionPlayer }
   | { type: 'player_rejoined'; player: SessionPlayer }
+  | { type: 'player_removed'; playerName: string }
   | { type: 'clue_activated' }
   | { type: 'clue_deactivated' }
   | { type: 'buzz'; playerName: string; timestamp: number }
@@ -77,6 +85,8 @@ export type ChannelMessage =
   | { type: 'buzz_state_sync'; buzzState: BuzzState }
   | { type: 'buzz_queue_cleared'; lockedOut: string[] }
   | { type: 'player_incorrect'; playerName: string }
+  | { type: 'fj_wager_received'; playerName: string }
+  | { type: 'fj_all_wagers_in' }
   | { type: 'fj_submission_received'; playerName: string }
   | { type: 'fj_reveal'; index: number; submission: FinalJeopardySubmission }
   | { type: 'fj_score_update'; playerName: string; newScore: number }

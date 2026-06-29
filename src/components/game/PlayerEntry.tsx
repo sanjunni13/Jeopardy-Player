@@ -8,9 +8,11 @@ import './PlayerEntry.css'
 interface PlayerEntryProps {
   onPlay: (players: Player[]) => void
   onBack?: () => void
+  onPlayerRemoved?: (playerName: string) => void
+  onPlayerAdded?: (playerName: string) => void
 }
 
-export function PlayerEntry({ onPlay, onBack }: PlayerEntryProps) {
+export function PlayerEntry({ onPlay, onBack, onPlayerRemoved, onPlayerAdded }: PlayerEntryProps) {
   const [players, setPlayers] = useState<Player[]>([])
   const [inputValue, setInputValue] = useState('')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
@@ -36,10 +38,13 @@ export function PlayerEntry({ onPlay, onBack }: PlayerEntryProps) {
     setPlayers([...players, { name: trimmed, score: 0, correctCount: 0, incorrectCount: 0, correctDailyDoubles: 0, incorrectDailyDoubles: 0, correctFinalJeopardy: 0, incorrectFinalJeopardy: 0, totalEarned: 0 }])
     setInputValue('')
     setErrorMessage(null)
+    onPlayerAdded?.(trimmed)
   }
 
   function removePlayer(index: number) {
+    const removed = players[index]
     setPlayers(players.filter((_, i) => i !== index))
+    onPlayerRemoved?.(removed.name)
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {

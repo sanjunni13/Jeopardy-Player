@@ -51,12 +51,24 @@ export function useGameSession(sessionId: string | undefined): UseGameSessionRes
   // ─── Message Handler ──────────────────────────────────────────────────────
 
   const handleMessage = useCallback((message: ChannelMessage) => {
+    // For phase changes, trigger a full reconcile to get latest DB state (including scores)
+    if (message.type === 'phase_change') {
+      setSession((prev) => prev ? { ...prev, phase: message.phase, updated_at: new Date().toISOString() } : prev);
+      // Reconcile from DB to get latest player scores and FJ state
+      if (sessionId) {
+        fetchSession(sessionId).then(latest => {
+          if (mountedRef.current && latest) {
+            setSession(latest);
+          }
+        }).catch(() => {});
+      }
+      return;
+    }
+
     setSession((prev) => {
       if (!prev) return prev;
 
       switch (message.type) {
-        case 'phase_change':
-          return { ...prev, phase: message.phase, updated_at: new Date().toISOString() };
 
         case 'player_joined':
           // Avoid duplicates on rejoin
@@ -72,6 +84,13 @@ export function useGameSession(sessionId: string | undefined): UseGameSessionRes
         case 'player_rejoined':
           // Player reconnected — already in the list, no state change needed
           return prev;
+
+        case 'player_removed':
+          return {
+            ...prev,
+            players: prev.players.filter(p => p.name.toLowerCase() !== message.playerName.toLowerCase()),
+            updated_at: new Date().toISOString(),
+          };
 
         case 'clue_activated':
           return {
@@ -148,6 +167,12 @@ export function useGameSession(sessionId: string | undefined): UseGameSessionRes
             updated_at: new Date().toISOString(),
           };
 
+        case 'fj_wager_received':
+          return prev;
+
+        case 'fj_all_wagers_in':
+          return prev;
+
         case 'fj_submission_received':
           return prev;
 
@@ -178,7 +203,7 @@ export function useGameSession(sessionId: string | undefined): UseGameSessionRes
           return prev;
       }
     });
-  }, []);
+  }, [sessionId]);
 
   // ─── Reconcile State from DB ──────────────────────────────────────────────
 

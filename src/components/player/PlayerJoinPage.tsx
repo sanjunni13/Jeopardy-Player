@@ -122,6 +122,20 @@ export function PlayerJoinPage({ sessionId, onJoined }: PlayerJoinPageProps) {
       return;
     }
 
+    // Validate that the name exists in the host's player list (1:1 match required)
+    if (session!.players.length === 0) {
+      setError('No players have been added yet. Wait for the host to add your name.');
+      return;
+    }
+
+    const isInPlayerList = session!.players.some(
+      p => p.name.toLowerCase() === name.trim().toLowerCase()
+    );
+    if (!isInPlayerList) {
+      setError('Your name must match a player in the host\'s player list');
+      return;
+    }
+
     // Check for duplicate name — allow rejoin if player is offline (disconnected)
     const isExistingPlayer = isDuplicateName(session!.players, name);
     // Read presence state fresh at submit time to avoid stale onlinePlayers

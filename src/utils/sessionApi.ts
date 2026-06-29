@@ -36,6 +36,7 @@ export async function createSession(
         systemLocked: false,
       },
       final_jeopardy_state: {
+        wagers: [],
         submissions: [],
         revealedIndex: -1,
       },
