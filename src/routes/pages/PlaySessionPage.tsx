@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams } from '@tanstack/react-router';
 import { PlayerJoinPage } from '../../components/player/PlayerJoinPage';
 import { BuzzerPage } from '../../components/player/BuzzerPage';
@@ -6,6 +6,7 @@ import { FinalJeopardyEntryPage } from '../../components/player/FinalJeopardyEnt
 import { SessionEndedPage } from '../../components/player/SessionEndedPage';
 import { ConnectionStatusBanner } from '../../components/player/ConnectionStatusBanner';
 import { useGameSession } from '../../hooks/useGameSession';
+import { broadcastMessage, trackPresence, untrackPresence } from '../../utils/sessionChannel';
 
 /**
  * Route page for /play/$sessionId.
@@ -15,10 +16,42 @@ import { useGameSession } from '../../hooks/useGameSession';
  */
 export function PlaySessionPage() {
   const { sessionId } = useParams({ strict: false }) as { sessionId: string };
-  const [playerName, setPlayerName] = useState<string | null>(null);
+
+  // Auto-restore player name from sessionStorage if they previously joined this session
+  const storageKey = `buzzer_name_${sessionId}`;
+  const [playerName, setPlayerName] = useState<string | null>(
+    () => sessionStorage.getItem(storageKey)
+  );
   const { session, connectionState, channel, error } = useGameSession(
     playerName ? sessionId : undefined
   );
+
+  // Track whether we've broadcast the join/rejoin message for this player
+  const hasBroadcastJoin = useRef(false);
+
+  // Broadcast player_joined and track presence once channel is connected
+  useEffect(() => {
+    if (!playerName || !channel || connectionState !== 'connected' || hasBroadcastJoin.current) return;
+
+    hasBroadcastJoin.current = true;
+
+    // Broadcast join message to host
+    broadcastMessage(channel, {
+      type: 'player_joined',
+      player: { name: playerName, score: 0, joinedAt: new Date().toISOString() },
+    }).catch(() => {});
+
+    // Track presence so others know we're online
+    trackPresence(channel, {
+      playerName,
+      joinedAt: new Date().toISOString(),
+    }).catch(() => {});
+
+    // Untrack on unmount (intentional leave)
+    return () => {
+      untrackPresence(channel).catch(() => {});
+    };
+  }, [playerName, channel, connectionState]);
 
   // Before joining, show the join page
   if (!playerName) {

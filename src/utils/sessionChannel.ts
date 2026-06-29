@@ -1,6 +1,6 @@
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { supabase } from './supabase';
-import type { ChannelMessage } from '../types/session';
+import type { ChannelMessage, PresencePayload } from '../types/session';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -155,4 +155,105 @@ export function createReconnectionHandler(
     stopReconnection,
     getState,
   };
+}
+
+
+// ─── Presence ─────────────────────────────────────────────────────────────────
+
+/**
+ * Tracks a player's presence on the channel.
+ * Call this after subscribing to announce the player is online.
+ */
+export async function trackPresence(
+  channel: RealtimeChannel,
+  payload: PresencePayload
+): Promise<void> {
+  await channel.track(payload);
+}
+
+/**
+ * Untracks (removes) a player's presence from the channel.
+ * Called when a player intentionally leaves.
+ */
+export async function untrackPresence(
+  channel: RealtimeChannel
+): Promise<void> {
+  await channel.untrack();
+}
+
+/**
+ * Returns all currently present players on the channel.
+ * Each key in the presence state maps to an array of presence records.
+ */
+export function getPresenceState(
+  channel: RealtimeChannel
+): Record<string, PresencePayload[]> {
+  const state = channel.presenceState<PresencePayload>();
+  // Supabase returns Record<string, PresencePayload[]>
+  return state as unknown as Record<string, PresencePayload[]>;
+}
+
+/**
+ * Extracts a flat list of online player names from the presence state.
+ */
+export function getOnlinePlayerNames(
+  channel: RealtimeChannel
+): string[] {
+  const state = getPresenceState(channel);
+  const names: string[] = [];
+  for (const key of Object.keys(state)) {
+    const records = state[key];
+    for (const record of records) {
+      if (record.playerName && !names.includes(record.playerName)) {
+        names.push(record.playerName);
+      }
+    }
+  }
+  return names;
+}
+
+export interface PresenceCallbacks {
+  onSync?: (onlineNames: string[]) => void;
+  onJoin?: (playerName: string) => void;
+  onLeave?: (playerName: string) => void;
+}
+
+/**
+ * Registers presence event listeners on a channel.
+ * - 'sync': fires whenever presence state changes (join or leave)
+ * - 'join': fires when a new player comes online
+ * - 'leave': fires when a player goes offline
+ */
+export function onPresenceChange(
+  channel: RealtimeChannel,
+  callbacks: PresenceCallbacks
+): void {
+  channel.on('presence', { event: 'sync' }, () => {
+    if (callbacks.onSync) {
+      const names = getOnlinePlayerNames(channel);
+      callbacks.onSync(names);
+    }
+  });
+
+  channel.on('presence', { event: 'join' }, ({ newPresences }) => {
+    if (callbacks.onJoin) {
+      for (const p of newPresences) {
+        const payload = p as unknown as PresencePayload;
+        if (payload.playerName) {
+          callbacks.onJoin(payload.playerName);
+        }
+      }
+    }
+  });
+
+  channel.on('presence', { event: 'leave' }, ({ leftPresences }) => {
+    if (callbacks.onLeave) {
+      for (const p of leftPresences) {
+        const payload = p as unknown as PresencePayload;
+        if (payload.playerName) {
+          callbacks.onLeave(payload.playerName);
+        }
+      }
+    }
+  });
 }

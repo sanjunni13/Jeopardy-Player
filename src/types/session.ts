@@ -21,6 +21,19 @@ export interface GameSessionRow {
 
 export type SessionPhase = 'lobby' | 'buzzer' | 'final-jeopardy' | 'ended';
 
+// ─── Presence Types ───────────────────────────────────────────────────────────
+
+/** Payload tracked by each player via Supabase Presence */
+export interface PresencePayload {
+  playerName: string;
+  joinedAt: string; // ISO timestamp of when they started tracking
+}
+
+/** A presence record as returned by Supabase (includes presence_ref) */
+export interface PresenceRecord extends PresencePayload {
+  presence_ref: string;
+}
+
 // ─── Buzzer Types ─────────────────────────────────────────────────────────────
 
 export interface BuzzState {
@@ -54,6 +67,7 @@ export interface FinalJeopardySubmission {
 export type ChannelMessage =
   | { type: 'phase_change'; phase: SessionPhase }
   | { type: 'player_joined'; player: SessionPlayer }
+  | { type: 'player_rejoined'; player: SessionPlayer }
   | { type: 'clue_activated' }
   | { type: 'clue_deactivated' }
   | { type: 'buzz'; playerName: string; timestamp: number }

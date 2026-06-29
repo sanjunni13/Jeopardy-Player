@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import {
   validateWager,
@@ -48,6 +48,20 @@ export function useFinalJeopardyEntry(
   const [wagerError, setWagerError] = useState<string | null>(null);
   const [answerError, setAnswerError] = useState<string | null>(null);
   const [hasSubmitted, setHasSubmitted] = useState<boolean>(false);
+
+  // Check on mount if the player has already submitted (handles reconnect case)
+  useEffect(() => {
+    let cancelled = false;
+    fetchSession(sessionId).then(session => {
+      if (cancelled || !session) return;
+      const submissions = session.final_jeopardy_state.submissions ?? [];
+      if (!canSubmitFinalJeopardy(submissions, playerName)) {
+        setHasSubmitted(true);
+        setStatus('submitted');
+      }
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [sessionId, playerName]);
 
   const submit = useCallback(async () => {
     // Clear previous validation errors

@@ -6,6 +6,7 @@ import {
   subscribeToChannel,
   unsubscribeFromChannel,
   onChannelMessage,
+  onPresenceChange,
   createReconnectionHandler,
 } from '../utils/sessionChannel';
 import { fetchSession } from '../utils/sessionApi';
@@ -58,11 +59,19 @@ export function useGameSession(sessionId: string | undefined): UseGameSessionRes
           return { ...prev, phase: message.phase, updated_at: new Date().toISOString() };
 
         case 'player_joined':
+          // Avoid duplicates on rejoin
+          if (prev.players.some(p => p.name.toLowerCase() === message.player.name.toLowerCase())) {
+            return prev;
+          }
           return {
             ...prev,
             players: [...prev.players, message.player],
             updated_at: new Date().toISOString(),
           };
+
+        case 'player_rejoined':
+          // Player reconnected — already in the list, no state change needed
+          return prev;
 
         case 'clue_activated':
           return {
@@ -192,6 +201,8 @@ export function useGameSession(sessionId: string | undefined): UseGameSessionRes
   const setupChannel = useCallback(
     async (ch: RealtimeChannel): Promise<void> => {
       onChannelMessage(ch, handleMessage);
+      // Register presence handlers before subscribing so presence state is populated
+      onPresenceChange(ch, {});
 
       try {
         await subscribeToChannel(ch);

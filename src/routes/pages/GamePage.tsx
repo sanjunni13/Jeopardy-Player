@@ -2,8 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams, useRouterState } from '@tanstack/react-router'
 import { supabase } from '../../utils/supabase'
 import { normalizeGame } from '../../utils/gameNormalizer'
-import { createSession, endSession, updateSessionPhase, updateBuzzState, fetchSession } from '../../utils/sessionApi'
-import { createSessionChannel, subscribeToChannel, unsubscribeFromChannel, broadcastMessage, onChannelMessage } from '../../utils/sessionChannel'
+import { createSession, endSession, updateSessionPhase, updateBuzzState, fetchSession, cleanupStaleSessions } from '../../utils/sessionApi'
+import { createSessionChannel, subscribeToChannel, unsubscribeFromChannel, broadcastMessage, onChannelMessage, onPresenceChange } from '../../utils/sessionChannel'
 import { SessionQRCode } from '../../components/host/SessionQRCode'
 import { BuzzerHostPanel } from '../../components/host/BuzzerHostPanel'
 import { FinalJeopardyHostPanel } from '../../components/host/FinalJeopardyHostPanel'
@@ -72,6 +72,7 @@ export function GamePage() {
 
   // Session realtime state (for host panels)
   const [sessionPlayers, setSessionPlayers] = useState<SessionPlayer[]>([])
+  const [onlinePlayers, setOnlinePlayers] = useState<string[]>([])
   const [buzzState, setBuzzState] = useState<BuzzState>({
     clueActive: false,
     queue: [],
@@ -202,15 +203,27 @@ export function GamePage() {
     createSession(hostUserId, gameId)
       .then(async (gameSessionRow) => {
         setSessionId(gameSessionRow.id)
+        // Fire-and-forget cleanup of old/stale sessions
+        cleanupStaleSessions().catch(() => {})
         try {
           const ch = createSessionChannel(gameSessionRow.id)
-          await subscribeToChannel(ch)
-          sessionChannelRef.current = ch
-          // Register message listener immediately after subscription
+          // Register presence listeners BEFORE subscribing (required by Supabase)
+          onPresenceChange(ch, {
+            onSync: (names) => setOnlinePlayers(names),
+          })
+          // Register message listener before subscription
           onChannelMessage(ch, (message: ChannelMessage) => {
             switch (message.type) {
               case 'player_joined':
-                setSessionPlayers(prev => [...prev, message.player])
+                setSessionPlayers(prev => {
+                  // If player already exists (rejoin), don't duplicate
+                  const exists = prev.some(p => p.name.toLowerCase() === message.player.name.toLowerCase())
+                  if (exists) return prev
+                  return [...prev, message.player]
+                })
+                break
+              case 'player_rejoined':
+                // Player reconnected — no action needed on host, they're already in the list
                 break
               case 'buzz':
                 setBuzzState(prev => {
@@ -218,10 +231,13 @@ export function GamePage() {
                   if (prev.queue.some(e => e.playerName === message.playerName)) {
                     return prev
                   }
-                  return {
+                  const newState = {
                     ...prev,
                     queue: [...prev.queue, { playerName: message.playerName, timestamp: message.timestamp }],
                   }
+                  // Persist to DB so reconnecting players see the current queue
+                  updateBuzzState(gameSessionRow.id, newState).catch(() => {})
+                  return newState
                 })
                 break
               case 'buzz_queue_update':
@@ -272,6 +288,9 @@ export function GamePage() {
                 break
             }
           })
+          // Subscribe AFTER all listeners are registered
+          await subscribeToChannel(ch)
+          sessionChannelRef.current = ch
         } catch (err) {
           console.warn('[Session] Channel subscription failed:', err)
         }
@@ -696,6 +715,7 @@ export function GamePage() {
             onClearQueue={handleBuzzerClearQueue}
             onLock={handleBuzzerLock}
             onUnlock={handleBuzzerUnlock}
+            onlinePlayers={onlinePlayers}
           />
         </div>
       )}
@@ -705,6 +725,7 @@ export function GamePage() {
             players={sessionPlayers}
             finalJeopardyState={finalJeopardyState}
             showAnswers={fjAnswerRevealed}
+            onlinePlayers={onlinePlayers}
           />
         </div>
       )}

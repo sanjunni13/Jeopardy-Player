@@ -43,8 +43,8 @@ export function useBuzzer(
   );
 
   const canBuzz = useMemo(
-    () => (channel !== null && !hasBuzzedLocal && canPlayerBuzz(buzzState, playerName)),
-    [channel, hasBuzzedLocal, buzzState, playerName]
+    () => (channel !== null && !hasBuzzed && canPlayerBuzz(buzzState, playerName)),
+    [channel, hasBuzzed, buzzState, playerName]
   );
 
   const buzzIn = useCallback(async () => {
@@ -53,7 +53,7 @@ export function useBuzzer(
       return;
     }
 
-    if (hasBuzzedLocal) {
+    if (hasBuzzed) {
       return;
     }
 
@@ -75,7 +75,7 @@ export function useBuzzer(
       const message = err instanceof Error ? err.message : 'Failed to send buzz';
       setError(message);
     }
-  }, [channel, buzzState, playerName, hasBuzzedLocal]);
+  }, [channel, buzzState, playerName, hasBuzzed]);
 
   return { canBuzz, buzzIn, hasBuzzed, error };
 }
