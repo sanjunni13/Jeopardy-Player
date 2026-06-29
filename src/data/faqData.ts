@@ -12,7 +12,12 @@ export const createGameFAQ: FAQItem[] = [
   {
     question: 'Can I save a draft of my game and finish it later?',
     answer:
-      'Currently, games are saved to your library only after a successful upload. To save your progress, keep your JSON file locally and upload it when you are done editing. A full in-app draft system is coming in a future update.',
+      'Yes! You can manually save your draft in the game builder (or it auto-saves every minute for you), and then come back to finish it at a later time.',
+  },
+  {
+    question: 'What file formats does the game builder accept?',
+    answer:
+      'The game builder can take images (.jpeg or .png), audio files (.mp3), or YouTube links. When you upload those files, the builder shows you a preview of them to ensure they are correct.',
   },
   {
     question: 'What fields are required for each clue?',
