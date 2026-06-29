@@ -36,6 +36,7 @@ export async function createSession(
         systemLocked: false,
       },
       final_jeopardy_state: {
+        wagers: [],
         submissions: [],
         revealedIndex: -1,
       },
@@ -49,6 +50,8 @@ export async function createSession(
 
 /**
  * Registers a player in an existing session by appending to the players array.
+ * If a player with the same name already exists (case-insensitive), treats it
+ * as a rejoin — updates their joinedAt timestamp instead of duplicating.
  */
 export async function joinSession(
   sessionId: string,
@@ -58,13 +61,27 @@ export async function joinSession(
   const session = await fetchSession(sessionId);
   if (!session) throw new Error('Session not found');
 
-  const newPlayer: SessionPlayer = {
-    name: playerName,
-    score: 0,
-    joinedAt: new Date().toISOString(),
-  };
+  const normalizedName = playerName.toLowerCase();
+  const existingIndex = session.players.findIndex(
+    p => p.name.toLowerCase() === normalizedName
+  );
 
-  const updatedPlayers = [...session.players, newPlayer];
+  let updatedPlayers: SessionPlayer[];
+
+  if (existingIndex >= 0) {
+    // Rejoin: update the existing player's joinedAt to mark them as reconnected
+    updatedPlayers = session.players.map((p, i) =>
+      i === existingIndex ? { ...p, joinedAt: new Date().toISOString() } : p
+    );
+  } else {
+    // New player
+    const newPlayer: SessionPlayer = {
+      name: playerName,
+      score: 0,
+      joinedAt: new Date().toISOString(),
+    };
+    updatedPlayers = [...session.players, newPlayer];
+  }
 
   const { data, error } = await supabase
     .from('game_sessions')
@@ -189,4 +206,38 @@ export async function endSession(sessionId: string): Promise<void> {
     .eq('id', sessionId);
 
   if (error) throw new Error(`Failed to end session: ${error.message}`);
+}
+
+// ─── Session Cleanup ──────────────────────────────────────────────────────────
+
+const STALE_TIMEOUT_MINUTES = 30;
+const DELETE_AFTER_HOURS = 24;
+
+/**
+ * Opportunistic cleanup: marks stale sessions (inactive 30+ min) as ended,
+ * and deletes ended sessions older than 24 hours.
+ * Called on a best-effort basis when a new session is created.
+ */
+export async function cleanupStaleSessions(): Promise<void> {
+  try {
+    const now = new Date();
+
+    // Mark stale active sessions as ended
+    const staleThreshold = new Date(now.getTime() - STALE_TIMEOUT_MINUTES * 60 * 1000).toISOString();
+    await supabase
+      .from('game_sessions')
+      .update({ phase: 'ended' as SessionPhase, updated_at: now.toISOString() })
+      .neq('phase', 'ended')
+      .lt('updated_at', staleThreshold);
+
+    // Delete ended sessions older than 24 hours
+    const deleteThreshold = new Date(now.getTime() - DELETE_AFTER_HOURS * 60 * 60 * 1000).toISOString();
+    await supabase
+      .from('game_sessions')
+      .delete()
+      .eq('phase', 'ended')
+      .lt('updated_at', deleteThreshold);
+  } catch {
+    // Best-effort — don't throw if cleanup fails
+  }
 }

@@ -172,6 +172,44 @@ export async function deleteDraft(
       return { success: false, error: `Storage deletion failed: ${storageErr.message}` };
     }
 
+    // Clean up any media files associated with this draft (best-effort)
+    const mediaFolder = `${user.id}/clue-media/${draftId}`;
+    const { data: mediaFiles } = await supabase.storage
+      .from('games')
+      .list(mediaFolder, { limit: 1000 });
+
+    if (mediaFiles && mediaFiles.length > 0) {
+      // Supabase list only returns files in the immediate folder; media is nested
+      // under subfolders like {roundIndex}-{categoryIndex}-{clueIndex}/filename.
+      // We need to list each subfolder recursively.
+      const allMediaPaths: string[] = [];
+
+      for (const item of mediaFiles) {
+        if (item.id === null) {
+          // It's a subfolder — list its contents
+          const subPath = `${mediaFolder}/${item.name}`;
+          const { data: subFiles } = await supabase.storage
+            .from('games')
+            .list(subPath, { limit: 1000 });
+
+          if (subFiles) {
+            for (const subFile of subFiles) {
+              if (subFile.id !== null) {
+                allMediaPaths.push(`${subPath}/${subFile.name}`);
+              }
+            }
+          }
+        } else {
+          // It's a file directly in the media folder
+          allMediaPaths.push(`${mediaFolder}/${item.name}`);
+        }
+      }
+
+      if (allMediaPaths.length > 0) {
+        await supabase.storage.from('games').remove(allMediaPaths);
+      }
+    }
+
     // Delete metadata row from DB (RLS ensures only owner can delete)
     const { error: dbErr } = await supabase
       .from('drafts')

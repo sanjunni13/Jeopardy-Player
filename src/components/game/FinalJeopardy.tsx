@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { FinalRound, Player } from '../../types/game'
+import type { FinalJeopardyWager } from '../../types/session'
 import './FinalJeopardy.css'
 
 interface FinalJeopardyProps {
@@ -8,22 +9,19 @@ interface FinalJeopardyProps {
   onComplete: (updatedPlayers: Player[]) => void
   onClueRevealed?: () => void
   onAnswerRevealed?: () => void
+  wagers?: FinalJeopardyWager[]
+  allWagersSubmitted?: boolean
+  allAnswersSubmitted?: boolean
 }
 
-type FJPhase = 'category' | 'wager' | 'clue' | 'scoring'
+type FJPhase = 'category' | 'clue' | 'scoring'
 
-export function FinalJeopardy({ finalRound, players, onComplete, onClueRevealed, onAnswerRevealed }: FinalJeopardyProps) {
+export function FinalJeopardy({ finalRound, players, onComplete, onClueRevealed, onAnswerRevealed, wagers = [], allWagersSubmitted = false, allAnswersSubmitted = false }: FinalJeopardyProps) {
   const [phase, setPhase] = useState<FJPhase>('category')
-  const [wagers, setWagers] = useState<Record<string, string>>(() => {
-    const initial: Record<string, string> = {}
-    players.forEach(p => { initial[p.name] = '' })
-    return initial
-  })
-  const [wagerErrors, setWagerErrors] = useState<Record<string, string>>({})
   const [answerRevealed, setAnswerRevealed] = useState(false)
 
   function revealAnswer() {
-    if (!answerRevealed) {
+    if (!answerRevealed && allAnswersSubmitted) {
       setAnswerRevealed(true)
       onAnswerRevealed?.()
     }
@@ -38,14 +36,21 @@ export function FinalJeopardy({ finalRound, players, onComplete, onClueRevealed,
     () => [...players].sort((a, b) => b.score - a.score)
   )
 
+  // Helper: get wager amount for a player from the session wagers
+  function getPlayerWager(playerName: string): number {
+    const w = wagers.find(w => w.playerName.toLowerCase() === playerName.toLowerCase())
+    return w?.wager ?? 0
+  }
+
   // Keyboard handler
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === ' ' || e.key === 'Enter') {
         e.preventDefault()
-        if (phase === 'category') {
-          setPhase('wager')
-        } else if (phase === 'clue' && !answerRevealed) {
+        if (phase === 'category' && allWagersSubmitted) {
+          setPhase('clue')
+          onClueRevealed?.()
+        } else if (phase === 'clue' && !answerRevealed && allAnswersSubmitted) {
           revealAnswer()
         }
       }
@@ -53,52 +58,10 @@ export function FinalJeopardy({ finalRound, players, onComplete, onClueRevealed,
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [phase, answerRevealed])
-
-  function getMaxWager(player: Player): number {
-    return player.score > 0 ? player.score : 1000
-  }
-
-  function validateWagers(): boolean {
-    const errors: Record<string, string> = {}
-    let valid = true
-
-    for (const player of localPlayers) {
-      const wagerStr = wagers[player.name]
-      const wagerNum = Number(wagerStr)
-
-      if (!wagerStr || isNaN(wagerNum)) {
-        errors[player.name] = 'Enter a valid number.'
-        valid = false
-        continue
-      }
-
-      const maxWager = getMaxWager(player)
-      const minWager = 0
-
-      if (wagerNum < minWager || wagerNum > maxWager) {
-        if (player.score <= 0) {
-          errors[player.name] = `Wager must be between 0 and $1,000.`
-        } else {
-          errors[player.name] = `Wager must be between $0 and $${maxWager.toLocaleString()}.`
-        }
-        valid = false
-      }
-    }
-
-    setWagerErrors(errors)
-    return valid
-  }
-
-  function handleRevealClue() {
-    if (validateWagers()) {
-      setPhase('clue')
-      onClueRevealed?.()
-    }
-  }
+  }, [phase, answerRevealed, allWagersSubmitted, allAnswersSubmitted])
 
   function handleMark(playerName: string, result: 'correct' | 'incorrect') {
-    const wagerAmount = Number(wagers[playerName])
+    const wagerAmount = getPlayerWager(playerName)
     const prev = markings[playerName]
 
     // Reverse previous marking
@@ -107,7 +70,6 @@ export function FinalJeopardy({ finalRound, players, onComplete, onClueRevealed,
       let newScore = p.score
       let newCorrectFJ = p.correctFinalJeopardy
       let newIncorrectFJ = p.incorrectFinalJeopardy
-
       let newTotalEarned = p.totalEarned
 
       if (prev === 'correct') { newScore -= wagerAmount; newCorrectFJ = 0; newTotalEarned -= wagerAmount }
@@ -124,80 +86,25 @@ export function FinalJeopardy({ finalRound, players, onComplete, onClueRevealed,
     onComplete(localPlayers)
   }
 
-  const allWagersEntered = localPlayers.every(p => {
-    const v = wagers[p.name]
-    return v !== '' && !isNaN(Number(v))
-  })
-
   const allMarked = localPlayers.every(p => markings[p.name] !== null)
 
-  // Category phase
+  // Category phase — styled like regular round category reveal
   if (phase === 'category') {
     return (
       <div
         className="fj-category-wrapper"
-        onClick={() => setPhase('wager')}
+        onClick={() => { if (allWagersSubmitted) { setPhase('clue'); onClueRevealed?.() } }}
       >
         <div className="fj-category-content">
           <p className="fj-category-label">Final Jeopardy</p>
           <h1 className="fj-category-name">
             {finalRound.category}
           </h1>
-          <p className="fj-category-hint">Click or press Space to continue</p>
-        </div>
-      </div>
-    )
-  }
-
-  // Wager phase
-  if (phase === 'wager') {
-    return (
-      <div className="fj-wager-page">
-        <div className="fj-wager-card">
-          <h2 className="fj-wager-title">Final Jeopardy Wagers</h2>
-          <p className="fj-wager-subtitle">
-            Category: <span className="fj-wager-category-name">{finalRound.category}</span>
-          </p>
-
-          <div className="fj-wager-list">
-            {localPlayers.map(player => (
-              <div key={player.name}>
-                <div className="fj-wager-player-header">
-                  <label className="fj-wager-player-label">
-                    {player.name}
-                  </label>
-                  <span className="fj-wager-player-info">
-                    Score: ${player.score.toLocaleString()} • Max: ${getMaxWager(player).toLocaleString()}
-                  </span>
-                </div>
-                <input
-                  type="number"
-                  min={0}
-                  max={getMaxWager(player)}
-                  value={wagers[player.name]}
-                  onChange={e => {
-                    setWagers(prev => ({ ...prev, [player.name]: e.target.value }))
-                    if (wagerErrors[player.name]) {
-                      setWagerErrors(prev => { const next = { ...prev }; delete next[player.name]; return next })
-                    }
-                  }}
-                  className="fj-wager-input"
-                />
-                {wagerErrors[player.name] && (
-                  <p className="fj-wager-error">{wagerErrors[player.name]}</p>
-                )}
-              </div>
-            ))}
-          </div>
-
-          <button
-            type="button"
-            onClick={handleRevealClue}
-            disabled={!allWagersEntered}
-            className="fj-reveal-btn"
-          >
-            Reveal Clue
-          </button>
+          {allWagersSubmitted ? (
+            <p className="fj-category-hint">All wagers in — click or press Space to reveal clue</p>
+          ) : (
+            <p className="fj-category-hint">Waiting for all players to submit wagers…</p>
+          )}
         </div>
       </div>
     )
@@ -212,7 +119,7 @@ export function FinalJeopardy({ finalRound, players, onComplete, onClueRevealed,
 
       <div
         className="fj-clue-area"
-        onClick={() => { if (!answerRevealed) revealAnswer() }}
+        onClick={() => { if (!answerRevealed && allAnswersSubmitted) revealAnswer() }}
       >
         <div className="fj-clue-content">
           {!answerRevealed ? (
@@ -235,13 +142,13 @@ export function FinalJeopardy({ finalRound, players, onComplete, onClueRevealed,
         <div className="fj-scoring">
           <div className="fj-scoring-inner">
             {localPlayers.map(player => {
-              const wagerAmount = Number(wagers[player.name])
+              const wagerAmount = getPlayerWager(player.name)
               const marking = markings[player.name]
 
               return (
                 <div key={player.name} className="fj-player-card">
                   <span className="fj-player-name">{player.name}</span>
-                  <span className="fj-player-wager">Wager: ${wagerAmount}</span>
+                  <span className="fj-player-wager">Wager: ${wagerAmount.toLocaleString()}</span>
                   <div className="fj-player-actions">
                     <button
                       type="button"
@@ -279,7 +186,9 @@ export function FinalJeopardy({ finalRound, players, onComplete, onClueRevealed,
       {!answerRevealed && (
         <div className="fj-hint-bar">
           <p className="fj-hint-text">
-            Click or press Space to reveal answer
+            {allAnswersSubmitted
+              ? 'All answers in — click or press Space to reveal answer'
+              : 'Waiting for all players to submit answers…'}
           </p>
         </div>
       )}

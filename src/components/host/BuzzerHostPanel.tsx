@@ -7,6 +7,7 @@ interface BuzzerHostPanelProps {
   onClearQueue: () => void
   onLock: () => void
   onUnlock: () => void
+  onlinePlayers?: string[]
 }
 
 export function BuzzerHostPanel({
@@ -14,8 +15,14 @@ export function BuzzerHostPanel({
   onClearQueue,
   onLock,
   onUnlock,
+  onlinePlayers,
 }: BuzzerHostPanelProps) {
   const sortedQueue = orderBuzzQueue(buzzState.queue).slice(0, 8)
+
+  function isOnline(playerName: string): boolean {
+    if (!onlinePlayers) return true // If no presence data, assume online
+    return onlinePlayers.some(n => n.toLowerCase() === playerName.toLowerCase())
+  }
 
   return (
     <div className="buzzer-host-panel" aria-label="Buzzer host controls">
@@ -44,6 +51,11 @@ export function BuzzerHostPanel({
                     <span className="buzzer-host-panel__queue-position">
                       {index + 1}.
                     </span>
+                    <span
+                      className="buzzer-host-panel__presence-dot"
+                      style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', marginRight: 6, backgroundColor: isOnline(event.playerName) ? '#22c55e' : '#ef4444' }}
+                      aria-label={isOnline(event.playerName) ? 'Online' : 'Offline'}
+                    />
                     <span className="buzzer-host-panel__queue-name">
                       {event.playerName}
                     </span>
