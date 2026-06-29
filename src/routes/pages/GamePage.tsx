@@ -830,6 +830,9 @@ export function GamePage() {
                   Scan this QR code to join the game as a buzzer player
                 </p>
                 <SessionQRCode sessionId={sessionId} />
+                <p style={{ color: '#94a3b8', fontSize: '0.75rem', margin: 0, textAlign: 'center', lineHeight: 1.4 }}>
+                  Player names <strong style={{ color: '#f1f5f9' }}>MUST</strong> match exactly when joining.
+                </p>
               </div>
             </BackgroundGradient>
           </div>
@@ -950,6 +953,9 @@ export function GamePage() {
               <p style={{ color: '#f1f5f9', fontSize: '0.875rem', textAlign: 'center', margin: 0, lineHeight: 1.5 }}>
                 <strong>Last chance to join!</strong> Scan this QR code to submit your Final Jeopardy answer on your phone.
               </p>
+              <p style={{ color: '#94a3b8', fontSize: '0.75rem', margin: 0, textAlign: 'center', lineHeight: 1.4 }}>
+                  Player names <strong style={{ color: '#f1f5f9' }}>MUST</strong> match exactly when joining.
+                </p>
               <SessionQRCode sessionId={sessionId} />
               <p style={{ color: '#94a3b8', fontSize: '0.75rem', textAlign: 'center', margin: 0, lineHeight: 1.4 }}>
                 If you're already on the buzzer page, stay there — it will automatically switch to the wager submission page.
