@@ -142,6 +142,24 @@ export async function updateBuzzState(
 }
 
 /**
+ * Batched update: sets both the session phase and buzz state in a single PATCH.
+ * Use this instead of calling updateSessionPhase + updateBuzzState separately
+ * to halve the number of DB round-trips on phase transitions.
+ */
+export async function updateSessionState(
+  sessionId: string,
+  phase: SessionPhase,
+  buzzState: BuzzState
+): Promise<void> {
+  const { error } = await supabase
+    .from('game_sessions')
+    .update({ phase, buzz_state: buzzState, updated_at: new Date().toISOString() })
+    .eq('id', sessionId);
+
+  if (error) throw new Error(`Failed to update session state: ${error.message}`);
+}
+
+/**
  * Updates the Final Jeopardy state of a session.
  */
 export async function updateFinalJeopardyState(

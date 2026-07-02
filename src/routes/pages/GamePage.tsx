@@ -2,7 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams, useRouterState } from '@tanstack/react-router'
 import { supabase } from '../../utils/supabase'
 import { normalizeGame } from '../../utils/gameNormalizer'
-import { createSession, endSession, updateSessionPhase, updateBuzzState, fetchSession, cleanupStaleSessions, updateSessionPlayers } from '../../utils/sessionApi'
+import { createSession, endSession, updateSessionPhase, updateBuzzState, updateSessionState, fetchSession, cleanupStaleSessions, updateSessionPlayers } from '../../utils/sessionApi'
+import { debounce } from '../../utils/debounce'
 import { createSessionChannel, subscribeToChannel, unsubscribeFromChannel, broadcastMessage, onChannelMessage, onPresenceChange } from '../../utils/sessionChannel'
 import { SessionQRCode } from '../../components/host/SessionQRCode'
 import { BuzzerHostPanel } from '../../components/host/BuzzerHostPanel'
@@ -70,6 +71,15 @@ export function GamePage() {
   const [hostUserId, setHostUserId] = useState<string | null>(null)
   const sessionChannelRef = useRef<RealtimeChannel | null>(null)
   const playerEntryNamesRef = useRef<string[]>([])
+
+  // Debounced buzz-state DB writer (300 ms) — coalesces rapid buzz events into
+  // a single PATCH so we don't exhaust browser HTTP connections during active play.
+  // The ref ensures a stable identity across renders without recreating the debounce timer.
+  const debouncedUpdateBuzzStateRef = useRef(
+    debounce((id: string, state: BuzzState) => {
+      updateBuzzState(id, state).catch(() => {})
+    }, 300)
+  )
 
   // Session realtime state (for host panels)
   const [sessionPlayers, setSessionPlayers] = useState<SessionPlayer[]>([])
@@ -240,8 +250,9 @@ export function GamePage() {
                     ...prev,
                     queue: [...prev.queue, { playerName: message.playerName, timestamp: message.timestamp }],
                   }
-                  // Persist to DB so reconnecting players see the current queue
-                  updateBuzzState(gameSessionRow.id, newState).catch(() => {})
+                  // Debounced persist to DB — coalesces rapid multi-player buzzes into
+                  // a single PATCH instead of one per buzz event.
+                  debouncedUpdateBuzzStateRef.current(gameSessionRow.id, newState)
                   return newState
                 })
                 break
@@ -329,7 +340,9 @@ export function GamePage() {
     }
   }, [sessionId])
 
-  // ─── Session phase sync: update session phase when game phase changes ────
+  // ─── Session phase sync + buzz state sync ────────────────────────────────
+  // Combined effect: updates session phase and buzz state together in a single
+  // PATCH wherever both change on the same phase transition (fix #3).
   useEffect(() => {
     if (!sessionId) return
 
@@ -347,7 +360,35 @@ export function GamePage() {
       if (sessionChannelRef.current) {
         broadcastMessage(sessionChannelRef.current, { type: 'phase_change', phase: 'final-jeopardy' }).catch(() => {})
       }
-    } else if (phase === 'clue' || phase === 'board' || phase === 'category-reveal' || phase === 'daily-double' || phase === 'daily-double-wager' || phase === 'round-transition') {
+    } else if (phase === 'clue' && activeClue && !isDailyDouble) {
+      // Enter clue screen: buzzers start LOCKED, queue cleared.
+      // Batch phase + buzz_state into a single PATCH (fix #3).
+      const newBuzzState: BuzzState = {
+        clueActive: true,
+        queue: [],
+        lockedOut: [],
+        systemLocked: true,
+      }
+      setBuzzState(newBuzzState)
+      updateSessionState(sessionId, 'buzzer', newBuzzState).catch(() => {})
+      if (sessionChannelRef.current) {
+        broadcastMessage(sessionChannelRef.current, { type: 'buzz_state_sync', buzzState: newBuzzState }).catch(() => {})
+      }
+    } else if (phase === 'board' || phase === 'category-reveal') {
+      // Return to board: deactivate clue, reset buzz state to idle.
+      // Batch phase + buzz_state into a single PATCH (fix #3).
+      const newBuzzState: BuzzState = {
+        clueActive: false,
+        queue: [],
+        lockedOut: [],
+        systemLocked: false,
+      }
+      setBuzzState(newBuzzState)
+      updateSessionState(sessionId, 'buzzer', newBuzzState).catch(() => {})
+      if (sessionChannelRef.current) {
+        broadcastMessage(sessionChannelRef.current, { type: 'buzz_state_sync', buzzState: newBuzzState }).catch(() => {})
+      }
+    } else if (phase === 'daily-double' || phase === 'daily-double-wager' || phase === 'round-transition') {
       updateSessionPhase(sessionId, 'buzzer').catch(() => {})
       if (sessionChannelRef.current) {
         broadcastMessage(sessionChannelRef.current, { type: 'phase_change', phase: 'buzzer' }).catch(() => {})
@@ -359,7 +400,7 @@ export function GamePage() {
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessionId, phase])
+  }, [sessionId, phase, activeClue, isDailyDouble])
 
   // ─── FJ state polling: periodically fetch latest FJ state during Final Jeopardy ──
   useEffect(() => {
@@ -373,43 +414,6 @@ export function GamePage() {
     }, 3000)
     return () => clearInterval(interval)
   }, [sessionId, phase])
-
-  // ─── Activate/deactivate clue for buzzer system ──────────────────────────
-  // This effect synchronizes local buzz state with the external Supabase system
-  // when the game phase changes.
-  /* eslint-disable react-hooks/set-state-in-effect */
-  useEffect(() => {
-    if (!sessionId) return
-
-    if (phase === 'clue' && activeClue && !isDailyDouble) {
-      // Enter clue screen: buzzers start LOCKED, queue cleared
-      const newBuzzState: BuzzState = {
-        clueActive: true,
-        queue: [],
-        lockedOut: [],
-        systemLocked: true,
-      }
-      setBuzzState(newBuzzState)
-      updateBuzzState(sessionId, newBuzzState).catch(() => {})
-      if (sessionChannelRef.current) {
-        broadcastMessage(sessionChannelRef.current, { type: 'buzz_state_sync', buzzState: newBuzzState }).catch(() => {})
-      }
-    } else if (phase === 'board' || phase === 'category-reveal') {
-      // Deactivate — always reset to clean idle state
-      const newBuzzState: BuzzState = {
-        clueActive: false,
-        queue: [],
-        lockedOut: [],
-        systemLocked: false,
-      }
-      setBuzzState(newBuzzState)
-      updateBuzzState(sessionId, newBuzzState).catch(() => {})
-      if (sessionChannelRef.current) {
-        broadcastMessage(sessionChannelRef.current, { type: 'buzz_state_sync', buzzState: newBuzzState }).catch(() => {})
-      }
-    }
-  }, [sessionId, phase, activeClue, isDailyDouble])
-  /* eslint-enable react-hooks/set-state-in-effect */
 
   // ─── Host panel handlers ─────────────────────────────────────────────────
 
