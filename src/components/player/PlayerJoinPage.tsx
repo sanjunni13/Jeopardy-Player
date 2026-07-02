@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { useGameSession } from '../../hooks/useGameSession';
-import { validatePlayerName, isDuplicateName } from '../../utils/playerNameValidation';
 import { canRegisterPlayer } from '../../utils/sessionRegistration';
 import { joinSession } from '../../utils/sessionApi';
 import { getOnlinePlayerNames } from '../../utils/sessionChannel';
@@ -12,19 +11,26 @@ interface PlayerJoinPageProps {
 }
 
 /**
- * Name entry form displayed when a player scans the QR code and lands on the session page.
+ * Player join screen displayed when a player scans the QR code.
  *
- * Validates the name (1-20 chars, at least one non-whitespace), checks for duplicates
- * (case-insensitive), and verifies the session can accept new registrations before submitting.
+ * Shows the host's player list as a picker so players select their name
+ * rather than typing it free-form. This prevents name mismatches and makes
+ * reconnection straightforward — returning players see a "Rejoin as X" shortcut.
+ *
+ * Taken names (currently online by someone else) are shown but disabled.
  */
 export function PlayerJoinPage({ sessionId, onJoined }: PlayerJoinPageProps) {
   const { session, connectionState, channel, error: sessionError } = useGameSession(sessionId);
 
-  // Check if this browser previously joined this session under a specific name
   const storageKey = `buzzer_name_${sessionId}`;
   const previousName = sessionStorage.getItem(storageKey);
 
-  const [name, setName] = useState(previousName ?? '');
+  // When a previous name exists, start in "returning" mode — show the rejoin shortcut.
+  // The player can tap "I'm someone else" to switch to picker mode.
+  const [mode, setMode] = useState<'returning' | 'picking'>(
+    previousName ? 'returning' : 'picking'
+  );
+  const [selectedName, setSelectedName] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [onlinePlayers, setOnlinePlayers] = useState<string[]>([]);
@@ -33,11 +39,9 @@ export function PlayerJoinPage({ sessionId, onJoined }: PlayerJoinPageProps) {
   // Keep online players list updated from presence state
   useEffect(() => {
     if (!channel || connectionState !== 'connected') return;
-    // Immediate first read after a microtask (avoids synchronous setState in effect)
     const immediate = setTimeout(() => {
       setOnlinePlayers(getOnlinePlayerNames(channel));
     }, 0);
-    // Then poll every 2 seconds
     const interval = setInterval(() => {
       setOnlinePlayers(getOnlinePlayerNames(channel));
     }, 2000);
@@ -47,7 +51,7 @@ export function PlayerJoinPage({ sessionId, onJoined }: PlayerJoinPageProps) {
     };
   }, [channel, connectionState]);
 
-  // ─── Session error states ───────────────────────────────────────────────
+  // ─── Session error / loading states ────────────────────────────────────
 
   if (connectionState === 'connecting') {
     return (
@@ -91,7 +95,6 @@ export function PlayerJoinPage({ sessionId, onJoined }: PlayerJoinPageProps) {
     );
   }
 
-  // Treat sessions inactive for 30+ minutes as stale/ended
   const STALE_TIMEOUT_MS = 30 * 60 * 1000;
   const lastUpdated = new Date(session.updated_at).getTime();
   const isStale = mountTime - lastUpdated > STALE_TIMEOUT_MS;
@@ -109,139 +112,206 @@ export function PlayerJoinPage({ sessionId, onJoined }: PlayerJoinPageProps) {
     );
   }
 
-  // ─── Form submission ────────────────────────────────────────────────────
+  // ─── Helpers ─────────────────────────────────────────────────────────
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
+  /**
+   * A name is "taken" when it's currently online AND it isn't the returning
+   * player's own name (which they're allowed to reclaim).
+   */
+  function isNameTaken(name: string): boolean {
+    const lower = name.toLowerCase();
+    const isOnline = onlinePlayers.some(n => n.toLowerCase() === lower);
+    const isOwnName = previousName?.toLowerCase() === lower;
+    return isOnline && !isOwnName;
+  }
+
+  // ─── Submit ───────────────────────────────────────────────────────────
+
+  async function handleSubmit(nameToJoin: string) {
     setError(null);
 
-    // Validate name format
-    const validation = validatePlayerName(name);
-    if (!validation.valid) {
-      setError(validation.error);
-      return;
-    }
+    const trimmed = nameToJoin.trim();
+    if (!trimmed) return;
 
-    // Validate that the name exists in the host's player list (1:1 match required)
-    if (session!.players.length === 0) {
-      setError('No players have been added yet. Wait for the host to add your name.');
-      return;
-    }
-
+    // Guard: name must still be in the session player list (could have been
+    // removed by the host between the player opening the picker and tapping Join)
     const isInPlayerList = session!.players.some(
-      p => p.name.toLowerCase() === name.trim().toLowerCase()
+      p => p.name.toLowerCase() === trimmed.toLowerCase()
     );
     if (!isInPlayerList) {
-      setError('Your name must match a player in the host\'s player list');
+      setError('That player is no longer in the session. Please refresh and try again.');
       return;
     }
 
-    // Check for duplicate name — allow rejoin if player is offline (disconnected)
-    const isExistingPlayer = isDuplicateName(session!.players, name);
-    // Read presence state fresh at submit time to avoid stale onlinePlayers
+    // Guard: name taken by an active player who isn't us
     const currentOnline = channel ? getOnlinePlayerNames(channel) : onlinePlayers;
-    const isCurrentlyOnline = currentOnline.some(
-      n => n.toLowerCase() === name.trim().toLowerCase()
+    const isCurrentlyOnline = currentOnline.some(n => n.toLowerCase() === trimmed.toLowerCase());
+    const isOwnName = previousName?.toLowerCase() === trimmed.toLowerCase();
+
+    if (isCurrentlyOnline && !isOwnName) {
+      setError('That name is currently in use by an active player.');
+      return;
+    }
+
+    // Guard: this browser already has a different name locked in (anti-impersonation)
+    const isExistingPlayer = session!.players.some(
+      p => p.name.toLowerCase() === trimmed.toLowerCase()
     );
-    const isOwnName = previousName?.toLowerCase() === name.trim().toLowerCase();
-
-    // Block if the name is currently online AND it's not our own reconnect
-    // (someone else is actively using that buzzer)
-    if (isExistingPlayer && isCurrentlyOnline && !isOwnName) {
-      setError('That name is currently in use by an active player');
-      return;
-    }
-
-    // Block if we have a previous name stored and are trying to switch to a different
-    // existing player (prevents impersonation from the same browser tab)
     if (isExistingPlayer && previousName && !isOwnName) {
-      setError('That name belongs to another player in this session');
+      setError('That name belongs to another player in this session.');
       return;
     }
 
-    // Check registration eligibility (only for new players, not rejoins)
+    // Guard: registration eligibility for genuinely new players
     if (!isExistingPlayer && !canRegisterPlayer(session!.is_locked, session!.players.length, 10)) {
-      if (session!.is_locked) {
-        setError('Session is locked by the host');
-      } else {
-        setError('Session is full');
-      }
+      setError(session!.is_locked ? 'Session is locked by the host.' : 'Session is full.');
       return;
     }
 
-    // Submit registration
     setSubmitting(true);
     try {
-      await joinSession(sessionId, name);
-      // Remember the name for this session so the player can only rejoin as themselves
-      sessionStorage.setItem(storageKey, name.trim());
-      onJoined(name);
+      await joinSession(sessionId, trimmed);
+      sessionStorage.setItem(storageKey, trimmed);
+      onJoined(trimmed);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to join session';
-      if (message.includes('not found')) {
-        setError('Session not found or has ended');
-      } else {
-        setError(message);
-      }
+      setError(message.includes('not found') ? 'Session not found or has ended.' : message);
     } finally {
       setSubmitting(false);
     }
   }
 
-  function handleNameChange(e: React.ChangeEvent<HTMLInputElement>) {
-    setName(e.target.value);
-    if (error) {
-      setError(null);
-    }
+  // ─── Returning player view ────────────────────────────────────────────
+
+  if (mode === 'returning' && previousName) {
+    const taken = isNameTaken(previousName);
+
+    return (
+      <div className="player-join-page">
+        <div className="player-join-page__card">
+          <h1 className="player-join-page__title">Welcome back</h1>
+          <p className="player-join-page__subtitle">
+            You previously joined as:
+          </p>
+
+          <div className="player-join-page__returning">
+            <p className="player-join-page__returning-name">
+              <span>{previousName}</span>
+            </p>
+
+            {error && (
+              <p className="player-join-page__error" role="alert">{error}</p>
+            )}
+
+            <button
+              type="button"
+              className="player-join-page__submit"
+              disabled={submitting || taken}
+              onClick={() => handleSubmit(previousName)}
+            >
+              {submitting ? 'Rejoining…' : taken ? 'Name is taken' : `Rejoin as ${previousName}`}
+            </button>
+
+            <button
+              type="button"
+              className="player-join-page__switch-link"
+              disabled={submitting}
+              onClick={() => {
+                setMode('picking');
+                setError(null);
+                setSelectedName(null);
+              }}
+            >
+              I'm someone else
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   }
 
-  // ─── Render ─────────────────────────────────────────────────────────────
+  // ─── Picker view ──────────────────────────────────────────────────────
+
+  const hasPlayers = session.players.length > 0;
 
   return (
     <div className="player-join-page">
       <div className="player-join-page__card">
         <h1 className="player-join-page__title">Join Game</h1>
-        <p className="player-join-page__subtitle">
-          Enter your name to join the session.
-        </p>
 
-        <form onSubmit={handleSubmit} className="player-join-page__form">
-          <div className="player-join-page__field">
-            <label htmlFor="player-name" className="player-join-page__label">
-              Your Name
-            </label>
-            <input
-              id="player-name"
-              type="text"
-              value={name}
-              onChange={handleNameChange}
-              placeholder="Enter your name"
-              maxLength={20}
-              autoComplete="off"
-              className={`player-join-page__input ${error ? 'player-join-page__input--error' : ''}`}
-              aria-describedby={error ? 'player-name-error' : undefined}
-              aria-invalid={!!error}
-              disabled={submitting}
-            />
-            <span className="player-join-page__char-count" aria-hidden="true">
-              {name.length}/20
-            </span>
-          </div>
-
-          {error && (
-            <p id="player-name-error" className="player-join-page__error" role="alert">
-              {error}
+        {hasPlayers ? (
+          <>
+            <p className="player-join-page__picker-label">
+              Select your name
             </p>
-          )}
 
-          <button
-            type="submit"
-            disabled={submitting}
-            className="player-join-page__submit"
-          >
-            {submitting ? 'Joining…' : 'Join'}
-          </button>
-        </form>
+            <div className="player-join-page__picker" role="list">
+              {session.players.map((player) => {
+                const taken = isNameTaken(player.name);
+                const isSelected = selectedName === player.name;
+                // A name is "online" but NOT taken means it's the returning player's
+                // own name visible in the list — show a green "you" badge instead.
+                const isOwnOnline =
+                  onlinePlayers.some(n => n.toLowerCase() === player.name.toLowerCase()) &&
+                  previousName?.toLowerCase() === player.name.toLowerCase();
+
+                return (
+                  <button
+                    key={player.name}
+                    type="button"
+                    role="listitem"
+                    disabled={taken || submitting}
+                    className={[
+                      'player-join-page__player-btn',
+                      isSelected ? 'player-join-page__player-btn--selected' : '',
+                    ].filter(Boolean).join(' ')}
+                    aria-pressed={isSelected}
+                    onClick={() => {
+                      setSelectedName(player.name);
+                      setError(null);
+                    }}
+                  >
+                    <span className="player-join-page__player-btn-name">
+                      {player.name}
+                    </span>
+
+                    {taken && (
+                      <span className="player-join-page__player-btn-badge player-join-page__player-btn-badge--taken">
+                        taken
+                      </span>
+                    )}
+                    {isOwnOnline && (
+                      <span className="player-join-page__player-btn-badge player-join-page__player-btn-badge--online">
+                        you
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            {error && (
+              <p className="player-join-page__error" role="alert">{error}</p>
+            )}
+
+            <button
+              type="button"
+              className="player-join-page__submit"
+              disabled={!selectedName || submitting}
+              onClick={() => selectedName && handleSubmit(selectedName)}
+            >
+              {submitting
+                ? 'Joining…'
+                : selectedName
+                  ? `Join as ${selectedName}`
+                  : 'Select your name'}
+            </button>
+          </>
+        ) : (
+          <p className="player-join-page__subtitle">
+            No players have been added yet. Wait for the host to add your name, then refresh this page.
+          </p>
+        )}
       </div>
     </div>
   );
