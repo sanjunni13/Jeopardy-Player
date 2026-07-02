@@ -31,7 +31,7 @@
   color: rgb(241 245 249); /* slate-100 */
 }
 
-/* ─── Accordion ──────────────────────────────────────────────────────────── */
+/* ─── Outer accordion (categories) ──────────────────────────────────────── */
 
 .faq-accordion {
   display: flex;
@@ -39,8 +39,84 @@
   gap: 0;
 }
 
-.faq-item {
+.faq-category-item {
   border-bottom: 1px solid rgb(51 65 85); /* slate-700 */
+}
+
+.faq-category-item:last-child {
+  border-bottom: none;
+}
+
+.faq-category-header {
+  margin: 0;
+}
+
+.faq-category-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  width: 100%;
+  min-height: 48px;
+  padding: 1rem 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  color: rgb(216 180 254); /* purple-300 */
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: 0.01em;
+  transition: color 0.2s;
+}
+
+.faq-category-trigger:hover {
+  color: rgb(233 213 255); /* purple-200 */
+}
+
+.faq-category-trigger:focus-visible {
+  outline: 2px solid #CE93D8;
+  outline-offset: 2px;
+  border-radius: 0.25rem;
+}
+
+.faq-category-label {
+  flex: 1;
+}
+
+.faq-category-trigger[data-state='open'] .faq-chevron {
+  transform: rotate(180deg);
+  color: rgb(216 180 254); /* purple-300 */
+}
+
+/* ─── Category content wrapper ───────────────────────────────────────────── */
+
+.faq-category-content {
+  overflow: hidden;
+}
+
+.faq-category-content[data-state='open'] {
+  animation: faq-slide-down 300ms ease-out;
+}
+
+.faq-category-content[data-state='closed'] {
+  animation: faq-slide-up 300ms ease-out;
+}
+
+/* ─── Inner accordion (questions) ────────────────────────────────────────── */
+
+.faq-inner-accordion {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding-left: 1rem;
+  border-left: 2px solid rgb(88 28 135 / 0.4); /* purple tint */
+  margin-bottom: 0.75rem;
+}
+
+.faq-item {
+  border-bottom: 1px solid rgb(30 41 59); /* slate-800 — lighter than outer */
 }
 
 .faq-item:last-child {
@@ -58,12 +134,12 @@
   gap: 1rem;
   width: 100%;
   min-height: 44px;
-  padding: 1rem 0;
+  padding: 0.875rem 0;
   background: none;
   border: none;
   cursor: pointer;
   text-align: left;
-  color: rgb(226 232 240); /* slate-200 */
+  color: rgb(203 213 225); /* slate-300 */
   font-size: 0.9375rem;
   font-weight: 500;
   line-height: 1.5;
@@ -152,9 +228,18 @@
     font-size: 1.25rem;
   }
 
+  .faq-category-trigger {
+    min-height: 52px;
+    font-size: 0.9375rem;
+  }
+
   .faq-trigger {
     min-height: 48px; /* Larger tap target on mobile */
     padding: 0.875rem 0;
     font-size: 0.875rem;
+  }
+
+  .faq-inner-accordion {
+    padding-left: 0.75rem;
   }
 }
