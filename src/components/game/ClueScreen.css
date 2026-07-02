@@ -186,6 +186,12 @@
   text-align: center;
 }
 
+.clue-player-total {
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
 .clue-player-value {
   color: #c99f57;
   font-size: 0.8125rem;

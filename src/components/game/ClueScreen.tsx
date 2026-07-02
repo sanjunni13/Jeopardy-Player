@@ -118,6 +118,7 @@ export function ClueScreen({
                 className="clue-player-card"
               >
                 <span className="clue-player-name">{player.name}</span>
+                <span className="clue-player-total">{player.score < 0 ? `-$${Math.abs(player.score).toLocaleString()}` : `$${player.score.toLocaleString()}`}</span>
                 <span className="clue-player-value">${pointValue}</span>
                 <div className="clue-player-actions">
                   <button

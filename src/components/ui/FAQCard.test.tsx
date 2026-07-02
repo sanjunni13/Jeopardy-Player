@@ -2,85 +2,96 @@
 import { describe, it, expect } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { FAQCard } from './FAQCard'
-import type { FAQItem } from '../../data/faqData'
+import type { FAQCategory } from '../../data/faqData'
 
-const sampleItems: FAQItem[] = [
-  { question: 'What is Jeopardy?', answer: 'A popular trivia game show.' },
-  { question: 'How do I play?', answer: 'Select a category and point value to reveal a clue.' },
-  { question: 'What are Daily Doubles?', answer: 'Special clues where a player can wager points.' },
+const sampleCategories: FAQCategory[] = [
+  {
+    category: 'Games',
+    items: [
+      { question: 'What is Jeopardy?', answer: 'A popular trivia game show.' },
+      { question: 'How do I play?', answer: 'Select a category and point value to reveal a clue.' },
+    ],
+  },
+  {
+    category: 'Buzzers',
+    items: [
+      { question: 'What are Daily Doubles?', answer: 'Special clues where a player can wager points.' },
+    ],
+  },
 ]
 
 describe('FAQCard', () => {
   it('renders heading "Frequently Asked Questions"', () => {
-    render(<FAQCard items={sampleItems} />)
+    render(<FAQCard items={sampleCategories} />)
     expect(screen.getByText('Frequently Asked Questions')).toBeDefined()
   })
 
-  it('renders all provided FAQ items in collapsed state', () => {
-    render(<FAQCard items={sampleItems} />)
+  it('renders all category labels', () => {
+    render(<FAQCard items={sampleCategories} />)
+    expect(screen.getByText('Games')).toBeDefined()
+    expect(screen.getByText('Buzzers')).toBeDefined()
+  })
 
-    // All questions should be visible
-    for (const item of sampleItems) {
-      expect(screen.getByText(item.question)).toBeDefined()
-    }
+  it('category triggers start collapsed; questions are not visible', () => {
+    render(<FAQCard items={sampleCategories} />)
 
-    // All triggers should have data-state="closed"
-    const triggers = screen.getAllByRole('button')
-    for (const trigger of triggers) {
+    // Category triggers should be closed
+    const categoryTriggers = screen.getAllByRole('button')
+    for (const trigger of categoryTriggers) {
       expect(trigger.getAttribute('data-state')).toBe('closed')
     }
+
+    // Questions should not be visible until category is opened
+    expect(screen.queryByText('What is Jeopardy?')).toBeNull()
   })
 
-  it('expanding one item shows its answer', () => {
-    render(<FAQCard items={sampleItems} />)
+  it('opening a category reveals its questions (still collapsed)', () => {
+    render(<FAQCard items={sampleCategories} />)
 
-    const firstTrigger = screen.getByText(sampleItems[0].question)
-    fireEvent.click(firstTrigger)
+    const gamesTrigger = screen.getByText('Games')
+    fireEvent.click(gamesTrigger)
 
-    // The answer should now be visible
-    expect(screen.getByText(sampleItems[0].answer)).toBeDefined()
+    // Category should be open
+    expect(gamesTrigger.closest('button')!.getAttribute('data-state')).toBe('open')
 
-    // The trigger should be in open state
-    const button = firstTrigger.closest('button')!
-    expect(button.getAttribute('data-state')).toBe('open')
+    // Questions within the category should now be visible
+    expect(screen.getByText('What is Jeopardy?')).toBeDefined()
+    expect(screen.getByText('How do I play?')).toBeDefined()
   })
 
-  it('expanding a second item collapses the first', () => {
-    render(<FAQCard items={sampleItems} />)
+  it('expanding a question inside an open category shows its answer', () => {
+    render(<FAQCard items={sampleCategories} />)
 
-    // Expand the first item
-    const firstTrigger = screen.getByText(sampleItems[0].question)
-    fireEvent.click(firstTrigger)
-    expect(firstTrigger.closest('button')!.getAttribute('data-state')).toBe('open')
+    // Open the category first
+    fireEvent.click(screen.getByText('Games'))
 
-    // Expand the second item
-    const secondTrigger = screen.getByText(sampleItems[1].question)
-    fireEvent.click(secondTrigger)
+    // Then open a question
+    const questionTrigger = screen.getByText('What is Jeopardy?')
+    fireEvent.click(questionTrigger)
 
-    // Second should be open, first should be closed
-    expect(secondTrigger.closest('button')!.getAttribute('data-state')).toBe('open')
-    expect(firstTrigger.closest('button')!.getAttribute('data-state')).toBe('closed')
+    expect(screen.getByText('A popular trivia game show.')).toBeDefined()
+    expect(questionTrigger.closest('button')!.getAttribute('data-state')).toBe('open')
   })
 
-  it('collapsing an already-expanded item', () => {
-    render(<FAQCard items={sampleItems} />)
+  it('expanding a second question in the same category collapses the first', () => {
+    render(<FAQCard items={sampleCategories} />)
 
-    const firstTrigger = screen.getByText(sampleItems[0].question)
+    fireEvent.click(screen.getByText('Games'))
 
-    // Expand
-    fireEvent.click(firstTrigger)
-    expect(firstTrigger.closest('button')!.getAttribute('data-state')).toBe('open')
+    const firstQ = screen.getByText('What is Jeopardy?')
+    const secondQ = screen.getByText('How do I play?')
 
-    // Collapse by clicking the same trigger again
-    fireEvent.click(firstTrigger)
-    expect(firstTrigger.closest('button')!.getAttribute('data-state')).toBe('closed')
+    fireEvent.click(firstQ)
+    expect(firstQ.closest('button')!.getAttribute('data-state')).toBe('open')
+
+    fireEvent.click(secondQ)
+    expect(secondQ.closest('button')!.getAttribute('data-state')).toBe('open')
+    expect(firstQ.closest('button')!.getAttribute('data-state')).toBe('closed')
   })
 
   it('empty items array renders without error', () => {
     const { container } = render(<FAQCard items={[]} />)
-    // Should render the empty container div
     expect(container.querySelector('.faq-empty')).toBeDefined()
-    // Should NOT render the heading or accordion
     expect(screen.queryByText('Frequently Asked Questions')).toBeNull()
   })
 })
