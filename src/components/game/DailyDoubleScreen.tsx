@@ -15,7 +15,7 @@ export function DailyDoubleScreen({ players, onPlayerSelect }: DailyDoubleScreen
   useEffect(() => {
     if (!soundPlayedRef.current) {
       soundPlayedRef.current = true
-      const audio = new Audio('/sounds/dailydouble.mp3')
+      const audio = new Audio(`${import.meta.env.BASE_URL}sounds/dailydouble.mp3`)
       audio.play().catch(() => { /* autoplay may be blocked */ })
     }
   }, [])
