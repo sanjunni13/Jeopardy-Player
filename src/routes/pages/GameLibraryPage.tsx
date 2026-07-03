@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useMemo } from 'react'
-import { useNavigate, Link } from '@tanstack/react-router'
+import { useNavigate, Link, useRouterState } from '@tanstack/react-router'
+import { toast } from 'react-toastify'
 import Fuse from 'fuse.js'
 import { supabase } from '../../utils/supabase'
 import { GameCard } from '../../components/game/GameCard'
@@ -7,6 +8,7 @@ import { BackButton } from '../../components/BackButton'
 import { BackgroundGradient } from '../../components/ui/background-gradient'
 import { FAQCard } from '../../components/ui/FAQCard'
 import { gameLibraryFAQ } from '../../data/faqData'
+import { useRandomGamePicker } from '../../hooks/useRandomGamePicker'
 import type { GameRecord } from '../../types/game'
 import './GameLibraryPage.css'
 
@@ -58,6 +60,12 @@ export function GameLibraryPage() {
   const [filters, setFilters] = useState<Filters>({ rounds: null, creator: null, source: null })
   const [showFilters, setShowFilters] = useState(false)
 
+  // Read feelingLucky flag passed via location state from the Home page
+  const locationState = useRouterState({ select: (s) => s.location.state }) as { feelingLucky?: boolean }
+  const feelingLucky = locationState?.feelingLucky ?? false
+
+  const { pickRandom } = useRandomGamePicker()
+
   const fetchGames = useCallback(async () => {
     setStatus('loading')
     setErrorMessage(null)
@@ -82,6 +90,22 @@ export function GameLibraryPage() {
 
     return () => { cancelled = true }
   }, [])
+
+  // Auto-trigger random selection when arriving via the Home page "Feeling Lucky" button
+  useEffect(() => {
+    if (!feelingLucky || status !== 'success') return
+    if (games.length === 0) {
+      toast.info('No games are available for random selection.')
+      return
+    }
+    pickRandom(games)
+  }, [feelingLucky, status, games, pickRandom])
+
+  // Show error toast when feelingLucky is set and the library fetch fails (Requirement 2.4)
+  useEffect(() => {
+    if (!feelingLucky || status !== 'error') return
+    toast.error(errorMessage ?? 'Failed to load games. Could not pick a random game.')
+  }, [feelingLucky, status, errorMessage])
 
   // Fuse.js instance for fuzzy search
   const fuse = useMemo(() => new Fuse(games, {
@@ -137,6 +161,13 @@ export function GameLibraryPage() {
     setFilters({ rounds: null, creator: null, source: null })
   }
 
+  // Feeling Lucky button visibility:
+  //   loading  → visible, disabled
+  //   success + games.length > 0 → visible, enabled  (rendered inside library-search-row)
+  //   success + games.length === 0 → hidden
+  //   error → hidden
+  const showFeelingLuckyLoading = status === 'loading'
+
   return (
     <div className="library-page">
       <BackgroundGradient containerClassName="library-gradient-container" className="library-card">
@@ -145,6 +176,20 @@ export function GameLibraryPage() {
         <h1 className="library-title">Game Library</h1>
         <p className="library-subtitle">Select a game to play!</p>
 
+        {/* Disabled Feeling Lucky button shown while loading (Requirements 1.3, 1.7) */}
+        {showFeelingLuckyLoading && (
+          <div className="library-feeling-lucky-row">
+            <button
+              type="button"
+              className="library-feeling-lucky-btn"
+              disabled
+            >
+              🎲 Feeling Lucky
+            </button>
+          </div>
+        )}
+
+        {/* Search row with enabled Feeling Lucky button (Requirements 1.1, 1.4) */}
         {status === 'success' && games.length > 0 && (
           <div className="library-search-row">
             <div className="library-search-wrapper">
@@ -179,6 +224,13 @@ export function GameLibraryPage() {
               {activeFilterCount > 0 && (
                 <span className="library-filter-badge">{activeFilterCount}</span>
               )}
+            </button>
+            <button
+              type="button"
+              className="library-feeling-lucky-btn"
+              onClick={() => pickRandom(games)}
+            >
+              🎲 Feeling Lucky
             </button>
           </div>
         )}

@@ -62,6 +62,16 @@ export interface NormalizedGame {
   totalRounds: number;
 }
 
+// ─── Analytics types ──────────────────────────────────────────────────────────
+
+export interface DailyDoubleRecord {
+  /** Format: `${roundName}-${categoryIndex}-${clueIndex}` */
+  clueKey: string;
+  playerName: string;
+  wager: number;
+  outcome: 'correct' | 'incorrect';
+}
+
 // ─── Session types ────────────────────────────────────────────────────────────
 
 export interface Player {
@@ -90,6 +100,7 @@ export interface GameSession {
   orderedRoundNames: RoundName[];
   /** key: `${roundName}-${categoryIndex}-${clueIndex}` */
   clueStates: Record<string, ClueState>;
+  dailyDoubleRecords: DailyDoubleRecord[];
 }
 
 export type GamePhase =

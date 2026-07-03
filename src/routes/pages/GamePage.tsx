@@ -28,7 +28,9 @@ import { DailyDoubleScreen } from '../../components/game/DailyDoubleScreen'
 import { DailyDoubleWager } from '../../components/game/DailyDoubleWager'
 import { FinalJeopardy } from '../../components/game/FinalJeopardy'
 import { RoundTransition } from '../../components/game/RoundTransition'
-import { GameOver } from '../../components/game/GameOver'
+// GameOver is kept on disk but no longer rendered — AnalyticsScreen takes its place
+// import { GameOver } from '../../components/game/GameOver'
+import { AnalyticsScreen } from '../../components/game/AnalyticsScreen'
 import { CheatSheetButton } from '../../components/game/CheatSheetButton'
 import { CheatSheet } from '../../components/game/CheatSheet'
 import { shouldShowCheatSheet } from '../../utils/cheatSheetVisibility'
@@ -506,6 +508,7 @@ export function GamePage() {
       currentRoundIndex: 0,
       orderedRoundNames,
       clueStates,
+      dailyDoubleRecords: [],
     })
     setPhase('category-reveal')
   }
@@ -611,6 +614,7 @@ export function GamePage() {
     setClueAnswerRevealed(false)
 
     const key = `${activeClue.roundName}-${activeClue.categoryIndex}-${activeClue.clueIndex}`
+    const clue = session.game.rounds[activeClue.roundName][activeClue.categoryIndex].clues[activeClue.clueIndex]
 
     // Mark clue as chosen
     const updatedClueStates = {
@@ -618,7 +622,19 @@ export function GamePage() {
       [key]: { ...session.clueStates[key], chosen: true },
     }
 
-    const updatedSession = { ...session, clueStates: updatedClueStates }
+    // Append a DailyDoubleRecord when this clue was a resolved Daily Double
+    let updatedDDRecords = session.dailyDoubleRecords
+    if (clue.dailyDouble && ddSelectedPlayer != null && ddWager != null) {
+      const outcome = session.clueStates[key].playerMarkings[ddSelectedPlayer]
+      if (outcome === 'correct' || outcome === 'incorrect') {
+        updatedDDRecords = [
+          ...updatedDDRecords,
+          { clueKey: key, playerName: ddSelectedPlayer, wager: ddWager, outcome },
+        ]
+      }
+    }
+
+    const updatedSession = { ...session, clueStates: updatedClueStates, dailyDoubleRecords: updatedDDRecords }
     setSession(updatedSession)
     setActiveClue(null)
     setDdSelectedPlayer(null)
@@ -1001,8 +1017,8 @@ export function GamePage() {
 
     if (phase === 'game-over') {
       return (
-        <GameOver
-          players={session!.players}
+        <AnalyticsScreen
+          session={session!}
           gameId={gameId}
           onBackToHome={() => navigate({ to: '/home' })}
         />

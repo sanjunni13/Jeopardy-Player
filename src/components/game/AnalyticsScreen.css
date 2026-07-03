@@ -1,0 +1,279 @@
+/* ─── Analytics Screen ──────────────────────────────────────────────────────── */
+
+.analytics-page {
+  padding: 2rem;
+  min-height: 100vh;
+}
+
+/* The capture root wraps everything captured by html-to-image */
+.analytics-capture-root {
+  /* no visual styles — acts as a snapshot boundary */
+}
+
+.analytics-gradient-container {
+  max-width: 52rem;
+  margin: 0 auto;
+}
+
+.analytics-card {
+  margin-left: auto;
+  margin-right: auto;
+  max-width: 52rem;
+  border-radius: 1.5rem;
+  border: 1px solid rgb(30 41 59); /* slate-800 */
+  background: rgb(15 23 42 / 0.95); /* slate-900/95 */
+  padding: 2.5rem;
+  box-shadow: 0 25px 50px -12px rgb(15 23 42 / 0.3);
+}
+
+/* ── Title ── */
+.analytics-title {
+  font-size: 3.2rem;
+  font-weight: bold;
+  letter-spacing: 2px;
+  color: #001699;
+  text-shadow: 2px 2px 0 #ffd700, 4px 4px 0 #001699;
+  font-family: 'Korinna', 'Swiss921', Arial, sans-serif;
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+/* ── Winner ── */
+.analytics-winner {
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+.analytics-winner-text {
+  font-size: 1.125rem;
+  color: #6A1B9A;
+  font-weight: 600;
+}
+
+/* ── Standings list ── */
+.analytics-standings {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 2rem;
+  list-style: none;
+  padding: 0;
+}
+
+.analytics-player {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-radius: 1rem;
+  border: 1px solid rgb(30 41 59); /* slate-800 */
+  background: rgb(2 6 23); /* slate-950 */
+  padding: 0.75rem 1rem;
+}
+
+.analytics-player--winner {
+  border-color: rgb(106 27 154 / 0.6); /* #6A1B9A/60 */
+  background: rgb(106 27 154 / 0.1);
+}
+
+.analytics-player-left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.analytics-player-rank {
+  color: rgb(100 116 139); /* slate-500 */
+  font-size: 0.875rem;
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  width: 1.5rem;
+}
+
+.analytics-player-name {
+  font-weight: 500;
+  color: rgb(241 245 249); /* slate-100 */
+}
+
+.analytics-player-name--winner {
+  color: #6A1B9A;
+}
+
+.analytics-trophy {
+  font-size: 0.875rem;
+}
+
+.analytics-score {
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  font-weight: 600;
+  color: rgb(241 245 249);
+}
+
+.analytics-score--negative {
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  font-weight: 600;
+  color: rgb(251 113 133); /* rose-400 */
+}
+
+/* ── Action button row ── */
+.analytics-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 2rem;
+}
+
+/* Base button style shared by all action buttons */
+.analytics-btn {
+  width: 80%;
+  border-radius: 100px;
+  padding: 12.5px 30px;
+  font-size: 0.875rem;
+  font-weight: bold;
+  color: white;
+  border: 0;
+  cursor: pointer;
+  transition: all 0.5s;
+  -webkit-transition: all 0.5s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.analytics-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+/* Breakdown toggle button */
+.analytics-btn--breakdown {
+  background-color: rgb(51 65 85); /* slate-700 */
+}
+
+.analytics-btn--breakdown:hover:not(:disabled) {
+  background-color: rgb(71 85 105); /* slate-600 */
+  box-shadow: 0 0 16px rgba(71, 85, 105, 0.4);
+  transform: scale(1.05);
+}
+
+.analytics-btn--breakdown:active:not(:disabled) {
+  background-color: rgb(30 41 59);
+  transition: all 0.25s;
+  box-shadow: none;
+  transform: scale(0.98);
+}
+
+/* Download as Image button */
+.analytics-btn--download {
+  background-color: #1976D2;
+}
+
+.analytics-btn--download:hover:not(:disabled) {
+  background-color: #1E88E5;
+  box-shadow: 0 0 20px rgba(30, 136, 229, 0.35);
+  transform: scale(1.08);
+}
+
+.analytics-btn--download:active:not(:disabled) {
+  background-color: #1565C0;
+  transition: all 0.25s;
+  box-shadow: none;
+  transform: scale(0.98);
+}
+
+/* Loading spinner inside Download button */
+.analytics-spinner {
+  display: inline-block;
+  width: 0.85rem;
+  height: 0.85rem;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: analytics-spin 0.7s linear infinite;
+}
+
+@keyframes analytics-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Inline export error */
+.analytics-export-error {
+  color: rgb(251 113 133); /* rose-400 */
+  font-size: 0.8rem;
+  text-align: center;
+  margin: 0;
+  max-width: 80%;
+}
+
+/* Back to Home button — matches GameOver style */
+.analytics-btn--home {
+  background-color: #6A1B9A;
+}
+
+.analytics-btn--home:hover:not(:disabled) {
+  background-color: #8E24AA;
+  box-shadow: 0 0 20px rgba(142, 36, 170, 0.3);
+  transform: scale(1.15);
+}
+
+.analytics-btn--home:active:not(:disabled) {
+  background-color: #4A148C;
+  transition: all 0.25s;
+  box-shadow: none;
+  transform: scale(0.98);
+}
+
+/* ── Breakdown section ── */
+.analytics-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  border-top: 1px solid rgb(30 41 59);
+  padding-top: 2rem;
+  animation: analytics-fade-in 0.2s ease-out;
+}
+
+@keyframes analytics-fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.analytics-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.analytics-section-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: rgb(203 213 225); /* slate-300 */
+  letter-spacing: 0.03em;
+  border-bottom: 1px solid rgb(30 41 59);
+  padding-bottom: 0.4rem;
+  margin: 0;
+}
+
+/* ── Responsive layout ── */
+@media (max-width: 640px) {
+  .analytics-page {
+    padding: 1rem;
+  }
+
+  .analytics-card {
+    padding: 1.5rem 1rem;
+  }
+
+  .analytics-title {
+    font-size: 2.2rem;
+  }
+
+  .analytics-btn {
+    width: 100%;
+  }
+
+  .analytics-export-error {
+    max-width: 100%;
+  }
+}

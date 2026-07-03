@@ -2,7 +2,8 @@
 import { describe, it, expect, vi } from 'vitest'
 import '@testing-library/jest-dom/vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
-import { RoundTabs, generateTabLabels, getNextFocusIndex } from './RoundTabs'
+import { RoundTabs } from './RoundTabs'
+import { generateTabLabels, getNextFocusIndex } from './roundTabsHelpers'
 
 describe('generateTabLabels', () => {
   it('returns correct labels for 1 round', () => {
