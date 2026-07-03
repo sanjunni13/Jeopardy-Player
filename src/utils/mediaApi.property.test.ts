@@ -182,7 +182,7 @@ describe('Property 6: YouTube URL validation', () => {
    * **Validates: Requirements 7.4, 7.6**
    *
    * For any string, `validateYouTubeUrl` SHALL return true if and only if
-   * the string matches the pattern `^https?://(www\.)?(youtube\.com/watch|youtu\.be)/.+`,
+   * the string matches the pattern `^https?://(www\.)?(youtube\.com\/watch\?v=[\w-]+|youtu\.be\/[\w-]+)`,
    * and false otherwise.
    */
 
@@ -191,8 +191,13 @@ describe('Property 6: YouTube URL validation', () => {
     fc.constantFrom('http://', 'https://'),
     fc.constantFrom('', 'www.'),
     fc.constantFrom('youtube.com/watch', 'youtu.be'),
-    fc.stringMatching(/^\/[a-zA-Z0-9?=&_-]{1,50}$/)
-  ).map(([protocol, www, domain, path]) => `${protocol}${www}${domain}${path}`)
+    fc.stringMatching(/^[a-zA-Z0-9_-]{4,20}$/)
+  ).map(([protocol, www, domain, videoId]) => {
+    if (domain === 'youtube.com/watch') {
+      return `${protocol}${www}${domain}?v=${videoId}`
+    }
+    return `${protocol}${www}${domain}/${videoId}`
+  })
 
   /** Generate arbitrary strings that may or may not be valid URLs */
   const arbitraryStringArb = fc.string({ minLength: 0, maxLength: 200 })

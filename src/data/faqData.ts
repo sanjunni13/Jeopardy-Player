@@ -50,7 +50,7 @@ const answerSheetFAQ: FAQItem[] = [
   {
     question: 'What is the Answer Sheet and what does it do?',
     answer:
-      'The Answer Sheet opens as a modal overlay within the game window displaying all answers organized by round and category. The host can open it by clicking the "Answer Sheet" button visible during active gameplay phases after player entry.',
+      'The Answer Sheet opens as a modal overlay within the game window displaying all answers organized by round and category. The host can open it by clicking the "Answer Sheet" button visible during active gameplay phases after player entry. This button is available for games created via AI generation, JeopardyLabs, or J! Archive.',
   },
 ]
 

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import fc from 'fast-check'
-import { generateTabLabels, getNextFocusIndex } from './RoundTabs'
+import { generateTabLabels, getNextFocusIndex } from './roundTabsHelpers'
 
 // Feature: game-editor-updates
 

@@ -4,13 +4,20 @@ import {
   generateGameFAQ,
   uploadGameFAQ,
   gameLibraryFAQ,
+  type FAQCategory,
   type FAQItem,
 } from './faqData'
+
+// Helper: flatten FAQCategory[] into FAQItem[]
+function flattenFAQ(faq: FAQCategory[]): FAQItem[] {
+  return faq.flatMap((cat) => cat.items)
+}
 
 // ─── Answer Sheet FAQ Entry Tests (Requirements 1.1-1.3, 2.1-2.3) ─────────────
 
 describe('gameLibraryFAQ — Answer Sheet entry', () => {
-  const answerSheetEntry = gameLibraryFAQ.find(
+  const allItems = flattenFAQ(gameLibraryFAQ)
+  const answerSheetEntry = allItems.find(
     (item) => item.question.toLowerCase().includes('answer sheet')
   )
 
@@ -47,7 +54,8 @@ describe('gameLibraryFAQ — Answer Sheet entry', () => {
 })
 
 describe('generateGameFAQ — Answer Sheet entry', () => {
-  const answerSheetEntry = generateGameFAQ.find(
+  const allItems = flattenFAQ(generateGameFAQ)
+  const answerSheetEntry = allItems.find(
     (item) => item.question.toLowerCase().includes('answer sheet')
   )
 
@@ -92,11 +100,11 @@ describe('generateGameFAQ — Answer Sheet entry', () => {
 // ─── General FAQ Data Validation ──────────────────────────────────────────────
 
 describe('FAQ Data Validation', () => {
-  const allFAQs: { name: string; items: FAQItem[] }[] = [
-    { name: 'createGameFAQ', items: createGameFAQ },
-    { name: 'generateGameFAQ', items: generateGameFAQ },
-    { name: 'uploadGameFAQ', items: uploadGameFAQ },
-    { name: 'gameLibraryFAQ', items: gameLibraryFAQ },
+  const allFAQs: { name: string; categories: FAQCategory[]; items: FAQItem[] }[] = [
+    { name: 'createGameFAQ', categories: createGameFAQ, items: flattenFAQ(createGameFAQ) },
+    { name: 'generateGameFAQ', categories: generateGameFAQ, items: flattenFAQ(generateGameFAQ) },
+    { name: 'uploadGameFAQ', categories: uploadGameFAQ, items: flattenFAQ(uploadGameFAQ) },
+    { name: 'gameLibraryFAQ', categories: gameLibraryFAQ, items: flattenFAQ(gameLibraryFAQ) },
   ]
 
   describe('FAQ array length constraints', () => {
@@ -128,7 +136,7 @@ describe('FAQ Data Validation', () => {
 
   describe('FAQ topic keyword coverage per Requirement 3', () => {
     it('createGameFAQ covers: manual game builder, saving drafts, required fields, category/clue limits', () => {
-      const questions = createGameFAQ.map((item) =>
+      const questions = flattenFAQ(createGameFAQ).map((item) =>
         (item.question + ' ' + item.answer).toLowerCase()
       )
 
@@ -139,7 +147,7 @@ describe('FAQ Data Validation', () => {
     })
 
     it('generateGameFAQ covers: generation options, AI behaviour, difficulty levels', () => {
-      const questions = generateGameFAQ.map((item) =>
+      const questions = flattenFAQ(generateGameFAQ).map((item) =>
         (item.question + ' ' + item.answer).toLowerCase()
       )
 
@@ -149,7 +157,7 @@ describe('FAQ Data Validation', () => {
     })
 
     it('uploadGameFAQ covers: supported file formats, validation rules, fixing upload errors, duplicate names', () => {
-      const questions = uploadGameFAQ.map((item) =>
+      const questions = flattenFAQ(uploadGameFAQ).map((item) =>
         (item.question + ' ' + item.answer).toLowerCase()
       )
 
@@ -160,7 +168,7 @@ describe('FAQ Data Validation', () => {
     })
 
     it('gameLibraryFAQ covers: multiplayer setup, scoring rules, Daily Doubles, how rounds work, buzzer integration', () => {
-      const questions = gameLibraryFAQ.map((item) =>
+      const questions = flattenFAQ(gameLibraryFAQ).map((item) =>
         (item.question + ' ' + item.answer).toLowerCase()
       )
 
