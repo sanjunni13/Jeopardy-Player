@@ -3,16 +3,17 @@ import confetti from 'canvas-confetti'
 import { toast } from 'react-toastify'
 import type { GameSession } from '../../types/game'
 import { computeAllAnalytics } from '../../utils/analyticsUtils'
-import { exportAnalyticsAsPng } from '../../utils/imageExporter'
 import { updateGameStats } from '../../utils/gameApi'
 import { usePlayerProfileContext } from '../../hooks/usePlayerProfileContext'
 import { BackgroundGradient } from '../ui/background-gradient'
-import { ScoreTimelineChart } from './ScoreTimelineChart'
+import { ScoreTimelineChart, PALETTE } from './ScoreTimelineChart'
 import { CategoryAccuracy } from './CategoryAccuracy'
 import { DailyDoubleBreakdown } from './DailyDoubleBreakdown'
 import { BiggestComeback } from './BiggestComeback'
+import { LongestLossStreak } from './LongestLossStreak'
 import { HeadToHead } from './HeadToHead'
 import './AnalyticsScreen.css'
+import './AnalyticsBreakdown.css'
 
 interface AnalyticsScreenProps {
   session: GameSession
@@ -28,14 +29,21 @@ export function AnalyticsScreen({ session, gameId, onBackToHome }: AnalyticsScre
   const { profile } = usePlayerProfileContext()
 
   const [breakdownExpanded, setBreakdownExpanded] = useState(false)
-  const [exporting, setExporting] = useState(false)
-  const [exportError, setExportError] = useState<string | null>(null)
 
   // Compute all analytics once, memoised for the lifetime of this screen
   const analytics = useMemo(() => computeAllAnalytics(session), [session])
 
   const { sortedPlayers } = analytics
   const highestScore = sortedPlayers[0]?.score ?? 0
+
+  // Map each player to their timeline chart colour (same order as playerNames passed to ScoreTimelineChart)
+  const playerColorMap = useMemo(() => {
+    const map = new Map<string, string>()
+    sortedPlayers.forEach((p, i) => {
+      map.set(p.name, PALETTE[i % PALETTE.length])
+    })
+    return map
+  }, [sortedPlayers])
   const winnerNames = sortedPlayers
     .filter(p => p.score === highestScore)
     .map(p => p.name)
@@ -95,22 +103,6 @@ export function AnalyticsScreen({ session, gameId, onBackToHome }: AnalyticsScre
 
     setTimeout(frame, 500)
   }, [])
-
-  async function handleDownload() {
-    if (!containerRef.current) return
-    setExporting(true)
-    setExportError(null)
-    const filename = `jeopardy-results-${new Date().toLocaleDateString('en-CA')}.png`
-    try {
-      await exportAnalyticsAsPng(containerRef.current, filename)
-    } catch (err) {
-      setExportError(
-        err instanceof Error ? err.message : 'Download could not be completed. Please try again.',
-      )
-    } finally {
-      setExporting(false)
-    }
-  }
 
   return (
     <div className="analytics-page">
@@ -201,13 +193,7 @@ export function AnalyticsScreen({ session, gameId, onBackToHome }: AnalyticsScre
                 'Download as Image'
               )}
             </button> */}
-            {exportError && (
-              <p className="analytics-export-error" role="alert">
-                {exportError}
-              </p>
-            )}
-
-            {/* Back to Home */}
+{/* Back to Home */}
             <button
               type="button"
               className="analytics-btn analytics-btn--home"
@@ -254,11 +240,19 @@ export function AnalyticsScreen({ session, gameId, onBackToHome }: AnalyticsScre
                 </section>
               )}
 
+              {/* Longest Loss Streak (hidden when no player has 2+ consecutive wrong) */}
+              {analytics.longestLossStreaks.length > 0 && (
+                <section className="analytics-section">
+                  <h2 className="analytics-section-title">Longest Loss Streak</h2>
+                  <LongestLossStreak streaks={analytics.longestLossStreaks} />
+                </section>
+              )}
+
               {/* Head to Head (hidden when fewer than 2 players) */}
               {analytics.headToHeads.length > 0 && (
                 <section className="analytics-section">
                   <h2 className="analytics-section-title">Head to Head</h2>
-                  <HeadToHead comparisons={analytics.headToHeads} />
+                  <HeadToHead comparisons={analytics.headToHeads} playerColors={playerColorMap} />
                 </section>
               )}
             </div>

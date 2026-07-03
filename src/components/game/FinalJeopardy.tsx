@@ -51,14 +51,15 @@ export function FinalJeopardy({ finalRound, players, onComplete, onClueRevealed,
           setPhase('clue')
           onClueRevealed?.()
         } else if (phase === 'clue' && !answerRevealed && allAnswersSubmitted) {
-          revealAnswer()
+            setAnswerRevealed(true)
+            onAnswerRevealed?.()
         }
       }
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [phase, answerRevealed, allWagersSubmitted, allAnswersSubmitted])
+  }, [phase, answerRevealed, allWagersSubmitted, allAnswersSubmitted, onClueRevealed, onAnswerRevealed])
 
   function handleMark(playerName: string, result: 'correct' | 'incorrect') {
     const wagerAmount = getPlayerWager(playerName)

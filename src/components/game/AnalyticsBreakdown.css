@@ -1,0 +1,395 @@
+/* ─── Daily Double Breakdown ─────────────────────────────────────────────── */
+
+.dd-breakdown {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.dd-breakdown-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+  table-layout: fixed;
+}
+
+.dd-breakdown-th {
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  font-weight: 600;
+  color: rgb(148 163 184); /* slate-400 */
+  border-bottom: 1px solid rgb(30 41 59);
+  white-space: nowrap;
+}
+
+.dd-breakdown-td {
+  padding: 0.5rem 0.75rem;
+  color: rgb(226 232 240); /* slate-200 */
+  vertical-align: middle;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Column widths */
+.dd-breakdown-table th:nth-child(1),
+.dd-breakdown-table td:nth-child(1) { width: 18%; }  /* Round */
+.dd-breakdown-table th:nth-child(2),
+.dd-breakdown-table td:nth-child(2) { width: 25%; }  /* Category */
+.dd-breakdown-table th:nth-child(3),
+.dd-breakdown-table td:nth-child(3) { width: 12%; }  /* Player */
+.dd-breakdown-table th:nth-child(4),
+.dd-breakdown-table td:nth-child(4) { width: 12%; }  /* Wager */
+.dd-breakdown-table th:nth-child(5),
+.dd-breakdown-table td:nth-child(5) { width: 18%; }  /* Outcome */
+.dd-breakdown-table th:nth-child(6),
+.dd-breakdown-table td:nth-child(6) { width: 15%; }  /* Net Impact */
+
+.dd-breakdown-row {
+  border-bottom: 1px solid rgb(15 23 42);
+  transition: background 0.15s;
+}
+
+.dd-breakdown-row:hover {
+  background: rgb(30 41 59 / 0.4);
+}
+
+.dd-breakdown-row-correct {
+  border-left: 3px solid rgb(74 222 128 / 0.5); /* green-400/50 */
+}
+
+.dd-breakdown-row-incorrect {
+  border-left: 3px solid rgb(251 113 133 / 0.5); /* rose-400/50 */
+}
+
+.dd-breakdown-outcome-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 100px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.dd-breakdown-outcome-badge--correct {
+  background: rgb(74 222 128 / 0.15);
+  color: rgb(74 222 128); /* green-400 */
+}
+
+.dd-breakdown-outcome-badge--incorrect {
+  background: rgb(251 113 133 / 0.15);
+  color: rgb(251 113 133); /* rose-400 */
+}
+
+.dd-breakdown-net--positive {
+  color: rgb(74 222 128); /* green-400 */
+  font-weight: 600;
+  font-family: ui-monospace, SFMono-Regular, monospace;
+}
+
+.dd-breakdown-net--negative {
+  color: rgb(251 113 133); /* rose-400 */
+  font-weight: 600;
+  font-family: ui-monospace, SFMono-Regular, monospace;
+}
+
+/* ─── Category Accuracy ───────────────────────────────────────────────────── */
+
+.category-accuracy {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.category-accuracy-player {
+  background: rgb(2 6 23); /* slate-950 */
+  border: 1px solid rgb(30 41 59);
+  border-radius: 0.75rem;
+  overflow: hidden;
+}
+
+.category-accuracy-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.625rem 1rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: rgb(226 232 240);
+  transition: background 0.15s;
+}
+
+.category-accuracy-toggle:hover {
+  background: rgb(30 41 59 / 0.5);
+}
+
+.category-accuracy-player-name {
+  font-weight: 600;
+  font-size: 0.9375rem;
+  color: rgb(241 245 249);
+}
+
+.category-accuracy-chevron {
+  font-size: 0.75rem;
+  color: rgb(100 116 139); /* slate-500 */
+}
+
+.category-accuracy-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+  table-layout: fixed;
+}
+
+.category-accuracy-th {
+  padding: 0.4rem 1rem;
+  text-align: left;
+  font-weight: 600;
+  font-size: 0.8rem;
+  color: rgb(100 116 139); /* slate-500 */
+  border-top: 1px solid rgb(30 41 59);
+  border-bottom: 1px solid rgb(30 41 59);
+  background: rgb(15 23 42 / 0.6);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.category-accuracy-th-category {
+  width: 60%;
+}
+
+.category-accuracy-row {
+  border-bottom: 1px solid rgb(15 23 42);
+}
+
+.category-accuracy-row:last-child {
+  border-bottom: none;
+}
+
+.category-accuracy-row:hover {
+  background: rgb(30 41 59 / 0.3);
+}
+
+.category-accuracy-td {
+  padding: 0.45rem 1rem;
+  color: rgb(226 232 240);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.category-accuracy-td-category {
+  width: 60%;
+  color: rgb(203 213 225); /* slate-300 */
+}
+
+/* ─── Biggest Comeback ────────────────────────────────────────────────────── */
+
+.biggest-comeback {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  justify-content: center;
+}
+
+.biggest-comeback-card {
+  background: rgb(2 6 23);
+  border: 1px solid rgb(106 27 154 / 0.4);
+  border-radius: 0.75rem;
+  padding: 1.25rem 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  min-width: 12rem;
+}
+
+.biggest-comeback-player {
+  font-size: 1rem;
+  font-weight: 600;
+  color: rgb(241 245 249);
+}
+
+.biggest-comeback-delta {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: rgb(74 222 128); /* green-400 */
+  font-family: ui-monospace, SFMono-Regular, monospace;
+}
+
+.biggest-comeback-low {
+  font-size: 0.825rem;
+  color: rgb(100 116 139); /* slate-500 */
+}
+
+/* ─── Head to Head ────────────────────────────────────────────────────────── */
+
+.head-to-head {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.head-to-head-card {
+  background: rgb(2 6 23);
+  border: 1px solid rgb(30 41 59);
+  border-radius: 0.75rem;
+  overflow: hidden;
+}
+
+.head-to-head-header {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  background: rgb(15 23 42 / 0.8);
+  border-bottom: 1px solid rgb(30 41 59);
+  gap: 0.5rem;
+}
+
+.head-to-head-player-name {
+  font-weight: 700;
+  font-size: 0.9375rem;
+  color: rgb(241 245 249);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.head-to-head-player-name--a {
+  text-align: right;
+  color: rgb(147 197 253); /* blue-300 */
+}
+
+.head-to-head-player-name--b {
+  text-align: left;
+  color: rgb(196 181 253); /* violet-300 */
+}
+
+.head-to-head-vs {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: rgb(100 116 139);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  flex-shrink: 0;
+}
+
+.head-to-head-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+  table-layout: fixed;
+}
+
+.head-to-head-stat-row {
+  border-bottom: 1px solid rgb(15 23 42);
+}
+
+.head-to-head-stat-row:last-child {
+  border-bottom: none;
+}
+
+.head-to-head-stat-row:hover {
+  background: rgb(30 41 59 / 0.3);
+}
+
+.head-to-head-stat-label {
+  width: 40%;
+  text-align: center;
+  padding: 0.45rem 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: rgb(100 116 139); /* slate-500 */
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.head-to-head-stat-value {
+  width: 30%;
+  padding: 0.45rem 1rem;
+  font-weight: 600;
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  color: rgb(226 232 240);
+}
+
+.head-to-head-stat-value--a {
+  text-align: right;
+  color: rgb(147 197 253); /* blue-300 */
+}
+
+.head-to-head-stat-value--b {
+  text-align: left;
+  color: rgb(196 181 253); /* violet-300 */
+}
+
+/* ─── Responsive ──────────────────────────────────────────────────────────── */
+
+@media (max-width: 640px) {
+  .dd-breakdown-table {
+    table-layout: auto;
+    font-size: 0.8rem;
+  }
+
+  .dd-breakdown-th,
+  .dd-breakdown-td {
+    padding: 0.4rem 0.5rem;
+  }
+
+  .head-to-head-stat-value {
+    padding: 0.4rem 0.5rem;
+  }
+
+  .biggest-comeback-card {
+    padding: 1rem 1.5rem;
+  }
+}
+
+/* ─── Longest Loss Streak ─────────────────────────────────────────────────── */
+
+.loss-streak {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  justify-content: center;
+}
+
+.loss-streak-card {
+  background: rgb(2 6 23);
+  border: 1px solid rgb(251 113 133 / 0.35); /* rose tint */
+  border-radius: 0.75rem;
+  padding: 1.25rem 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  min-width: 12rem;
+}
+
+.loss-streak-player {
+  font-size: 1rem;
+  font-weight: 600;
+  color: rgb(241 245 249);
+}
+
+.loss-streak-count {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: rgb(251 113 133); /* rose-400 */
+  font-family: ui-monospace, SFMono-Regular, monospace;
+}
+
+.loss-streak-lost {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: rgb(251 113 133 / 0.8);
+  font-family: ui-monospace, SFMono-Regular, monospace;
+}
+
+.loss-streak-low {
+  font-size: 0.825rem;
+  color: rgb(100 116 139); /* slate-500 */
+}
