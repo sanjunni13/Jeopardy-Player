@@ -1,4 +1,3 @@
-import { Link } from '@tanstack/react-router'
 import './SessionEndedPage.css'
 
 interface SessionEndedPageProps {
@@ -22,10 +21,6 @@ export function SessionEndedPage({ message }: SessionEndedPageProps) {
         <p className="session-ended-page__message">
           {message || 'The game session has ended. Thanks for playing!'}
         </p>
-
-        <Link to="/" className="session-ended-page__home-link">
-          Return Home
-        </Link>
       </div>
     </div>
   )

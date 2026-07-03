@@ -48,6 +48,7 @@ export interface ComputedAnalytics {
   categoryAccuracy: Map<string, CategoryAccuracyRow[]>;
   dailyDoubleRecordsEnriched: EnrichedDDRecord[];
   biggestComebacks: { playerName: string; delta: number; lowestScore: number }[];
+  longestLossStreaks: { playerName: string; streakLength: number; totalLost: number; lowestScore: number }[];
   headToHeads: HeadToHeadResult[];
 }
 
@@ -333,6 +334,62 @@ export function computeHeadToHead(
   return results;
 }
 
+// ─── computeLongestLossStreaks ────────────────────────────────────────────────
+
+/**
+ * For each player, finds the longest consecutive run of score-decreasing
+ * timeline points (i.e., each step's delta < 0).
+ * Returns: streakLength (number of losing answers in a row), totalLost (sum of
+ * negative deltas across that streak), and lowestScore (the score at the end
+ * of the streak).
+ * Only players with streakLength >= 2 are included. Results are sorted by
+ * descending streakLength, then descending totalLost.
+ */
+export function computeLongestLossStreaks(
+  timelines: Map<string, ScoreTimelinePoint[]>,
+): { playerName: string; streakLength: number; totalLost: number; lowestScore: number }[] {
+  const results: { playerName: string; streakLength: number; totalLost: number; lowestScore: number }[] = [];
+
+  for (const [playerName, points] of timelines) {
+    if (points.length < 2) continue;
+
+    let bestStreakLen = 0;
+    let bestTotalLost = 0;
+    let bestLowestScore = 0;
+
+    let curStreakLen = 0;
+    let curTotalLost = 0;
+
+    for (let i = 1; i < points.length; i++) {
+      const delta = points[i].score - points[i - 1].score;
+      if (delta < 0) {
+        curStreakLen++;
+        curTotalLost += delta; // delta is negative, so this accumulates loss
+        if (curStreakLen > bestStreakLen) {
+          bestStreakLen = curStreakLen;
+          bestTotalLost = curTotalLost;
+          bestLowestScore = points[i].score;
+        }
+      } else {
+        curStreakLen = 0;
+        curTotalLost = 0;
+      }
+    }
+
+    if (bestStreakLen >= 2) {
+      results.push({
+        playerName,
+        streakLength: bestStreakLen,
+        totalLost: Math.abs(bestTotalLost),
+        lowestScore: bestLowestScore,
+      });
+    }
+  }
+
+  results.sort((a, b) => b.streakLength - a.streakLength || b.totalLost - a.totalLost);
+  return results;
+}
+
 // ─── computeAllAnalytics ─────────────────────────────────────────────────────
 
 /**
@@ -391,6 +448,9 @@ export function computeAllAnalytics(session: GameSession): ComputedAnalytics {
   // Compute biggest comebacks
   const biggestComebacks = computeBiggestComebacks(scoreTimelines);
 
+  // Compute longest loss streaks
+  const longestLossStreaks = computeLongestLossStreaks(scoreTimelines);
+
   // Compute head-to-head comparisons (only meaningful for 2+ players)
   const headToHeads =
     players.length >= 2 ? computeHeadToHead(players, dailyDoubleRecords) : [];
@@ -401,6 +461,7 @@ export function computeAllAnalytics(session: GameSession): ComputedAnalytics {
     categoryAccuracy,
     dailyDoubleRecordsEnriched,
     biggestComebacks,
+    longestLossStreaks,
     headToHeads,
   };
 }

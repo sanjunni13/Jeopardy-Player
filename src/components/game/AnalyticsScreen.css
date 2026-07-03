@@ -3,6 +3,8 @@
 .analytics-page {
   padding: 2rem;
   min-height: 100vh;
+  height: 100%;
+  overflow-y: auto;
 }
 
 /* The capture root wraps everything captured by html-to-image */

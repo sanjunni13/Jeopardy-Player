@@ -12,7 +12,7 @@ interface PlayerSectionProps {
 }
 
 function PlayerSection({ playerName, rows }: PlayerSectionProps) {
-  const [open, setOpen] = useState(true)
+  const [open, setOpen] = useState(false)
 
   // Omit rows where total === 0 — Requirement 4.3
   const visibleRows = rows.filter((r) => r.total > 0)
@@ -44,7 +44,7 @@ function PlayerSection({ playerName, rows }: PlayerSectionProps) {
                 <tr key={row.category} className="category-accuracy-row">
                   <td className="category-accuracy-td category-accuracy-td-category">{row.category}</td>
                   <td className="category-accuracy-td">
-                    {row.correct}/{row.total} — {pct}%
+                    <strong>{pct}%</strong> ({row.correct}/{row.total})
                   </td>
                 </tr>
               )
