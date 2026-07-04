@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { Clue, Player } from '../../types/game'
+import type { Clue, Player, ToggleConfig } from '../../types/game'
 import './ClueScreen.css'
 
 interface ClueScreenProps {
@@ -12,6 +12,12 @@ interface ClueScreenProps {
   onReturn: () => void
   ddPlayer?: string | null
   onAnswerRevealed?: () => void
+  modifierConfig?: ToggleConfig
+  streakCounts?: Record<string, number>
+  perRoundIncorrect?: Record<string, number>
+  stealBonusAwardedTo?: string | null
+  timerRemaining?: number
+  isTimesUp?: boolean
 }
 
 export function ClueScreen({
@@ -24,6 +30,12 @@ export function ClueScreen({
   onReturn,
   ddPlayer,
   onAnswerRevealed,
+  modifierConfig,
+  streakCounts,
+  // perRoundIncorrect is accepted for future use (Penalty Doubler display)
+  stealBonusAwardedTo,
+  timerRemaining,
+  isTimesUp,
 }: ClueScreenProps) {
   const [answerRevealed, setAnswerRevealed] = useState(false)
 
@@ -81,6 +93,13 @@ export function ClueScreen({
         <p className="clue-header-text">
           {categoryName} — ${clue.value}
         </p>
+        {isTimesUp ? (
+          <span className="clue-timer-times-up">Time's Up</span>
+        ) : (
+          modifierConfig?.timedClues.enabled && timerRemaining != null && timerRemaining > 0 && (
+            <span className="clue-timer-countdown">{timerRemaining}s</span>
+          )
+        )}
       </div>
 
       {/* Clue area */}
@@ -111,6 +130,11 @@ export function ClueScreen({
           {scoringPlayers.map((player) => {
             const pointValue = getPointValue(player.name)
             const marking = playerMarkings[player.name]
+            const playerStreak = streakCounts?.[player.name] ?? 0
+            const streakActive = modifierConfig?.rulesEngine.enabled &&
+              modifierConfig.rulesEngine.streakMultiplier.enabled &&
+              playerStreak >= modifierConfig.rulesEngine.streakMultiplier.threshold
+            const stealBonusAwarded = stealBonusAwardedTo === player.name
 
             return (
               <div
@@ -120,6 +144,16 @@ export function ClueScreen({
                 <span className="clue-player-name">{player.name}</span>
                 <span className="clue-player-total">{player.score < 0 ? `-$${Math.abs(player.score).toLocaleString()}` : `$${player.score.toLocaleString()}`}</span>
                 <span className="clue-player-value">${pointValue}</span>
+                {streakActive && (
+                  <span className="clue-streak-badge">
+                    🔥 {playerStreak}×{modifierConfig!.rulesEngine.streakMultiplier.multiplier}
+                  </span>
+                )}
+                {stealBonusAwarded && modifierConfig?.rulesEngine.stealBonus.enabled && (
+                  <span className="clue-steal-bonus-indicator">
+                    +{modifierConfig.rulesEngine.stealBonus.bonusPoints} Steal Bonus!
+                  </span>
+                )}
                 <div className="clue-player-actions">
                   <button
                     type="button"

@@ -34,6 +34,18 @@ const arbitraryDefaultRounds = fc.oneof(
   fc.constant(undefined)
 )
 
+/**
+ * Generate arbitrary values to use as `defaultTimerDuration`:
+ * floats, negatives, strings, null, undefined, integers out of range [5,120]
+ */
+const arbitraryTimerDuration = fc.oneof(
+  fc.float({ noDefaultInfinity: true, noNaN: true }),
+  fc.integer({ min: -100, max: 200 }),
+  fc.string(),
+  fc.constant(null),
+  fc.constant(undefined)
+)
+
 // Feature: settings-menu, Property 4: Default rounds bounds enforcement
 describe('Property 4: Default rounds bounds enforcement', () => {
   /**
@@ -118,6 +130,65 @@ describe('Property 4: Default rounds bounds enforcement', () => {
           expect(Number.isInteger(result.defaultRounds)).toBe(true)
           expect(result.defaultRounds).toBeGreaterThanOrEqual(1)
           expect(result.defaultRounds).toBeLessThanOrEqual(5)
+        }
+      ),
+      { numRuns: 100 }
+    )
+  })
+})
+
+// Feature: special-game-toggles, Property 19: Timer_Duration input rejects values outside 5–120
+describe('Property 19: defaultTimerDuration bounds enforcement', () => {
+  /**
+   * **Validates: Requirements 11.1, 11.2, 11.4, 11.5**
+   *
+   * For any value stored as `defaultTimerDuration` in the preferences JSON,
+   * `readPreferences` must return it only when it is a valid integer in [5, 120].
+   * Otherwise, the returned `defaultTimerDuration` must be `undefined`.
+   */
+
+  it('returns defaultTimerDuration only for valid integers in [5, 120]', () => {
+    fc.assert(
+      fc.property(arbitraryTimerDuration, (value) => {
+        const prefsObj: Record<string, unknown> = {
+          theme: 'dark',
+          reducedAnimations: false,
+          defaultRounds: 2,
+          defaultTimerDuration: value,
+        }
+
+        store[PREFERENCES_KEY] = JSON.stringify(prefsObj)
+
+        const result = readPreferences()
+
+        const isValid =
+          typeof value === 'number' &&
+          Number.isInteger(value) &&
+          value >= 5 &&
+          value <= 120
+
+        if (isValid) {
+          expect(result.defaultTimerDuration).toBe(value)
+        } else {
+          expect(result.defaultTimerDuration).toBeUndefined()
+        }
+      }),
+      { numRuns: 100 }
+    )
+  })
+
+  it('returns undefined when defaultTimerDuration key is absent', () => {
+    fc.assert(
+      fc.property(
+        fc.constantFrom('light', 'dark'),
+        fc.boolean(),
+        fc.integer({ min: 1, max: 5 }),
+        (theme, reducedAnimations, defaultRounds) => {
+          const prefsObj = { theme, reducedAnimations, defaultRounds }
+          store[PREFERENCES_KEY] = JSON.stringify(prefsObj)
+
+          const result = readPreferences()
+          expect(result.defaultTimerDuration).toBeUndefined()
         }
       ),
       { numRuns: 100 }

@@ -1,18 +1,20 @@
 import { useState } from 'react'
-import type { Player } from '../../types/game'
+import type { Player, ToggleConfig } from '../../types/game'
 import { BackButton } from '../BackButton'
 import { DeleteButton } from '../DeleteButton'
 import { BackgroundGradient } from '../ui/background-gradient'
 import './PlayerEntry.css'
 
 interface PlayerEntryProps {
-  onPlay: (players: Player[]) => void
+  onPlay: (players: Player[], config: ToggleConfig) => void
   onBack?: () => void
   onPlayerRemoved?: (playerName: string) => void
   onPlayerAdded?: (playerName: string) => void
+  toggleConfig: ToggleConfig
+  hasSettingsErrors: boolean
 }
 
-export function PlayerEntry({ onPlay, onBack, onPlayerRemoved, onPlayerAdded }: PlayerEntryProps) {
+export function PlayerEntry({ onPlay, onBack, onPlayerRemoved, onPlayerAdded, toggleConfig, hasSettingsErrors }: PlayerEntryProps) {
   const [players, setPlayers] = useState<Player[]>([])
   const [inputValue, setInputValue] = useState('')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
@@ -122,8 +124,8 @@ export function PlayerEntry({ onPlay, onBack, onPlayerRemoved, onPlayerAdded }: 
         {/* Play button */}
         <button
           type="button"
-          onClick={() => onPlay(players)}
-          disabled={players.length === 0}
+          onClick={() => onPlay(players, toggleConfig)}
+          disabled={players.length === 0 || hasSettingsErrors}
           className="player-play-btn"
         >
           Play

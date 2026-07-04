@@ -4,6 +4,7 @@ export interface AppPreferences {
   theme: ThemeMode
   reducedAnimations: boolean
   defaultRounds: number // 1-5
+  defaultTimerDuration?: number // integer 5-120, omitted if never set
 }
 
 export const PREFERENCES_KEY = 'jeopardy-player-preferences'
@@ -68,7 +69,15 @@ export function readPreferences(): AppPreferences {
         ? obj.defaultRounds
         : DEFAULT_PREFERENCES.defaultRounds
 
-    return { theme, reducedAnimations, defaultRounds }
+    const defaultTimerDuration: number | undefined =
+      typeof obj.defaultTimerDuration === 'number' &&
+      Number.isInteger(obj.defaultTimerDuration) &&
+      obj.defaultTimerDuration >= 5 &&
+      obj.defaultTimerDuration <= 120
+        ? obj.defaultTimerDuration
+        : undefined
+
+    return { theme, reducedAnimations, defaultRounds, ...(defaultTimerDuration !== undefined && { defaultTimerDuration }) }
   } catch {
     // Malformed JSON or any other error
     return { ...DEFAULT_PREFERENCES }

@@ -155,6 +155,82 @@ describe('readPreferences', () => {
       defaultRounds: 2,
     })
   })
+
+  it('reads a valid defaultTimerDuration', () => {
+    store[PREFERENCES_KEY] = JSON.stringify({
+      theme: 'dark',
+      reducedAnimations: false,
+      defaultRounds: 2,
+      defaultTimerDuration: 45,
+    })
+    expect(readPreferences()).toEqual({
+      theme: 'dark',
+      reducedAnimations: false,
+      defaultRounds: 2,
+      defaultTimerDuration: 45,
+    })
+  })
+
+  it('returns undefined defaultTimerDuration when the field is absent', () => {
+    store[PREFERENCES_KEY] = JSON.stringify({
+      theme: 'dark',
+      reducedAnimations: false,
+      defaultRounds: 2,
+    })
+    const result = readPreferences()
+    expect(result.defaultTimerDuration).toBeUndefined()
+  })
+
+  it('falls back defaultTimerDuration to undefined for value below 5', () => {
+    store[PREFERENCES_KEY] = JSON.stringify({
+      theme: 'dark',
+      reducedAnimations: false,
+      defaultRounds: 2,
+      defaultTimerDuration: 4,
+    })
+    const result = readPreferences()
+    expect(result.defaultTimerDuration).toBeUndefined()
+  })
+
+  it('falls back defaultTimerDuration to undefined for value above 120', () => {
+    store[PREFERENCES_KEY] = JSON.stringify({
+      theme: 'dark',
+      reducedAnimations: false,
+      defaultRounds: 2,
+      defaultTimerDuration: 121,
+    })
+    const result = readPreferences()
+    expect(result.defaultTimerDuration).toBeUndefined()
+  })
+
+  it('falls back defaultTimerDuration to undefined for a float', () => {
+    store[PREFERENCES_KEY] = JSON.stringify({
+      theme: 'dark',
+      reducedAnimations: false,
+      defaultRounds: 2,
+      defaultTimerDuration: 30.5,
+    })
+    const result = readPreferences()
+    expect(result.defaultTimerDuration).toBeUndefined()
+  })
+
+  it('accepts boundary values 5 and 120 for defaultTimerDuration', () => {
+    store[PREFERENCES_KEY] = JSON.stringify({
+      theme: 'dark',
+      reducedAnimations: false,
+      defaultRounds: 2,
+      defaultTimerDuration: 5,
+    })
+    expect(readPreferences().defaultTimerDuration).toBe(5)
+
+    store[PREFERENCES_KEY] = JSON.stringify({
+      theme: 'dark',
+      reducedAnimations: false,
+      defaultRounds: 2,
+      defaultTimerDuration: 120,
+    })
+    expect(readPreferences().defaultTimerDuration).toBe(120)
+  })
 })
 
 // ─── writePreferences ───────────────────────────────────────────────────────
@@ -181,5 +257,19 @@ describe('writePreferences', () => {
     const newPrefs = { theme: 'dark' as const, reducedAnimations: false, defaultRounds: 1 }
     writePreferences(newPrefs)
     expect(store[PREFERENCES_KEY]).toBe(JSON.stringify(newPrefs))
+  })
+
+  it('persists defaultTimerDuration when present', () => {
+    const prefs = { theme: 'dark' as const, reducedAnimations: false, defaultRounds: 2, defaultTimerDuration: 60 }
+    writePreferences(prefs)
+    const stored = JSON.parse(store[PREFERENCES_KEY])
+    expect(stored.defaultTimerDuration).toBe(60)
+  })
+
+  it('omits defaultTimerDuration from stored JSON when not set', () => {
+    const prefs = { theme: 'dark' as const, reducedAnimations: false, defaultRounds: 2 }
+    writePreferences(prefs)
+    const stored = JSON.parse(store[PREFERENCES_KEY])
+    expect(stored.defaultTimerDuration).toBeUndefined()
   })
 })
