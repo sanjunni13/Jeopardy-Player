@@ -72,6 +72,61 @@ export interface DailyDoubleRecord {
   outcome: 'correct' | 'incorrect';
 }
 
+// ─── Special Game Toggle types ────────────────────────────────────────────────
+
+export interface WageringConfig {
+  enabled: boolean
+  wagerFloor: number  // integer 1-10000, default 100
+}
+
+export interface StealBonusConfig {
+  enabled: boolean
+  bonusPoints: number  // integer 1-5000, default 200
+}
+
+export interface StreakMultiplierConfig {
+  enabled: boolean
+  threshold: number    // integer 2-5, default 3
+  multiplier: number   // integer 2-5, default 2
+}
+
+export interface PenaltyDoublerConfig {
+  enabled: boolean     // no additional configuration
+}
+
+export interface RulesEngineConfig {
+  enabled: boolean
+  stealBonus: StealBonusConfig
+  streakMultiplier: StreakMultiplierConfig
+  penaltyDoubler: PenaltyDoublerConfig
+}
+
+export interface TimedClueConfig {
+  enabled: boolean
+  timerDuration: number  // integer 5-120, default 30
+}
+
+/**
+ * Immutable snapshot of all toggle states captured at game-start (Play).
+ * Stored in GameSession. Never mutated after the session begins.
+ */
+export interface ToggleConfig {
+  wagering: WageringConfig
+  rulesEngine: RulesEngineConfig
+  timedClues: TimedClueConfig
+}
+
+export const DEFAULT_TOGGLE_CONFIG: ToggleConfig = {
+  wagering: { enabled: false, wagerFloor: 100 },
+  rulesEngine: {
+    enabled: false,
+    stealBonus: { enabled: false, bonusPoints: 200 },
+    streakMultiplier: { enabled: false, threshold: 3, multiplier: 2 },
+    penaltyDoubler: { enabled: false },
+  },
+  timedClues: { enabled: false, timerDuration: 30 },
+}
+
 // ─── Session types ────────────────────────────────────────────────────────────
 
 export interface Player {
@@ -101,6 +156,14 @@ export interface GameSession {
   /** key: `${roundName}-${categoryIndex}-${clueIndex}` */
   clueStates: Record<string, ClueState>;
   dailyDoubleRecords: DailyDoubleRecord[];
+  /** Immutable snapshot of toggle configuration captured at game-start */
+  toggleConfig: ToggleConfig;
+  /** Per-player consecutive correct answer count for Streak Multiplier */
+  streakCounts: Record<string, number>;
+  /** Per-player incorrect answer count for the current round (Penalty Doubler) */
+  perRoundIncorrect: Record<string, number>;
+  /** Wagers recorded during WagerEntry phase; null when not in wagering phase */
+  activeWagers: Record<string, number> | null;
 }
 
 export type GamePhase =
@@ -109,6 +172,7 @@ export type GamePhase =
   | 'board'
   | 'daily-double'
   | 'daily-double-wager'
+  | 'wager-entry'
   | 'clue'
   | 'round-transition'
   | 'final-jeopardy'

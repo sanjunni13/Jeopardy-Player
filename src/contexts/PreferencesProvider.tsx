@@ -129,14 +129,28 @@ export function PreferencesProvider({ children }: PreferencesProviderProps) {
     })
   }, [])
 
+  const setDefaultTimerDuration = useCallback((duration: number | undefined) => {
+    setPreferences((prev) => {
+      const next: AppPreferences = { ...prev, defaultTimerDuration: duration }
+      const success = writePreferences(next)
+      if (!success) {
+        console.warn(
+          '[PreferencesProvider] Failed to persist default timer duration preference to localStorage.'
+        )
+      }
+      return next
+    })
+  }, [])
+
   const contextValue = useMemo(
     () => ({
       preferences,
       setTheme,
       setReducedAnimations,
       setDefaultRounds,
+      setDefaultTimerDuration,
     }),
-    [preferences, setTheme, setReducedAnimations, setDefaultRounds]
+    [preferences, setTheme, setReducedAnimations, setDefaultRounds, setDefaultTimerDuration]
   )
 
   return (

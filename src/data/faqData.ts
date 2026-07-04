@@ -219,6 +219,17 @@ export const gameLibraryFAQ: FAQCategory[] = [
         answer:
           'Yes, you can play any game in your library as many times as you like. Each play session starts fresh with new players and scores. Your game data is never modified by playing it.',
       },
+      {
+        question: 'What do the Game Settings options do?',
+        answer:
+          'The Game Settings panel appears on the player entry screen and offers three optional modifiers:\n\n' +
+          '• Wagering Mode — Instead of fixed point values, all players place a wager before each clue is revealed. You set a minimum wager amount, and players can wager between that minimum and their current score.\n\n' +
+          '• Rules Engine — Enables bonus and penalty modifiers:\n' +
+          '   Steal Bonus: Awards extra points to a player who answers correctly after another player got it wrong.\n' +
+          '  – Streak Multiplier: Multiplies point values when a player answers several clues correctly in a row.\n' +
+          '  – Penalty Doubler: Doubles the point deduction for every incorrect answer.\n\n' +
+          '• Timed Clue Responses — Adds a countdown timer to each clue. When time runs out, buzzers are locked and no more answers can be submitted.',
+      },
     ],
   },
   {

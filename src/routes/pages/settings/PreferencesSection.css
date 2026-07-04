@@ -63,3 +63,30 @@
   padding: 0.5rem 0.75rem;
   margin: 0.5rem 0 0;
 }
+
+.preferences-section__timer-input {
+  width: 4.5rem;
+  padding: 0.375rem 0.625rem;
+  font-size: 0.9rem;
+  color: rgb(241 245 249); /* slate-100 */
+  background: rgb(30 41 59); /* slate-800 */
+  border: 1px solid rgb(51 65 85); /* slate-700 */
+  border-radius: 0.5rem;
+  text-align: center;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.preferences-section__timer-input:focus {
+  border-color: rgb(99 102 241); /* indigo-500 */
+  box-shadow: 0 0 0 2px rgb(99 102 241 / 0.25);
+}
+
+.preferences-section__timer-input--error {
+  border-color: rgb(244 63 94); /* rose-500 */
+}
+
+.preferences-section__timer-input--error:focus {
+  border-color: rgb(244 63 94);
+  box-shadow: 0 0 0 2px rgb(244 63 94 / 0.25);
+}

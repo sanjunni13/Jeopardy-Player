@@ -1,0 +1,208 @@
+/* ─── Wager Entry Screen ─────────────────────────────────────────────────────
+   Styled analogously to DailyDoubleScreen / DailyDoubleWager.
+   Full-screen overlay that collects wagers from all players before a clue
+   is revealed in Wagering Mode.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+.wager-entry-overlay {
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: #001699;
+  user-select: none;
+}
+
+/* ── Header ── */
+.wager-entry-header {
+  text-align: center;
+  padding: 2.5rem 1.5rem 1.5rem;
+  border-bottom: 2px solid rgba(201, 159, 87, 0.3);
+}
+
+.wager-entry-title {
+  font-family: 'Korinna', 'Swiss921', Arial, sans-serif;
+  font-size: 2.5rem;
+  font-weight: bold;
+  color: #c99f57;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin-bottom: 0.5rem;
+}
+
+.wager-entry-subtitle {
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 0.9375rem;
+  font-family: 'Korinna', 'Swiss921', Arial, sans-serif;
+}
+
+/* ── Player rows ── */
+.wager-entry-rows {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.75rem 1.5rem;
+  overflow-y: auto;
+  max-width: 52rem;
+  width: 100%;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+
+.wager-entry-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1.25rem;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(201, 159, 87, 0.35);
+  border-radius: 1rem;
+  padding: 1.25rem 1.5rem;
+}
+
+/* ── Player info column ── */
+.wager-entry-player-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.wager-entry-player-name {
+  font-family: 'Korinna', 'Swiss921', Arial, sans-serif;
+  font-size: 1.25rem;
+  font-weight: bold;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wager-entry-player-score {
+  font-family: 'Korinna', 'Swiss921', Arial, sans-serif;
+  font-size: 1rem;
+  color: #c99f57;
+}
+
+.wager-entry-range {
+  font-size: 0.8125rem;
+  color: rgba(255, 255, 255, 0.55);
+  font-family: 'Korinna', 'Swiss921', Arial, sans-serif;
+}
+
+/* ── Input column ── */
+.wager-entry-input-group {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.375rem;
+  min-width: 11rem;
+}
+
+.wager-entry-input {
+  width: 100%;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(201, 159, 87, 0.5);
+  background: rgba(0, 0, 0, 0.5);
+  padding: 0.625rem 1rem;
+  color: #ffffff;
+  font-size: 1.125rem;
+  font-weight: bold;
+  text-align: center;
+  font-family: 'Korinna', 'Swiss921', Arial, sans-serif;
+  /* Remove browser-default number spinner arrows */
+  -moz-appearance: textfield;
+}
+
+.wager-entry-input::-webkit-outer-spin-button,
+.wager-entry-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.wager-entry-input:focus {
+  border-color: #c99f57;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(201, 159, 87, 0.4);
+}
+
+.wager-entry-input--error {
+  border-color: rgb(251 113 133);
+}
+
+.wager-entry-input--error:focus {
+  border-color: rgb(251 113 133);
+  box-shadow: 0 0 0 2px rgba(251, 113, 133, 0.35);
+}
+
+.wager-entry-error {
+  color: rgb(251 113 133);
+  font-size: 0.8125rem;
+  text-align: right;
+  font-family: 'Korinna', 'Swiss921', Arial, sans-serif;
+  margin: 0;
+}
+
+/* ── Footer / reveal button ── */
+.wager-entry-footer {
+  padding: 1.5rem;
+  display: flex;
+  justify-content: center;
+  border-top: 2px solid rgba(255, 255, 255, 0.15);
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.wager-entry-reveal-btn {
+  border-radius: 100px;
+  background-color: #c99f57;
+  padding: 14px 40px;
+  font-size: 1.125rem;
+  font-weight: bold;
+  color: #001699;
+  border: 0;
+  cursor: pointer;
+  transition: all 0.25s;
+  font-family: 'Korinna', 'Swiss921', Arial, sans-serif;
+  letter-spacing: 0.5px;
+}
+
+.wager-entry-reveal-btn:hover:not(:disabled) {
+  background-color: #e0b96e;
+  transform: scale(1.05);
+  box-shadow: 0 0 18px rgba(201, 159, 87, 0.45);
+}
+
+.wager-entry-reveal-btn:active:not(:disabled) {
+  background-color: #a88542;
+  transform: scale(0.97);
+}
+
+.wager-entry-reveal-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ── Responsive adjustments ── */
+@media (max-width: 520px) {
+  .wager-entry-row {
+    flex-direction: column;
+    gap: 0.875rem;
+  }
+
+  .wager-entry-input-group {
+    align-items: stretch;
+    min-width: unset;
+    width: 100%;
+  }
+
+  .wager-entry-error {
+    text-align: left;
+  }
+
+  .wager-entry-title {
+    font-size: 1.875rem;
+  }
+}

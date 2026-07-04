@@ -18,6 +18,7 @@ import type {
   NormalizedGame,
   Player,
   RoundName,
+  ToggleConfig,
 } from '../../types/game'
 import type { BuzzState, FinalJeopardyState, SessionPlayer, ChannelMessage } from '../../types/session'
 import type { RealtimeChannel } from '@supabase/supabase-js'
@@ -26,6 +27,7 @@ import { GameBoard } from '../../components/game/GameBoard'
 import { ClueScreen } from '../../components/game/ClueScreen'
 import { DailyDoubleScreen } from '../../components/game/DailyDoubleScreen'
 import { DailyDoubleWager } from '../../components/game/DailyDoubleWager'
+import { WagerEntry } from '../../components/game/WagerEntry'
 import { FinalJeopardy } from '../../components/game/FinalJeopardy'
 import { RoundTransition } from '../../components/game/RoundTransition'
 // GameOver is kept on disk but no longer rendered — AnalyticsScreen takes its place
@@ -34,6 +36,11 @@ import { AnalyticsScreen } from '../../components/game/AnalyticsScreen'
 import { CheatSheetButton } from '../../components/game/CheatSheetButton'
 import { CheatSheet } from '../../components/game/CheatSheet'
 import { shouldShowCheatSheet } from '../../utils/cheatSheetVisibility'
+import { applyModifiers } from '../../utils/gameToggles'
+import { useClueTimer } from '../../hooks/useClueTimer'
+import { ActiveRulesIndicator } from '../../components/game/ActiveRulesIndicator'
+import { GameSettingsPanel } from '../../components/game/GameSettingsPanel'
+import { DEFAULT_TOGGLE_CONFIG } from '../../types/game'
 
 const ROUND_LABELS: Record<RoundName | 'final', string> = {
   single: 'Jeopardy!',
@@ -105,6 +112,21 @@ export function GamePage() {
   const [isDailyDouble, setIsDailyDouble] = useState(false)
   const [clueAnswerRevealed, setClueAnswerRevealed] = useState(false)
   const [fjAnswerRevealed, setFjAnswerRevealed] = useState(false)
+
+  // Steal bonus tracking (Task 9.5)
+  const [stealBonusAwardedTo, setStealBonusAwardedTo] = useState<string | null>(null)
+
+  // Timer state (Task 9.6)
+  const [isTimesUp, setIsTimesUp] = useState(false)
+
+  // Game settings toggle state (lifted from PlayerEntry for separate card layout)
+  const [toggleConfig, setToggleConfig] = useState<ToggleConfig>(DEFAULT_TOGGLE_CONFIG)
+  const [hasSettingsErrors, setHasSettingsErrors] = useState(false)
+
+  function handleConfigChange(config: ToggleConfig, hasErrors: boolean) {
+    setToggleConfig(config)
+    setHasSettingsErrors(hasErrors)
+  }
 
   // Load game from Supabase Storage on mount
   useEffect(() => {
@@ -345,6 +367,9 @@ export function GamePage() {
   // ─── Session phase sync + buzz state sync ────────────────────────────────
   // Combined effect: updates session phase and buzz state together in a single
   // PATCH wherever both change on the same phase transition (fix #3).
+  // setBuzzState calls here are intentional — they sync local state with the
+  // external Supabase session system as part of the same phase transition.
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (!sessionId) return
 
@@ -364,7 +389,7 @@ export function GamePage() {
       }
     } else if (phase === 'clue' && activeClue && !isDailyDouble) {
       // Enter clue screen: buzzers start LOCKED, queue cleared.
-      // Batch phase + buzz_state into a single PATCH (fix #3).
+      // Batch phase + buzz_state into a single PATCH.
       const newBuzzState: BuzzState = {
         clueActive: true,
         queue: [],
@@ -403,6 +428,7 @@ export function GamePage() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId, phase, activeClue, isDailyDouble])
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   // ─── FJ state polling: periodically fetch latest FJ state during Final Jeopardy ──
   useEffect(() => {
@@ -481,7 +507,20 @@ export function GamePage() {
 
   // ─── Phase transition handlers ───────────────────────────────────────────
 
-  function handlePlay(players: Player[]) {
+  // ─── Timer-expiry buzzer locking (Task 9.6) ──────────────────────────────
+  const handleTimerExpire = useCallback(() => {
+    new Audio(`${import.meta.env.BASE_URL}sounds/times-up.mp3`).play().catch(() => {})
+    handleBuzzerLock()
+    setIsTimesUp(true)
+  }, [handleBuzzerLock])
+
+  const timer = useClueTimer({
+    enabled: (session?.toggleConfig.timedClues.enabled ?? false) && phase === 'clue' && !isDailyDouble,
+    duration: session?.toggleConfig.timedClues.timerDuration ?? 30,
+    onExpire: handleTimerExpire,
+  })
+
+  function handlePlay(players: Player[], config: ToggleConfig) {
     if (!game) return
 
     const orderedRoundNames = ROUND_ORDER.filter(name => name in game.rounds)
@@ -509,6 +548,10 @@ export function GamePage() {
       orderedRoundNames,
       clueStates,
       dailyDoubleRecords: [],
+      toggleConfig: config,
+      streakCounts: {},
+      perRoundIncorrect: {},
+      activeWagers: null,
     })
     setPhase('category-reveal')
   }
@@ -517,6 +560,7 @@ export function GamePage() {
     if (!session) return
 
     setClueAnswerRevealed(false)
+    setStealBonusAwardedTo(null)
 
     const roundName = session.orderedRoundNames[session.currentRoundIndex]
     const categories = session.game.rounds[roundName]
@@ -531,7 +575,13 @@ export function GamePage() {
       setPhase('daily-double')
     } else {
       setIsDailyDouble(false)
-      setPhase('clue')
+      // When Wagering Mode is active and clue is NOT a Daily Double,
+      // show the wager entry screen before revealing the clue
+      if (session.toggleConfig.wagering.enabled) {
+        setPhase('wager-entry')
+      } else {
+        setPhase('clue')
+      }
     }
   }
 
@@ -562,6 +612,19 @@ export function GamePage() {
 
     const prev = clueState.playerMarkings[playerName]
 
+    // Build the updated playerMarkings FIRST (applyModifiers needs the post-change state)
+    const updatedPlayerMarkings = { ...clueState.playerMarkings, [playerName]: result }
+
+    // Determine whether to use applyModifiers (non-DD clues with any enabled modifier)
+    const hasModifiers =
+      session.toggleConfig.rulesEngine.enabled ||
+      session.toggleConfig.wagering.enabled
+    const useModifiers = hasModifiers && !clue.dailyDouble
+
+    // Track updated streak and perRoundIncorrect for session state
+    const updatedStreakCounts = { ...session.streakCounts }
+    const updatedPerRoundIncorrect = { ...session.perRoundIncorrect }
+
     // Update player score with reversal logic
     const updatedPlayers = session.players.map(p => {
       if (p.name !== playerName) return p
@@ -573,13 +636,48 @@ export function GamePage() {
       let newIncorrectDD = p.incorrectDailyDoubles
       let newTotalEarned = p.totalEarned
 
-      // Reverse previous marking
-      if (prev === 'correct') { newScore -= pointValue; newCorrect--; newTotalEarned -= pointValue }
-      if (prev === 'incorrect') { newScore += pointValue; newIncorrect-- }
+      if (useModifiers) {
+        // Determine base value: use wager if wagering is active and player has a recorded wager
+        let baseValue = clue.value
+        if (session.toggleConfig.wagering.enabled && session.activeWagers && session.activeWagers[playerName] != null) {
+          baseValue = session.activeWagers[playerName]
+        }
 
-      // Apply new marking (null means unmark — only reverse was needed)
-      if (result === 'correct') { newScore += pointValue; newCorrect++; newTotalEarned += pointValue }
-      if (result === 'incorrect') { newScore -= pointValue; newIncorrect++ }
+        const modResult = applyModifiers({
+          playerName,
+          prevMarking: prev,
+          newMarking: result,
+          baseValue,
+          toggleConfig: session.toggleConfig,
+          streakCount: session.streakCounts[playerName] ?? 0,
+          perRoundIncorrect: session.perRoundIncorrect[playerName] ?? 0,
+          playerMarkings: updatedPlayerMarkings,
+        })
+
+        newScore += modResult.scoreDelta
+        updatedStreakCounts[playerName] = modResult.newStreakCount
+        updatedPerRoundIncorrect[playerName] = modResult.newPerRoundIncorrect
+
+        // Track steal bonus for ClueScreen indicator (Task 9.5)
+        if (modResult.stealBonusApplied) {
+          setStealBonusAwardedTo(playerName)
+        }
+
+        // Analytics tracking: correctCount, incorrectCount, totalEarned
+        if (prev === 'correct') { newCorrect--; newTotalEarned -= baseValue }
+        if (prev === 'incorrect') { newIncorrect-- }
+        if (result === 'correct') { newCorrect++; newTotalEarned += baseValue }
+        if (result === 'incorrect') { newIncorrect++ }
+      } else {
+        // Standard scoring (DD clues or no modifiers active)
+        // Reverse previous marking
+        if (prev === 'correct') { newScore -= pointValue; newCorrect--; newTotalEarned -= pointValue }
+        if (prev === 'incorrect') { newScore += pointValue; newIncorrect-- }
+
+        // Apply new marking (null means unmark — only reverse was needed)
+        if (result === 'correct') { newScore += pointValue; newCorrect++; newTotalEarned += pointValue }
+        if (result === 'incorrect') { newScore -= pointValue; newIncorrect++ }
+      }
 
       // Track Daily Double stats
       if (clue.dailyDouble && playerName === ddSelectedPlayer) {
@@ -597,7 +695,7 @@ export function GamePage() {
       ...session.clueStates,
       [key]: {
         ...clueState,
-        playerMarkings: { ...clueState.playerMarkings, [playerName]: result },
+        playerMarkings: updatedPlayerMarkings,
       },
     }
 
@@ -605,6 +703,8 @@ export function GamePage() {
       ...session,
       players: updatedPlayers,
       clueStates: updatedClueStates,
+      streakCounts: updatedStreakCounts,
+      perRoundIncorrect: updatedPerRoundIncorrect,
     })
   }
 
@@ -612,6 +712,9 @@ export function GamePage() {
     if (!session || !activeClue) return
 
     setClueAnswerRevealed(false)
+    setStealBonusAwardedTo(null)
+    timer.reset()
+    setIsTimesUp(false)
 
     const key = `${activeClue.roundName}-${activeClue.categoryIndex}-${activeClue.clueIndex}`
     const clue = session.game.rounds[activeClue.roundName][activeClue.categoryIndex].clues[activeClue.clueIndex]
@@ -665,7 +768,8 @@ export function GamePage() {
     if (nextIndex >= session.orderedRoundNames.length) {
       setPhase('final-jeopardy')
     } else {
-      setSession({ ...session, currentRoundIndex: nextIndex })
+      // Reset perRoundIncorrect for the new round (Requirement 7.5)
+      setSession({ ...session, currentRoundIndex: nextIndex, perRoundIncorrect: {} })
       setPhase('category-reveal')
     }
   }
@@ -726,11 +830,13 @@ export function GamePage() {
 
   if (phase === 'player-entry') {
     return (
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'center', gap: '4rem', padding: '2rem', minHeight: '100vh', boxSizing: 'border-box' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'center', gap: '2rem', padding: '2rem', minHeight: '100vh', boxSizing: 'border-box', flexWrap: 'wrap' }}>
         <div style={{ flex: '0 1 auto' }}>
           <PlayerEntry
             onPlay={handlePlay}
             onBack={() => navigate({ to: '/home/library' })}
+            toggleConfig={toggleConfig}
+            hasSettingsErrors={hasSettingsErrors}
             onPlayerAdded={(playerName) => {
               playerEntryNamesRef.current = [...playerEntryNamesRef.current, playerName]
               if (sessionId) {
@@ -739,7 +845,6 @@ export function GamePage() {
                 }))
                 updateSessionPlayers(sessionId, sessionPlayers).catch(() => {})
               }
-              // Broadcast so buzzer players see the updated list
               if (sessionChannelRef.current) {
                 broadcastMessage(sessionChannelRef.current, {
                   type: 'player_joined',
@@ -781,6 +886,13 @@ export function GamePage() {
             </BackgroundGradient>
           </div>
         )}
+        <div style={{ flex: '0 0 auto', paddingTop: '2rem' }}>
+          <BackgroundGradient>
+            <div style={{ maxWidth: '20rem', padding: '1.5rem', borderRadius: '1.5rem', border: '1px solid rgb(30 41 59)', background: 'rgb(15 23 42 / 0.95)', boxShadow: '0 25px 50px -12px rgb(15 23 42 / 0.3)' }}>
+              <GameSettingsPanel onConfigChange={handleConfigChange} />
+            </div>
+          </BackgroundGradient>
+        </div>
       </div>
     )
   }
@@ -914,6 +1026,22 @@ export function GamePage() {
       )
     }
 
+    if (phase === 'wager-entry' && activeClue) {
+      return (
+        <>
+          <ActiveRulesIndicator config={session!.toggleConfig} />
+          <WagerEntry
+            players={session!.players}
+            wagerFloor={session!.toggleConfig.wagering.wagerFloor}
+            onReveal={(wagers) => {
+              setSession(prev => prev ? { ...prev, activeWagers: wagers } : prev)
+              setPhase('clue')
+            }}
+          />
+        </>
+      )
+    }
+
     if (phase === 'clue' && activeClue) {
       const roundName = activeClue.roundName
       const category = session!.game.rounds[roundName][activeClue.categoryIndex]
@@ -925,36 +1053,48 @@ export function GamePage() {
       const wagers: Record<string, number> | null =
         clue.dailyDouble && ddSelectedPlayer && ddWager != null
           ? { [ddSelectedPlayer]: ddWager }
-          : null
+          : session!.toggleConfig.wagering.enabled && session!.activeWagers
+            ? session!.activeWagers
+            : null
 
       return (
-        <ClueScreen
-          clue={clue}
-          categoryName={category.category}
-          players={session!.players}
-          wagers={wagers}
-          playerMarkings={clueState.playerMarkings}
-          onMark={handleMark}
-          onReturn={handleReturnToBoard}
-          ddPlayer={clue.dailyDouble ? ddSelectedPlayer : null}
-          onAnswerRevealed={() => {
-            setClueAnswerRevealed(true)
-            // Lock buzzers and clear queue when answer is revealed
-            if (sessionId) {
-              const newBuzzState: BuzzState = {
-                clueActive: false,
-                queue: [],
-                lockedOut: [],
-                systemLocked: true,
+        <>
+          <ActiveRulesIndicator config={session!.toggleConfig} />
+          <ClueScreen
+            clue={clue}
+            categoryName={category.category}
+            players={session!.players}
+            wagers={wagers}
+            playerMarkings={clueState.playerMarkings}
+            onMark={handleMark}
+            onReturn={handleReturnToBoard}
+            ddPlayer={clue.dailyDouble ? ddSelectedPlayer : null}
+            modifierConfig={session!.toggleConfig}
+            streakCounts={session!.streakCounts}
+            perRoundIncorrect={session!.perRoundIncorrect}
+            stealBonusAwardedTo={stealBonusAwardedTo}
+            timerRemaining={timer.remaining}
+            isTimesUp={isTimesUp}
+            onAnswerRevealed={() => {
+              setClueAnswerRevealed(true)
+              timer.stop()
+              // Lock buzzers and clear queue when answer is revealed
+              if (sessionId) {
+                const newBuzzState: BuzzState = {
+                  clueActive: false,
+                  queue: [],
+                  lockedOut: [],
+                  systemLocked: true,
+                }
+                setBuzzState(newBuzzState)
+                updateBuzzState(sessionId, newBuzzState).catch(() => {})
+                if (sessionChannelRef.current) {
+                  broadcastMessage(sessionChannelRef.current, { type: 'buzz_state_sync', buzzState: newBuzzState }).catch(() => {})
+                }
               }
-              setBuzzState(newBuzzState)
-              updateBuzzState(sessionId, newBuzzState).catch(() => {})
-              if (sessionChannelRef.current) {
-                broadcastMessage(sessionChannelRef.current, { type: 'buzz_state_sync', buzzState: newBuzzState }).catch(() => {})
-              }
-            }
-          }}
-        />
+            }}
+          />
+        </>
       )
     }
 
