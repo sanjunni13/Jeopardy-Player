@@ -4,6 +4,7 @@ import { toast } from 'react-toastify'
 import Fuse from 'fuse.js'
 import { supabase } from '../../utils/supabase'
 import { GameCard } from '../../components/game/GameCard'
+import { GameDetailsDialog } from '../../components/GameDetailsDialog'
 import { BackButton } from '../../components/BackButton'
 import { BackgroundGradient } from '../../components/ui/background-gradient'
 import { FAQCard } from '../../components/ui/FAQCard'
@@ -47,6 +48,8 @@ async function loadGames() {
     winners: row.winners as string[],
     created_by: row.created_by as number | null,
     source: row.source as string | null,
+    high_score: row.high_score as number | null,
+    high_score_player: row.high_score_player as string | null,
     creator_name: (row.players as { player_name: string } | null)?.player_name ?? null,
   })) as GameRecord[]
 }
@@ -59,6 +62,7 @@ export function GameLibraryPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [filters, setFilters] = useState<Filters>({ rounds: null, creator: null, source: null })
   const [showFilters, setShowFilters] = useState(false)
+  const [selectedGame, setSelectedGame] = useState<GameRecord | null>(null)
 
   // Read feelingLucky flag passed via location state from the Home page
   const locationState = useRouterState({ select: (s) => s.location.state }) as { feelingLucky?: boolean }
@@ -154,6 +158,14 @@ export function GameLibraryPage() {
   const activeFilterCount = (filters.rounds != null ? 1 : 0) + (filters.creator != null ? 1 : 0) + (filters.source != null ? 1 : 0)
 
   function handleCardClick(id: string) {
+    const game = filteredGames.find(g => g.id === id) ?? games.find(g => g.id === id)
+    if (game) {
+      setSelectedGame(game)
+    }
+  }
+
+  function handlePlayGame(id: string) {
+    setSelectedGame(null)
     navigate({ to: '/home/game/$gameId', params: { gameId: id }, state: { fromLibrary: true } })
   }
 
@@ -340,6 +352,13 @@ export function GameLibraryPage() {
           </div>
         )}
       </BackgroundGradient>
+
+      <GameDetailsDialog
+        isOpen={selectedGame != null}
+        game={selectedGame}
+        onPlay={handlePlayGame}
+        onClose={() => setSelectedGame(null)}
+      />
 
       <FAQCard items={gameLibraryFAQ} />
     </div>

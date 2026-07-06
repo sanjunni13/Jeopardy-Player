@@ -1,0 +1,208 @@
+/* ─── Game Details Dialog ─────────────────────────────────────────────────── */
+
+.game-details-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgb(0 0 0 / 0.6);
+  backdrop-filter: blur(4px);
+}
+
+.game-details-dialog {
+  width: 100%;
+  max-width: 28rem;
+  max-height: 85vh;
+  overflow-y: auto;
+  border-radius: 1rem;
+  border: 1px solid rgb(30 41 59); /* slate-800 */
+  background: rgb(15 23 42); /* slate-900 */
+  padding: 2rem;
+  box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.4);
+}
+
+.game-details-dialog__title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: rgb(241 245 249); /* slate-100 */
+  margin-bottom: 0.75rem;
+  text-align: center;
+}
+
+/* ─── Meta badges ──────────────────────────────────────────────────────────── */
+
+.game-details-dialog__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+}
+
+.game-details-dialog__badge {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: rgb(203 213 225); /* slate-300 */
+  background: rgb(30 41 59); /* slate-800 */
+  padding: 0.25rem 0.75rem;
+  border-radius: 100px;
+}
+
+/* ─── Stats section ────────────────────────────────────────────────────────── */
+
+.game-details-dialog__stats {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  border-radius: 0.75rem;
+  background: rgb(30 41 59 / 0.5); /* slate-800/50 */
+  border: 1px solid rgb(51 65 85); /* slate-700 */
+}
+
+.game-details-dialog__stat-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.game-details-dialog__stat-row--vertical {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.game-details-dialog__stat-label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: rgb(148 163 184); /* slate-400 */
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.game-details-dialog__stat-value {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: rgb(241 245 249); /* slate-100 */
+}
+
+.game-details-dialog__stat-player {
+  font-weight: 400;
+  color: #CE93D8; /* purple accent */
+}
+
+.game-details-dialog__stat-empty {
+  font-style: italic;
+  font-weight: 400;
+  color: rgb(100 116 139); /* slate-500 */
+}
+
+/* ─── Winners list ─────────────────────────────────────────────────────────── */
+
+.game-details-dialog__winners-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+}
+
+.game-details-dialog__winner-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.8125rem;
+  color: rgb(203 213 225); /* slate-300 */
+  background: rgb(51 65 85 / 0.5); /* slate-700/50 */
+  padding: 0.25rem 0.625rem;
+  border-radius: 100px;
+}
+
+.game-details-dialog__winner-name {
+  font-weight: 500;
+}
+
+.game-details-dialog__winner-count {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: #CE93D8; /* purple accent */
+}
+
+/* ─── Prompt text ──────────────────────────────────────────────────────────── */
+
+.game-details-dialog__prompt {
+  text-align: center;
+  color: rgb(148 163 184); /* slate-400 */
+  font-size: 0.9375rem;
+  margin-bottom: 1.5rem;
+}
+
+/* ─── Action buttons ───────────────────────────────────────────────────────── */
+
+.game-details-dialog__actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: center;
+}
+
+.game-details-dialog__cancel {
+  flex: 1;
+  margin-right: .25rem;
+  border-radius: 100px;
+  border: 1px solid rgb(51 65 85); /* slate-700 */
+  padding: 12.5px 30px;
+  font-size: 0.875rem;
+  font-weight: bold;
+  color: rgb(203 213 225); /* slate-300 */
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.5s;
+  -webkit-transition: all 0.5s;
+}
+
+.game-details-dialog__cancel:hover {
+  background-color: rgb(30 41 59); /* slate-800 */
+  box-shadow: 0 0 20px rgba(51, 65, 85, 0.3);
+  transform: scale(1.1);
+}
+
+.game-details-dialog__cancel:active {
+  background-color: rgb(15 23 42); /* slate-900 */
+  transition: all 0.25s;
+  -webkit-transition: all 0.25s;
+  box-shadow: none;
+  transform: scale(0.98);
+}
+
+.game-details-dialog__play {
+  flex: 1;
+  border-radius: 100px;
+  background-color: #6A1B9A;
+  padding: 12.5px 30px;
+  font-size: 0.875rem;
+  font-weight: bold;
+  color: white;
+  border: 0;
+  cursor: pointer;
+  transition: all 0.5s;
+  -webkit-transition: all 0.5s;
+}
+
+.game-details-dialog__play:hover {
+  background-color: #8E24AA;
+  box-shadow: 0 0 20px rgba(142, 36, 170, 0.3);
+  transform: scale(1.1);
+}
+
+.game-details-dialog__play:active {
+  background-color: #4A148C;
+  transition: all 0.25s;
+  -webkit-transition: all 0.25s;
+  box-shadow: none;
+  transform: scale(0.98);
+}
