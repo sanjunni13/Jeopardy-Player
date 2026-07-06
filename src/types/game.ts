@@ -238,6 +238,10 @@ export interface GameRecord {
   winners: string[]
   created_by: number | null
   source: string | null
+  /** Highest score ever achieved on this game */
+  high_score: number | null
+  /** Name of the player who achieved the high score */
+  high_score_player: string | null
   /** Joined player_name from the players table via created_by FK */
   creator_name: string | null
 }

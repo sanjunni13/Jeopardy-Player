@@ -14,6 +14,8 @@ const gameRecordArb: fc.Arbitrary<GameRecord> = fc.record({
   winners: fc.array(fc.string({ minLength: 1, maxLength: 40 }), { maxLength: 10 }),
   created_by: fc.oneof(fc.constant(null), fc.integer({ min: 1, max: 2_147_483_647 })),
   source: fc.oneof(fc.constant(null), fc.string({ minLength: 1, maxLength: 100 })),
+  high_score: fc.oneof(fc.constant(null), fc.integer({ min: 0, max: 999_999 })),
+  high_score_player: fc.oneof(fc.constant(null), fc.string({ minLength: 1, maxLength: 80 })),
   creator_name: fc.oneof(fc.constant(null), fc.string({ minLength: 1, maxLength: 80 })),
 })
 

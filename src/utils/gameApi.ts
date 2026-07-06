@@ -62,6 +62,8 @@ export async function saveGame(
         total_rounds: totalRounds,
         times_played: 0,
         winners: [],
+        high_score: null,
+        high_score_player: null,
         created_by: playerId,
       })
       .select('id')
@@ -95,7 +97,7 @@ export async function updateGameStats(
     // Fetch the game row
     const { data: game, error: fetchErr } = await supabase
       .from('games')
-      .select('times_played, winners')
+      .select('times_played, winners, high_score, high_score_player')
       .eq('id', gameId)
       .single();
 
@@ -106,12 +108,26 @@ export async function updateGameStats(
     // Update games table: increment times_played, append winnerNames to winners array
     const currentTimesPlayed = (game as Record<string, unknown>).times_played as number ?? 0;
     const currentWinners = (game as Record<string, unknown>).winners as string[] ?? [];
+    const currentHighScore = (game as Record<string, unknown>).high_score as number | null;
+
+    // Determine new high score from this game's players
+    let newHighScore = currentHighScore;
+    let newHighScorePlayer = (game as Record<string, unknown>).high_score_player as string | null;
+
+    for (const player of players) {
+      if (player.score > (newHighScore ?? -Infinity)) {
+        newHighScore = player.score;
+        newHighScorePlayer = player.name;
+      }
+    }
 
     const { error: gameUpdateErr } = await supabase
       .from('games')
       .update({
         times_played: currentTimesPlayed + 1,
         winners: [...currentWinners, ...winnerNames],
+        high_score: newHighScore,
+        high_score_player: newHighScorePlayer,
       })
       .eq('id', gameId);
 
