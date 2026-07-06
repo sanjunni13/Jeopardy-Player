@@ -22,6 +22,7 @@ import type {
 import type { BuzzState, FinalJeopardyState, SessionPlayer, ChannelMessage } from '../../types/session'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import { PlayerEntry } from '../../components/game/PlayerEntry'
+import { exportGamePdf } from '../../utils/exportGamePdf'
 import { GameBoard } from '../../components/game/GameBoard'
 import { ClueScreen } from '../../components/game/ClueScreen'
 import { DailyDoubleScreen } from '../../components/game/DailyDoubleScreen'
@@ -71,6 +72,7 @@ export function GamePage() {
 
   // Game source for answer sheet visibility
   const [gameSource, setGameSource] = useState<string | null>(null)
+  const [gameName, setGameName] = useState<string | null>(null)
   const [cheatSheetOpen, setCheatSheetOpen] = useState(false)
   const [qrPopupOpen, setQrPopupOpen] = useState(false)
 
@@ -137,6 +139,7 @@ export function GamePage() {
 
         // Store game source for answer sheet visibility
         setGameSource(gameRow.source ?? null)
+        setGameName(gameRow.game_name as string)
 
         // Get current user to verify authentication
         const { data: { user } } = await supabase.auth.getUser()
@@ -882,6 +885,31 @@ export function GamePage() {
           <BackgroundGradient>
             <div style={{ maxWidth: '20rem', padding: '1.5rem', borderRadius: '1.5rem', border: '1px solid rgb(30 41 59)', background: 'rgb(15 23 42 / 0.95)', boxShadow: '0 25px 50px -12px rgb(15 23 42 / 0.3)' }}>
               <GameSettingsPanel onConfigChange={handleConfigChange} />
+              {game && (
+                <>
+                  <hr style={{ border: 'none', borderTop: '1px solid rgb(51 65 85)', margin: '1.25rem 0' }} />
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem' }}>
+                    <p style={{ color: '#94a3b8', fontSize: '0.875rem', margin: 0, textAlign: 'center', lineHeight: 1.5 }}>
+                      Download a print-ready PDF with clue grids and answer key
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => exportGamePdf(game, gameName ?? undefined)}
+                      className="player-play-btn"
+                      style={{ marginTop: '0.25rem', width: 'auto', paddingLeft: '1.5rem', paddingRight: '1.5rem' }}
+                    >
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                          <polyline points="7 10 12 15 17 10" />
+                          <line x1="12" y1="15" x2="12" y2="3" />
+                        </svg>
+                        Export PDF
+                      </span>
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           </BackgroundGradient>
         </div>
