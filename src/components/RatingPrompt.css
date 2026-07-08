@@ -1,0 +1,71 @@
+/* ─── Rating Prompt ───────────────────────────────────────────────────────── */
+
+.rating-prompt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 16px;
+  text-align: center;
+}
+
+/* ─── Title ──────────────────────────────────────────────────────────────── */
+
+.rating-prompt__title {
+  font-size: 1rem;
+  font-weight: 500;
+  color: rgb(226 232 240); /* slate-200 */
+  margin: 0;
+}
+
+/* ─── Confirmation ───────────────────────────────────────────────────────── */
+
+.rating-prompt__confirmation {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: rgb(74 222 128); /* green-400 */
+  font-size: 0.875rem;
+  font-weight: 500;
+  animation: pulse 0.6s ease-in-out;
+}
+
+.rating-prompt__confirmation svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* ─── Error message ──────────────────────────────────────────────────────── */
+
+.rating-prompt__error {
+  font-size: 0.8125rem;
+  color: rgb(251 113 133); /* rose-400 */
+  margin: 0;
+}
+
+/* ─── Disabled message ───────────────────────────────────────────────────── */
+
+.rating-prompt__disabled-msg {
+  font-size: 0.8125rem;
+  color: rgb(148 163 184); /* slate-400 */
+  margin: 0;
+  font-style: italic;
+}
+
+/* ─── Pulse animation ────────────────────────────────────────────────────── */
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.7;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}

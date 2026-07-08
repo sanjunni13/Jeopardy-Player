@@ -1,5 +1,7 @@
 import { useEffect, useRef, useCallback } from 'react'
 import type { GameRecord } from '../types/game'
+import { AverageRatingBadge } from './AverageRatingBadge'
+import { FavoriteToggle } from './FavoriteToggle'
 import './GameDetailsDialog.css'
 
 interface GameDetailsDialogProps {
@@ -7,9 +9,14 @@ interface GameDetailsDialogProps {
   game: GameRecord | null
   onPlay: (id: string) => void
   onClose: () => void
+  averageRating?: number | null
+  ratingCount?: number
+  isFavorited?: boolean
+  onToggleFavorite?: () => void
+  showFavorite?: boolean
 }
 
-export function GameDetailsDialog({ isOpen, game, onPlay, onClose }: GameDetailsDialogProps) {
+export function GameDetailsDialog({ isOpen, game, onPlay, onClose, averageRating, ratingCount, isFavorited, onToggleFavorite, showFavorite }: GameDetailsDialogProps) {
   const closeRef = useRef<HTMLButtonElement>(null)
   const playRef = useRef<HTMLButtonElement>(null)
   const dialogRef = useRef<HTMLDivElement>(null)
@@ -144,6 +151,21 @@ export function GameDetailsDialog({ isOpen, game, onPlay, onClose }: GameDetails
               <span className="game-details-dialog__stat-empty">No winners yet</span>
             )}
           </div>
+        </div>
+
+        {/* Average rating and favorite controls */}
+        <div className="game-details-dialog__rating-controls" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem', marginBottom: '1rem' }}>
+          <AverageRatingBadge
+            averageRating={averageRating ?? null}
+            ratingCount={ratingCount ?? 0}
+          />
+          {showFavorite && onToggleFavorite && (
+            <FavoriteToggle
+              isFavorited={isFavorited ?? false}
+              onToggle={onToggleFavorite}
+              ariaLabel={isFavorited ? 'Remove from favourites' : 'Add to favourites'}
+            />
+          )}
         </div>
 
         <p className="game-details-dialog__prompt">Would you like to play this game?</p>
