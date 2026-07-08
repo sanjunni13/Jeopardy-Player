@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useMemo } from 'react'
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { useNavigate, Link, useRouterState } from '@tanstack/react-router'
 import { toast } from 'react-toastify'
 import Fuse from 'fuse.js'
@@ -10,6 +10,11 @@ import { BackgroundGradient } from '../../components/ui/background-gradient'
 import { FAQCard } from '../../components/ui/FAQCard'
 import { gameLibraryFAQ } from '../../data/faqData'
 import { useRandomGamePicker } from '../../hooks/useRandomGamePicker'
+import { usePlayerProfileContext } from '../../hooks/usePlayerProfileContext'
+import { useGameRatings } from '../../hooks/useGameRatings'
+import { fetchFavorites, addFavorite, removeFavorite } from '../../utils/favoritesApi'
+import { sortGames } from '../../utils/gameSorting'
+import type { SortOption } from '../../utils/gameSorting'
 import type { GameRecord } from '../../types/game'
 import './GameLibraryPage.css'
 
@@ -41,7 +46,7 @@ async function loadGames() {
 
   // Map the joined player_name into a flat creator_name field
   return (data ?? []).map((row: Record<string, unknown>) => ({
-    id: row.id as string,
+    id: String(row.id),
     game_name: row.game_name as string,
     total_rounds: row.total_rounds as number,
     times_played: row.times_played as number,
@@ -56,6 +61,7 @@ async function loadGames() {
 
 export function GameLibraryPage() {
   const navigate = useNavigate()
+  const { profile } = usePlayerProfileContext()
   const [games, setGames] = useState<GameRecord[]>([])
   const [status, setStatus] = useState<FetchStatus>('loading')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
@@ -63,6 +69,12 @@ export function GameLibraryPage() {
   const [filters, setFilters] = useState<Filters>({ rounds: null, creator: null, source: null })
   const [showFilters, setShowFilters] = useState(false)
   const [selectedGame, setSelectedGame] = useState<GameRecord | null>(null)
+  const [sortOption, setSortOption] = useState<SortOption>('default')
+  const [showFavourites, setShowFavourites] = useState(false)
+  const [favouriteIds, setFavouriteIds] = useState<Set<string>>(new Set())
+  const [favouritesLoaded, setFavouritesLoaded] = useState(false)
+  const [favouritesLoading, setFavouritesLoading] = useState(false)
+  const [favouritesError, setFavouritesError] = useState<string | null>(null)
 
   // Read feelingLucky flag passed via location state from the Home page
   const locationState = useRouterState({ select: (s) => s.location.state }) as { feelingLucky?: boolean }
@@ -111,6 +123,56 @@ export function GameLibraryPage() {
     toast.error(errorMessage ?? 'Failed to load games. Could not pick a random game.')
   }, [feelingLucky, status, errorMessage])
 
+  // Game ratings for the library view
+  const gameIds = useMemo(() => games.map(g => g.id), [games])
+  const { ratings } = useGameRatings(gameIds)
+
+  // Load favourites function defined outside effect (matches usePlayerProfile pattern)
+  const loadFavourites = useCallback(async () => {
+    if (!profile) return
+
+    setFavouritesLoading(true)
+    setFavouritesError(null)
+
+    try {
+      const ids = await fetchFavorites(profile.playerId)
+      setFavouriteIds(new Set(ids))
+      setFavouritesLoaded(true)
+    } catch {
+      setFavouritesError('Failed to load favourites')
+    } finally {
+      setFavouritesLoading(false)
+    }
+  }, [profile])
+
+  // Fetch favourites on page load when authenticated (so cards render with correct state)
+  const favouritesInitRef = useRef(false)
+
+  useEffect(() => {
+    favouritesInitRef.current = false
+  }, [profile])
+
+  useEffect(() => {
+    if (!profile) return
+    if (favouritesInitRef.current) return
+    favouritesInitRef.current = true
+    loadFavourites()
+  }, [profile, loadFavourites])
+
+  // Re-fetch favourites when the filter is activated (in case new bookmarks were added)
+  const favouritesFetchedRef = useRef(false)
+
+  useEffect(() => {
+    favouritesFetchedRef.current = false
+  }, [showFavourites, profile])
+
+  useEffect(() => {
+    if (!showFavourites || !profile) return
+    if (favouritesFetchedRef.current) return
+    favouritesFetchedRef.current = true
+    loadFavourites()
+  }, [showFavourites, profile, loadFavourites])
+
   // Fuse.js instance for fuzzy search
   const fuse = useMemo(() => new Fuse(games, {
     keys: ['game_name'],
@@ -157,6 +219,21 @@ export function GameLibraryPage() {
 
   const activeFilterCount = (filters.rounds != null ? 1 : 0) + (filters.creator != null ? 1 : 0) + (filters.source != null ? 1 : 0)
 
+  // Apply favourites filter and sorting on top of filteredGames
+  const displayedGames = useMemo(() => {
+    let results = filteredGames
+
+    // Apply favourites filter
+    if (showFavourites && profile) {
+      results = results.filter(g => favouriteIds.has(g.id))
+    }
+
+    // Apply sorting
+    results = sortGames(results, sortOption, ratings)
+
+    return results
+  }, [filteredGames, showFavourites, profile, favouriteIds, sortOption, ratings])
+
   function handleCardClick(id: string) {
     const game = filteredGames.find(g => g.id === id) ?? games.find(g => g.id === id)
     if (game) {
@@ -171,6 +248,39 @@ export function GameLibraryPage() {
 
   function clearFilters() {
     setFilters({ rounds: null, creator: null, source: null })
+  }
+
+  async function handleToggleFavorite(gameId: string) {
+    if (!profile) return
+    const isCurrentlyFavorited = favouriteIds.has(gameId)
+
+    // Optimistic update
+    setFavouriteIds(prev => {
+      const next = new Set(prev)
+      if (isCurrentlyFavorited) next.delete(gameId)
+      else next.add(gameId)
+      return next
+    })
+
+    const result = isCurrentlyFavorited
+      ? await removeFavorite(profile.playerId, gameId)
+      : await addFavorite(profile.playerId, gameId)
+
+    if (!result.success) {
+      // Revert on failure
+      setFavouriteIds(prev => {
+        const next = new Set(prev)
+        if (isCurrentlyFavorited) next.add(gameId)
+        else next.delete(gameId)
+        return next
+      })
+      toast.error('Could not update favourites. Please try again.')
+    }
+  }
+
+
+  function retryFavourites() {
+    loadFavourites()
   }
 
   // Feeling Lucky button visibility:
@@ -237,6 +347,25 @@ export function GameLibraryPage() {
                 <span className="library-filter-badge">{activeFilterCount}</span>
               )}
             </button>
+            <select
+              className="library-filter-select"
+              value={sortOption}
+              onChange={(e) => setSortOption(e.target.value as SortOption)}
+              aria-label="Sort games"
+            >
+              <option value="default">Default</option>
+              <option value="highest-rated">Highest Rated</option>
+              <option value="most-played">Most Played</option>
+            </select>
+            {profile && (
+              <button
+                type="button"
+                className={`library-favourites-btn ${showFavourites ? 'active' : ''}`}
+                onClick={() => setShowFavourites(!showFavourites)}
+              >
+                ❤️ My Favorites
+              </button>
+            )}
             <button
               type="button"
               className="library-feeling-lucky-btn"
@@ -337,9 +466,32 @@ export function GameLibraryPage() {
           </div>
         )}
 
-        {status === 'success' && filteredGames.length > 0 && (
+        {showFavourites && favouritesLoading && (
+          <div className="library-loading">
+            <Spinner />
+          </div>
+        )}
+
+        {showFavourites && favouritesError && (
+          <div className="library-error">
+            <p className="library-error-message">{favouritesError}</p>
+            <button type="button" onClick={retryFavourites} className="library-retry-btn">
+              Retry
+            </button>
+          </div>
+        )}
+
+        {showFavourites && !favouritesLoading && !favouritesError && displayedGames.length === 0 && filteredGames.length > 0 && (
+          <div className="library-empty">
+            <p className="library-empty-message">
+              No favourites yet! Bookmark games to see them here.
+            </p>
+          </div>
+        )}
+
+        {status === 'success' && displayedGames.length > 0 && !favouritesLoading && !favouritesError && (!profile || favouritesLoaded) && (
           <div className="library-grid">
-            {filteredGames.map((game) => (
+            {displayedGames.map((game) => (
               <GameCard
                 key={game.id}
                 id={game.id}
@@ -347,6 +499,11 @@ export function GameLibraryPage() {
                 totalRounds={game.total_rounds}
                 creatorName={game.creator_name}
                 onClick={handleCardClick}
+                averageRating={ratings.get(game.id)?.averageRating ?? null}
+                ratingCount={ratings.get(game.id)?.ratingCount ?? 0}
+                isFavorited={favouriteIds.has(game.id)}
+                onToggleFavorite={() => handleToggleFavorite(game.id)}
+                showFavorite={profile != null}
               />
             ))}
           </div>
@@ -358,6 +515,11 @@ export function GameLibraryPage() {
         game={selectedGame}
         onPlay={handlePlayGame}
         onClose={() => setSelectedGame(null)}
+        averageRating={selectedGame ? (ratings.get(selectedGame.id)?.averageRating ?? null) : null}
+        ratingCount={selectedGame ? (ratings.get(selectedGame.id)?.ratingCount ?? 0) : 0}
+        isFavorited={selectedGame ? favouriteIds.has(selectedGame.id) : false}
+        onToggleFavorite={selectedGame ? () => handleToggleFavorite(selectedGame.id) : undefined}
+        showFavorite={profile != null}
       />
 
       <FAQCard items={gameLibraryFAQ} />

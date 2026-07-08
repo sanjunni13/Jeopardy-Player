@@ -255,3 +255,9 @@ export type ValidationResult =
 export type NormalizeResult =
   | { ok: true; game: NormalizedGame }
   | { ok: false; error: string };
+
+/** Extended GameRecord with rating summary for library display */
+export interface GameRecordWithRating extends GameRecord {
+  averageRating: number | null
+  ratingCount: number
+}

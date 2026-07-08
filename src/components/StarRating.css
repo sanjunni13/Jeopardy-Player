@@ -1,0 +1,69 @@
+/* ─── Star Rating ─────────────────────────────────────────────────────────── */
+
+.star-rating {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+/* ─── Size variants ──────────────────────────────────────────────────────── */
+
+.star-rating--sm {
+  gap: 1px;
+}
+
+.star-rating--md {
+  gap: 2px;
+}
+
+.star-rating--lg {
+  gap: 3px;
+}
+
+/* ─── Individual star ────────────────────────────────────────────────────── */
+
+.star-rating__star {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: rgb(100 116 139); /* slate-500 — unfilled */
+  transition: color 0.15s ease, transform 0.15s ease;
+  background: none;
+  border: none;
+  padding: 2px;
+  margin: 0;
+  line-height: 0;
+}
+
+/* ─── Filled state ───────────────────────────────────────────────────────── */
+
+.star-rating__star--filled {
+  color: #FACC15; /* gold/yellow */
+}
+
+/* ─── Hover highlight ────────────────────────────────────────────────────── */
+
+.star-rating__star--hover {
+  color: #FDE047; /* lighter gold on hover */
+}
+
+/* ─── Interactive (clickable) ────────────────────────────────────────────── */
+
+.star-rating__star--interactive {
+  cursor: pointer;
+}
+
+.star-rating__star--interactive:hover {
+  transform: scale(1.15);
+}
+
+.star-rating__star--interactive:focus-visible {
+  outline: 2px solid rgb(96 165 250); /* blue-400 */
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.star-rating__star--interactive:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
