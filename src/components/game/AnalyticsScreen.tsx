@@ -5,6 +5,7 @@ import type { GameSession } from '../../types/game'
 import { computeAllAnalytics } from '../../utils/analyticsUtils'
 import { updateGameStats } from '../../utils/gameApi'
 import { usePlayerProfileContext } from '../../hooks/usePlayerProfileContext'
+import { RatingPrompt } from '../RatingPrompt'
 import { BackgroundGradient } from '../ui/background-gradient'
 import { ScoreTimelineChart, PALETTE } from './ScoreTimelineChart'
 import { CategoryAccuracy } from './CategoryAccuracy'
@@ -164,6 +165,11 @@ export function AnalyticsScreen({ session, gameId, onBackToHome }: AnalyticsScre
               )
             })}
           </ul>
+
+          {/* ── Rating prompt (authenticated users only) ── */}
+          {profile && (
+            <RatingPrompt gameId={gameId} playerId={profile.playerId} />
+          )}
 
           {/* ── Action buttons ── */}
           <div className="analytics-actions">
