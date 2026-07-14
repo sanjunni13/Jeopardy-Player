@@ -21,6 +21,20 @@ export interface DraftMetadata {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
+function generateUUID(): string {
+  // Use crypto.randomUUID() when available (secure contexts), fallback otherwise
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID()
+  }
+  // Fallback: generate a v4 UUID using crypto.getRandomValues
+  const bytes = new Uint8Array(16)
+  crypto.getRandomValues(bytes)
+  bytes[6] = (bytes[6] & 0x0f) | 0x40 // version 4
+  bytes[8] = (bytes[8] & 0x3f) | 0x80 // variant 1
+  const hex = Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('')
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`
+}
+
 async function getAuthUser() {
   // Verify we have a valid session with the server
   const { data: { user }, error } = await supabase.auth.getUser();
@@ -37,18 +51,16 @@ export async function createDraft(
     const user = await getAuthUser();
     if (!user) return { success: false, error: 'Not authenticated.' };
 
-    const id = crypto.randomUUID();
+    const id = generateUUID();
     const storagePath = `${user.id}/drafts/${id}.json`;
 
     // Upload JSON to Storage
-    console.log('[draftApi] Attempting storage upload:', { path: storagePath, userId: user.id });
     const { error: uploadErr } = await supabase.storage
       .from('games')
       .upload(storagePath, JSON.stringify(draft), {
         contentType: 'application/json',
         upsert: true,
       });
-    console.log('[draftApi] Storage upload result:', { hasError: !!uploadErr, error: uploadErr });
 
     if (uploadErr) {
       const { data: { session: debugSession } } = await supabase.auth.getSession();
@@ -82,8 +94,10 @@ export async function createDraft(
     }
 
     return { success: true, id };
-  } catch {
-    return { success: false, error: 'Network error. Please try again.' };
+  } catch (err) {
+    console.error('[draftApi] createDraft caught error:', err);
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    return { success: false, error: `Save failed: ${message}` };
   }
 }
 
@@ -123,8 +137,10 @@ export async function updateDraft(
     }
 
     return { success: true };
-  } catch {
-    return { success: false, error: 'Network error. Please try again.' };
+  } catch (err) {
+    console.error('[draftApi] updateDraft caught error:', err);
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    return { success: false, error: `Save failed: ${message}` };
   }
 }
 

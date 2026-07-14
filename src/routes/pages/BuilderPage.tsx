@@ -52,6 +52,8 @@ export function BuilderPage() {
     setCategoryName,
     setClueField,
     setFinalField,
+    reorderCategories,
+    reorderClues,
     validateField,
     validateForPublish,
     resetDirty,
@@ -500,6 +502,8 @@ export function BuilderPage() {
           onSetCategoryName={setCategoryName}
           onSetClueField={setClueField}
           onSetFinalField={setFinalField}
+          onReorderCategories={reorderCategories}
+          onReorderClues={reorderClues}
           onValidateField={validateField}
           onSave={handleSave}
           onPublish={handlePublish}

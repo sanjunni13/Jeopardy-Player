@@ -47,7 +47,14 @@ export function useDraftPersistence(
   // ─── Internal save logic ─────────────────────────────────────────────────
 
   const performSave = useCallback(async (): Promise<{ success: boolean; error?: string }> => {
-    const draft = toBuildDraft()
+    let draft: BuilderDraft
+    try {
+      draft = toBuildDraft()
+    } catch (err) {
+      console.error('[useDraftPersistence] toBuildDraft() threw:', err)
+      const message = err instanceof Error ? err.message : 'Unknown error'
+      return { success: false, error: `Failed to serialize draft: ${message}` }
+    }
     const currentDraftId = draftIdRef.current
 
     if (currentDraftId === null) {
@@ -102,9 +109,11 @@ export function useDraftPersistence(
       const result = await performSave()
       setIsSaving(false)
       return result
-    } catch {
+    } catch (err) {
       setIsSaving(false)
-      return { success: false, error: 'Unexpected error during save.' }
+      console.error('[useDraftPersistence] save caught error:', err)
+      const message = err instanceof Error ? err.message : 'Unknown error'
+      return { success: false, error: `Unexpected error during save: ${message}` }
     }
   }, [cancelAutoSaveTimer, performSave])
 

@@ -4,6 +4,7 @@ import type {
   ClueFormState,
   FinalRoundFormState,
 } from './builderFormStructure'
+import { uid } from './builderFormStructure'
 import type { BuilderDraft } from './draftApi'
 import type { NormalizedGame, RoundName, Category } from '../types/game'
 
@@ -150,9 +151,11 @@ export function draftToBuilderState(draft: BuilderDraft): BuilderFormState {
 
     rounds.push(
       categories.map(cat => ({
+        _id: uid(),
         name: cat.category,
         clues: cat.clues.map(c => {
           const clue: ClueFormState = {
+            _id: uid(),
             value: String(c.value),
             clue: c.clue,
             solution: c.solution,

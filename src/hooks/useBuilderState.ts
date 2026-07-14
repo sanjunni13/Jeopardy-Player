@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo } from 'react'
-import { generateEmptyFormState, recalculateClueValues } from '../utils/builderFormStructure'
-import type { BuilderFormState, ClueFormState, FinalRoundFormState, ValidationErrors, MediaData } from '../utils/builderFormStructure'
+import { generateEmptyFormState, recalculateClueValues, uid } from '../utils/builderFormStructure'
+import type { BuilderFormState, CategoryFormState, ClueFormState, FinalRoundFormState, ValidationErrors, MediaData } from '../utils/builderFormStructure'
 import { validateGameName, validateClueValue, validateForPublish as validateForPublishFn, validateForSave as validateForSaveFn } from '../utils/builderValidation'
 import { builderStateToNormalizedGame, builderStateToDraft, draftToBuilderState, isDirtyState } from '../utils/builderConversion'
 import type { BuilderDraft } from '../utils/draftApi'
@@ -23,6 +23,10 @@ export interface UseBuilderStateReturn {
   setCategoryName: (roundIdx: number, catIdx: number, name: string) => void
   setClueField: (roundIdx: number, catIdx: number, clueIdx: number, field: keyof ClueFormState, value: ClueFieldValue) => void
   setFinalField: (field: keyof FinalRoundFormState, value: string | MediaData | null) => void
+  moveCategory: (roundIdx: number, fromIndex: number, toIndex: number) => void
+  moveClue: (roundIdx: number, catIdx: number, fromIndex: number, toIndex: number) => void
+  reorderCategories: (roundIdx: number, newOrder: CategoryFormState[]) => void
+  reorderClues: (roundIdx: number, catIdx: number, newOrder: ClueFormState[]) => void
   validateField: (fieldPath: string) => void
   validateForPublish: () => boolean
   validateForSave: () => boolean
@@ -36,13 +40,14 @@ export interface UseBuilderStateReturn {
 
 function createEmptyCategory(roundIndex: number) {
   return {
+    _id: uid(),
     name: '',
     clues: [
-      { value: String(computeClueValue(1, roundIndex + 1)), clue: '', solution: '', dailyDouble: false },
-      { value: String(computeClueValue(2, roundIndex + 1)), clue: '', solution: '', dailyDouble: false },
-      { value: String(computeClueValue(3, roundIndex + 1)), clue: '', solution: '', dailyDouble: false },
-      { value: String(computeClueValue(4, roundIndex + 1)), clue: '', solution: '', dailyDouble: false },
-      { value: String(computeClueValue(5, roundIndex + 1)), clue: '', solution: '', dailyDouble: false },
+      { _id: uid(), value: String(computeClueValue(1, roundIndex + 1)), clue: '', solution: '', dailyDouble: false },
+      { _id: uid(), value: String(computeClueValue(2, roundIndex + 1)), clue: '', solution: '', dailyDouble: false },
+      { _id: uid(), value: String(computeClueValue(3, roundIndex + 1)), clue: '', solution: '', dailyDouble: false },
+      { _id: uid(), value: String(computeClueValue(4, roundIndex + 1)), clue: '', solution: '', dailyDouble: false },
+      { _id: uid(), value: String(computeClueValue(5, roundIndex + 1)), clue: '', solution: '', dailyDouble: false },
     ] as [ClueFormState, ClueFormState, ClueFormState, ClueFormState, ClueFormState],
   }
 }
@@ -194,6 +199,57 @@ export function useBuilderState(): UseBuilderStateReturn {
     })
   }, [])
 
+  // ─── Reordering ────────────────────────────────────────────────────────────
+
+  const moveCategory = useCallback((roundIdx: number, fromIndex: number, toIndex: number) => {
+    if (fromIndex === toIndex) return
+    setFormState(prev => {
+      const newRounds = prev.rounds.map((round, rIdx) => {
+        if (rIdx !== roundIdx) return round
+        const newRound = [...round]
+        const [moved] = newRound.splice(fromIndex, 1)
+        newRound.splice(toIndex, 0, moved)
+        return newRound
+      })
+      return { ...prev, rounds: newRounds }
+    })
+  }, [])
+
+  const moveClue = useCallback((roundIdx: number, catIdx: number, fromIndex: number, toIndex: number) => {
+    if (fromIndex === toIndex) return
+    setFormState(prev => {
+      const newRounds = prev.rounds.map((round, rIdx) => {
+        if (rIdx !== roundIdx) return round
+        return round.map((cat, cIdx) => {
+          if (cIdx !== catIdx) return cat
+          const newClues = [...cat.clues] as [ClueFormState, ClueFormState, ClueFormState, ClueFormState, ClueFormState]
+          const [moved] = (newClues as ClueFormState[]).splice(fromIndex, 1)
+          ;(newClues as ClueFormState[]).splice(toIndex, 0, moved)
+          return { ...cat, clues: newClues }
+        })
+      })
+      return { ...prev, rounds: newRounds }
+    })
+  }, [])
+
+  const reorderCategories = useCallback((roundIdx: number, newOrder: CategoryFormState[]) => {
+    setFormState(prev => {
+      const newRounds = [...prev.rounds]
+      newRounds[roundIdx] = newOrder
+      return { ...prev, rounds: newRounds }
+    })
+  }, [])
+
+  const reorderClues = useCallback((roundIdx: number, catIdx: number, newOrder: ClueFormState[]) => {
+    setFormState(prev => {
+      const newRounds = [...prev.rounds]
+      const newRound = [...newRounds[roundIdx]]
+      newRound[catIdx] = { ...newRound[catIdx], clues: newOrder as [ClueFormState, ClueFormState, ClueFormState, ClueFormState, ClueFormState] }
+      newRounds[roundIdx] = newRound
+      return { ...prev, rounds: newRounds }
+    })
+  }, [])
+
   // ─── Validation ────────────────────────────────────────────────────────────
 
   const validateField = useCallback((fieldPath: string) => {
@@ -276,6 +332,10 @@ export function useBuilderState(): UseBuilderStateReturn {
     setCategoryName,
     setClueField,
     setFinalField,
+    moveCategory,
+    moveClue,
+    reorderCategories,
+    reorderClues,
     validateField,
     validateForPublish,
     validateForSave,
