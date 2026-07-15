@@ -97,24 +97,22 @@ export function GameDetailsDialog({ isOpen, game, onPlay, onClose, averageRating
             </div>
 
             {/* High Score */}
-            <div className="game-details-dialog__stat-row">
+            <div className={game.high_score != null ? 'game-details-dialog__stat-row' : 'game-details-dialog__stat-row game-details-dialog__stat-row--vertical'}>
               <span className="game-details-dialog__stat-label">Highest Score</span>
-              <span className="game-details-dialog__stat-value">
-                {game.high_score != null ? (
-                  <>
-                    ${game.high_score.toLocaleString()}
-                    {game.high_score_player && (
-                      <span className="game-details-dialog__stat-player"> — {game.high_score_player}</span>
-                    )}
-                  </>
-                ) : (
-                  <span className="game-details-dialog__stat-empty">No games played yet</span>
-                )}
-              </span>
+              {game.high_score != null ? (
+                <span className="game-details-dialog__stat-value">
+                  ${game.high_score.toLocaleString()}
+                  {game.high_score_player && (
+                    <span className="game-details-dialog__stat-player"> — {game.high_score_player}</span>
+                  )}
+                </span>
+              ) : (
+                <span className="game-details-dialog__stat-empty">No games played yet</span>
+              )}
             </div>
 
             {/* Previous Winners */}
-            <div className="game-details-dialog__stat-row game-details-dialog__stat-row--vertical">
+            <div className={uniqueWinners.length > 0 ? 'game-details-dialog__stat-row' : 'game-details-dialog__stat-row game-details-dialog__stat-row--vertical'}>
               <span className="game-details-dialog__stat-label">Previous Winners</span>
               {uniqueWinners.length > 0 ? (
                 <ul className="game-details-dialog__winners-list">

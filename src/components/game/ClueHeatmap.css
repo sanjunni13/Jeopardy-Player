@@ -1,0 +1,173 @@
+/* ─── Clue Heatmap ────────────────────────────────────────────────────────── */
+
+.clue-heatmap {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.clue-heatmap-round {
+  background: rgb(2 6 23); /* slate-950 */
+  border: 1px solid rgb(30 41 59);
+  border-radius: 0.75rem;
+  overflow: hidden;
+}
+
+.clue-heatmap-round-header {
+  padding: 0.625rem 1rem;
+  background: rgb(15 23 42 / 0.8);
+  border-bottom: 1px solid rgb(30 41 59);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.clue-heatmap-round-title {
+  font-weight: 600;
+  font-size: 0.9375rem;
+  color: rgb(241 245 249);
+}
+
+.clue-heatmap-summary {
+  display: flex;
+  gap: 0.75rem;
+  font-size: 0.8rem;
+}
+
+.clue-heatmap-summary-item {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.clue-heatmap-summary-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.clue-heatmap-summary-dot--correct {
+  background: rgb(74 222 128); /* green-400 */
+}
+
+.clue-heatmap-summary-dot--incorrect {
+  background: rgb(251 113 133); /* rose-400 */
+}
+
+.clue-heatmap-summary-dot--unanswered {
+  background: rgb(100 116 139); /* slate-500 */
+}
+
+.clue-heatmap-summary-label {
+  color: rgb(148 163 184); /* slate-400 */
+}
+
+/* Grid wrapper for horizontal scrolling on small screens */
+.clue-heatmap-grid-wrapper {
+  overflow-x: auto;
+  padding: 0.75rem;
+}
+
+.clue-heatmap-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 4px;
+  table-layout: fixed;
+}
+
+.clue-heatmap-category-header {
+  padding: 0.4rem 0.25rem;
+  text-align: center;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: rgb(148 163 184); /* slate-400 */
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 0; /* forces text-overflow in fixed table */
+}
+
+.clue-heatmap-cell {
+  position: relative;
+  text-align: center;
+  padding: 0.5rem 0.25rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  transition: transform 0.15s, box-shadow 0.15s;
+  cursor: default;
+}
+
+.clue-heatmap-cell:hover {
+  transform: scale(1.08);
+  z-index: 1;
+}
+
+.clue-heatmap-cell--correct {
+  background: rgb(74 222 128 / 0.2);
+  color: rgb(74 222 128); /* green-400 */
+  border: 1px solid rgb(74 222 128 / 0.4);
+}
+
+.clue-heatmap-cell--correct:hover {
+  box-shadow: 0 0 8px rgb(74 222 128 / 0.4);
+}
+
+.clue-heatmap-cell--incorrect {
+  background: rgb(251 113 133 / 0.2);
+  color: rgb(251 113 133); /* rose-400 */
+  border: 1px solid rgb(251 113 133 / 0.4);
+}
+
+.clue-heatmap-cell--incorrect:hover {
+  box-shadow: 0 0 8px rgb(251 113 133 / 0.4);
+}
+
+.clue-heatmap-cell--unanswered {
+  background: rgb(100 116 139 / 0.15);
+  color: rgb(100 116 139); /* slate-500 */
+  border: 1px solid rgb(100 116 139 / 0.3);
+}
+
+.clue-heatmap-cell--unanswered:hover {
+  box-shadow: 0 0 8px rgb(100 116 139 / 0.3);
+}
+
+/* Daily Double indicator */
+.clue-heatmap-dd-badge {
+  position: absolute;
+  top: 2px;
+  right: 3px;
+  font-size: 0.6rem;
+  line-height: 1;
+  opacity: 0.8;
+}
+
+/* ─── Responsive ──────────────────────────────────────────────────────────── */
+
+@media (max-width: 640px) {
+  .clue-heatmap-table {
+    border-spacing: 3px;
+  }
+
+  .clue-heatmap-cell {
+    padding: 0.4rem 0.15rem;
+    font-size: 0.65rem;
+  }
+
+  .clue-heatmap-category-header {
+    font-size: 0.6rem;
+    padding: 0.3rem 0.15rem;
+  }
+
+  .clue-heatmap-round-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
