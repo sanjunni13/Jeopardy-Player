@@ -131,6 +131,7 @@ export function PlaySessionPage() {
             playerScore={playerScore}
             channel={channel}
             submissionsLocked={!session.buzz_state.clueActive}
+            players={session.players}
           />
         );
 

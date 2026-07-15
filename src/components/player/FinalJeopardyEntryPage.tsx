@@ -3,7 +3,8 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
 import { useFinalJeopardyEntry } from '../../hooks/useFinalJeopardyEntry';
 import { fetchSession, updateFinalJeopardyState } from '../../utils/sessionApi';
 import { broadcastMessage } from '../../utils/sessionChannel';
-import type { FinalJeopardyWager } from '../../types/session';
+import type { FinalJeopardyWager, SessionPlayer } from '../../types/session';
+import { ScoreboardStrip } from './ScoreboardStrip';
 import './FinalJeopardyEntryPage.css';
 
 interface FinalJeopardyEntryPageProps {
@@ -12,6 +13,7 @@ interface FinalJeopardyEntryPageProps {
   playerScore: number;
   channel: RealtimeChannel | null;
   submissionsLocked?: boolean;
+  players?: SessionPlayer[];
 }
 
 const MAX_ANSWER_LENGTH = 200;
@@ -22,6 +24,7 @@ export function FinalJeopardyEntryPage({
   playerScore,
   channel,
   submissionsLocked = true,
+  players = [],
 }: FinalJeopardyEntryPageProps) {
   const [wagerValue, setWagerValue] = useState('');
   const [wagerError, setWagerError] = useState<string | null>(null);
@@ -130,6 +133,8 @@ export function FinalJeopardyEntryPage({
           </p>
         </div>
 
+        <ScoreboardStrip players={players} currentPlayerName={playerName} />
+
         <form className="fj-entry__form" onSubmit={(e) => { e.preventDefault(); submitWager(); }} noValidate>
           <div className="fj-entry__field">
             <label className="fj-entry__label" htmlFor="fj-wager">
@@ -186,6 +191,7 @@ export function FinalJeopardyEntryPage({
         <div className="fj-entry__header">
           <p className="fj-entry__player-name">{playerName}</p>
         </div>
+        <ScoreboardStrip players={players} currentPlayerName={playerName} />
         <div className="fj-entry__confirmation">
           <p className="fj-entry__confirmation-text">
             Your answer has been submitted
@@ -204,6 +210,7 @@ export function FinalJeopardyEntryPage({
             Final Jeopardy
           </p>
         </div>
+        <ScoreboardStrip players={players} currentPlayerName={playerName} />
         <div className="fj-entry__confirmation">
           <p className="fj-entry__confirmation-text">
             Wager submitted! Waiting for the clue to be revealed…
@@ -226,6 +233,8 @@ export function FinalJeopardyEntryPage({
           Final Jeopardy — Enter Your Answer
         </p>
       </div>
+
+      <ScoreboardStrip players={players} currentPlayerName={playerName} />
 
       <form className="fj-entry__form" onSubmit={(e) => { e.preventDefault(); submitAnswer(); }} noValidate>
         <div className="fj-entry__field">
