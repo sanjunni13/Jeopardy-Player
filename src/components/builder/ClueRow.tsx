@@ -19,10 +19,11 @@ interface ClueRowProps {
   onMediaRemove: () => void
   isMediaUploading: boolean
   mediaError: string | null
+  onDragHandlePointerDown?: (e: React.PointerEvent) => void
 }
 
 const inputClasses =
-  'w-full min-h-11 px-3 py-2 rounded-lg border border-border bg-input/30 text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none overflow-hidden'
+  'w-full min-h-11 px-3 py-2 rounded-lg border border-border bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none overflow-hidden'
 
 export function ClueRow({
   roundIndex,
@@ -37,6 +38,7 @@ export function ClueRow({
   onMediaRemove,
   isMediaUploading,
   mediaError,
+  onDragHandlePointerDown,
 }: ClueRowProps) {
   const idPrefix = `r${roundIndex}-c${categoryIndex}-q${clueIndex}`
   const clueNumber = clueIndex + 1
@@ -64,12 +66,40 @@ export function ClueRow({
   }, [])
 
   return (
-    <div className="py-2">
-      <div className="grid grid-cols-[6rem_1fr_1fr_auto] items-start gap-3">
+    <div className="py-2 bg-slate-800 rounded-lg">
+      <div className="grid grid-cols-[auto_6rem_1fr_1fr_auto] items-start gap-3">
+        {/* Drag handle */}
+        <div className="flex items-center min-h-11">
+          <div
+            className="flex items-center justify-center p-1 cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground touch-none"
+            aria-label={`Drag to reorder clue ${clueNumber}`}
+            onPointerDown={onDragHandlePointerDown}
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <circle cx="9" cy="5" r="1" />
+              <circle cx="9" cy="12" r="1" />
+              <circle cx="9" cy="19" r="1" />
+              <circle cx="15" cy="5" r="1" />
+              <circle cx="15" cy="12" r="1" />
+              <circle cx="15" cy="19" r="1" />
+            </svg>
+          </div>
+        </div>
+
         {/* Computed value label */}
         <div className="flex flex-col">
           <span
-            className="w-full min-h-11 px-3 py-2 rounded-lg border border-border bg-input/30 text-sm flex items-center"
+            className="w-full min-h-11 px-3 py-2 rounded-lg border border-border bg-slate-800 text-sm flex items-center"
             aria-label={`Clue ${clueNumber} value - ${roundName} Round, ${categoryLabel}`}
           >
             ${computedValue}

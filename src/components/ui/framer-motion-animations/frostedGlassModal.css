@@ -1,0 +1,19 @@
+/* FrostedGlassModal: CSS for frosted glass modal overlay */
+
+.frosted-glass-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+  background: hsl(220 14% 10% / 0.35);
+  will-change: opacity;
+}
+
+@supports (backdrop-filter: blur(2px)) {
+  .frosted-glass-overlay {
+    background: hsl(220 14% 10% / 0.18);
+    backdrop-filter: blur(12px) saturate(1.15);
+  }
+}

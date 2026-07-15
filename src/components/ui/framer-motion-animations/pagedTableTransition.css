@@ -1,0 +1,35 @@
+/* PagedTableTransition: CSS for animated table page transitions */
+/* Animation logic handled by framer-motion; this file provides pagination container styles */
+
+.paged-table-pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 0;
+}
+
+.paged-table-pager button {
+  padding: 0.25rem 0.75rem;
+  border-radius: 0.375rem;
+  border: 1px solid hsl(var(--border));
+  background: transparent;
+  color: hsl(var(--foreground));
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.paged-table-pager button:hover:not(:disabled) {
+  background: hsl(var(--accent));
+}
+
+.paged-table-pager button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.paged-table-page-info {
+  font-size: 0.75rem;
+  color: hsl(var(--muted-foreground));
+}

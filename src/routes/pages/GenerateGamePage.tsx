@@ -14,6 +14,7 @@ import { CloudSpinner } from '../../components/ui/CloudSpinner'
 import ElasticSlider from '../../components/ui/ElasticSlider'
 import { FAQCard } from '../../components/ui/FAQCard'
 import { generateGameFAQ } from '../../data/faqData'
+import { UnderlineGlideIndicator, UnderlineGlideTabBar } from '../../components/ui/framer-motion-animations'
 import './GenerateGamePage.css'
 
 type ActiveTab = 'archive' | 'labs' | 'ai'
@@ -195,7 +196,7 @@ export function GenerateGamePage() {
         <h1 className="generate-title">Generate a Game</h1>
 
         {/* Tab bar */}
-        <div className="generate-tab-bar">
+        <UnderlineGlideTabBar className="generate-tab-bar">
           <button
             type="button"
             onClick={() => setActiveTab('archive')}
@@ -203,6 +204,7 @@ export function GenerateGamePage() {
             disabled={isGenerating}
           >
             J! Archive
+            {activeTab === 'archive' && <UnderlineGlideIndicator layoutId="generate-tab-underline" />}
           </button>
           <button
             type="button"
@@ -211,6 +213,7 @@ export function GenerateGamePage() {
             disabled={isGenerating}
           >
             JeopardyLabs
+            {activeTab === 'labs' && <UnderlineGlideIndicator layoutId="generate-tab-underline" />}
           </button>
           <button
             type="button"
@@ -219,8 +222,9 @@ export function GenerateGamePage() {
             disabled={isGenerating}
           >
             AI Generation
+            {activeTab === 'ai' && <UnderlineGlideIndicator layoutId="generate-tab-underline" />}
           </button>
-        </div>
+        </UnderlineGlideTabBar>
 
         {/* Cloud Spinner Overlay */}
         {isGenerating && (

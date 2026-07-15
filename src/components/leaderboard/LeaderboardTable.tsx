@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import type { PlayerRow, SortableColumn } from '../../utils/leaderboardUtils'
 import { computeRate, formatCurrency, sortPlayers } from '../../utils/leaderboardUtils'
 import { SortableColumnHeader } from './SortableColumnHeader'
+import { PagedTableBody, PagedTableRow, PagedTablePager } from '../ui/framer-motion-animations'
 import './LeaderboardTable.css'
 
 interface SortState {
@@ -13,25 +14,37 @@ interface LeaderboardTableProps {
   players: PlayerRow[]
 }
 
+const PAGE_SIZE = 10
+
 export function LeaderboardTable({ players }: LeaderboardTableProps) {
   const [sortState, setSortState] = useState<SortState>({
     column: 'total_money_earned',
     direction: 'desc',
   })
+  const [page, setPage] = useState(0)
 
   function handleSort(column: SortableColumn) {
     setSortState((prev) => {
       if (prev.column === column) {
-        // Same column: toggle direction
         return { column, direction: prev.direction === 'asc' ? 'desc' : 'asc' }
       }
-      // New column: player_name defaults to asc, all others to desc
       const direction = column === 'player_name' ? 'asc' : 'desc'
       return { column, direction }
     })
+    setPage(0) // Reset to first page on sort change
   }
 
   const sortedPlayers = sortPlayers(players, sortState.column, sortState.direction)
+
+  const totalPages = Math.max(1, Math.ceil(sortedPlayers.length / PAGE_SIZE))
+  const safePage = Math.min(page, totalPages - 1)
+
+  const pagedPlayers = useMemo(() => {
+    const start = safePage * PAGE_SIZE
+    return sortedPlayers.slice(start, start + PAGE_SIZE)
+  }, [sortedPlayers, safePage])
+
+  const pageKey = `${safePage}-${sortState.column}-${sortState.direction}`
 
   return (
     <div className="leaderboard-table-container">
@@ -89,8 +102,8 @@ export function LeaderboardTable({ players }: LeaderboardTableProps) {
             />
           </tr>
         </thead>
-        <tbody>
-          {sortedPlayers.map((player) => {
+        <PagedTableBody pageKey={pageKey}>
+          {pagedPlayers.map((player, index) => {
             const winRate = computeRate(player.total_games_won, player.total_games_played)
             const accuracyRate = computeRate(
               player.total_correct_answers,
@@ -102,7 +115,7 @@ export function LeaderboardTable({ players }: LeaderboardTableProps) {
             )
 
             return (
-              <tr key={player.id}>
+              <PagedTableRow key={player.id} index={index}>
                 <td>{player.player_name}</td>
                 <td>
                   {player.total_games_won}/{player.total_games_played} ({winRate}%)
@@ -116,11 +129,18 @@ export function LeaderboardTable({ players }: LeaderboardTableProps) {
                 </td>
                 <td className="col-money">{formatCurrency(player.total_money_earned)}</td>
                 <td className="col-balance">{formatCurrency(player.current_balance)}</td>
-              </tr>
+              </PagedTableRow>
             )
           })}
-        </tbody>
+        </PagedTableBody>
       </table>
+      {totalPages > 1 && (
+        <PagedTablePager
+          currentPage={safePage}
+          totalPages={totalPages}
+          onPageChange={setPage}
+        />
+      )}
     </div>
   )
 }

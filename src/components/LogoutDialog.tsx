@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { supabase } from '../utils/supabase'
+import { FrostedGlassModal } from './ui/framer-motion-animations'
 import './LogoutDialog.css'
 
 interface LogoutDialogProps {
@@ -24,19 +25,9 @@ export function LogoutDialog({ onClose, onError }: LogoutDialogProps) {
   }
 
   return (
-    /* Backdrop */
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="logout-title"
-      className="logout-backdrop"
-      onClick={!loggingOut ? onClose : undefined}
-    >
+    <FrostedGlassModal open={true} onClose={!loggingOut ? onClose : () => {}} ariaLabelledBy="logout-title">
       {/* Panel */}
-      <div
-        className="logout-panel"
-        onClick={(e) => e.stopPropagation()}
-      >
+      <div className="logout-panel" onClick={(e) => e.stopPropagation()}>
         {loggingOut ? (
           /* ── Logging-out state ── */
           <div className="logout-loading">
@@ -46,35 +37,24 @@ export function LogoutDialog({ onClose, onError }: LogoutDialogProps) {
         ) : (
           /* ── Confirmation state ── */
           <>
-            <h2
-              id="logout-title"
-              className="logout-title"
-            >
+            <h2 id="logout-title" className="logout-title">
               Log Out
             </h2>
             <p className="logout-message">
               Are you sure you want to log out of your account?
             </p>
             <div className="logout-actions">
-              <button
-                type="button"
-                onClick={onClose}
-                className="logout-btn-cancel"
-              >
+              <button type="button" onClick={onClose} className="logout-btn-cancel">
                 No, stay
               </button>
-              <button
-                type="button"
-                onClick={handleConfirm}
-                className="logout-btn-confirm"
-              >
+              <button type="button" onClick={handleConfirm} className="logout-btn-confirm">
                 Yes, log out
               </button>
             </div>
           </>
         )}
       </div>
-    </div>
+    </FrostedGlassModal>
   )
 }
 

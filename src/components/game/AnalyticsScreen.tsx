@@ -9,6 +9,7 @@ import { RatingPrompt } from '../RatingPrompt'
 import { BackgroundGradient } from '../ui/background-gradient'
 import { ScoreTimelineChart, PALETTE } from './ScoreTimelineChart'
 import { CategoryAccuracy } from './CategoryAccuracy'
+import { ClueHeatmap } from './ClueHeatmap'
 import { DailyDoubleBreakdown } from './DailyDoubleBreakdown'
 import { BiggestComeback } from './BiggestComeback'
 import { LongestLossStreak } from './LongestLossStreak'
@@ -219,6 +220,12 @@ export function AnalyticsScreen({ session, gameId, onBackToHome }: AnalyticsScre
                   timelines={analytics.scoreTimelines}
                   playerNames={sortedPlayers.map(p => p.name)}
                 />
+              </section>
+
+              {/* Clue Heatmap */}
+              <section className="analytics-section">
+                <h2 className="analytics-section-title">Board Heatmap</h2>
+                <ClueHeatmap session={session} />
               </section>
 
               {/* Category Accuracy */}

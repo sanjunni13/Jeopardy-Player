@@ -6,6 +6,7 @@ import { RoundTabs } from './RoundTabs'
 import { generateRoundLabels } from '../../utils/builderFormStructure'
 import type {
   BuilderFormState,
+  CategoryFormState,
   ValidationErrors,
   ClueFormState,
   FinalRoundFormState,
@@ -34,6 +35,8 @@ interface BuilderFormProps {
     value: string | boolean | MediaData | null
   ) => void
   onSetFinalField: (field: keyof FinalRoundFormState, value: string | MediaData | null) => void
+  onReorderCategories: (roundIdx: number, newOrder: CategoryFormState[]) => void
+  onReorderClues: (roundIdx: number, catIdx: number, newOrder: ClueFormState[]) => void
   onValidateField: (fieldPath: string) => void
   onSave: () => void
   onPublish: () => void
@@ -58,6 +61,8 @@ export function BuilderForm({
   onSetCategoryName,
   onSetClueField,
   onSetFinalField,
+  onReorderCategories,
+  onReorderClues,
   onValidateField,
   onSave,
   onPublish,
@@ -254,6 +259,12 @@ export function BuilderForm({
             }
             onClueFieldChange={(catIdx, clueIdx, field, value) =>
               onSetClueField(activeTab, catIdx, clueIdx, field, value)
+            }
+            onReorderCategories={(newOrder) =>
+              onReorderCategories(activeTab, newOrder)
+            }
+            onReorderClues={(catIdx, newOrder) =>
+              onReorderClues(activeTab, catIdx, newOrder)
             }
             onMediaAttach={(catIdx, clueIdx, file) =>
               onMediaAttach?.(activeTab, catIdx, clueIdx, file)
