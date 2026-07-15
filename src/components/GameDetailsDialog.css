@@ -12,8 +12,9 @@
 }
 
 .game-details-dialog {
-  width: 100%;
-  max-width: 28rem;
+  width: 30vw;
+  max-width: 24rem;
+  min-width: 0;
   max-height: 85vh;
   overflow-y: auto;
   border-radius: 1rem;
