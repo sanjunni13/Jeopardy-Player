@@ -17,7 +17,13 @@ const ROUND_ORDER: RoundName[] = ['single', 'double', 'triple', 'quadruple', 'qu
  * Strips basic HTML tags from a string (some clues use html formatting).
  */
 function stripHtml(text: string): string {
-  return text.replace(/<[^>]*>/g, '').trim()
+  let current = text
+  let previous: string
+  do {
+    previous = current
+    current = current.replace(/<[^>]*>/g, '')
+  } while (current !== previous)
+  return current.trim()
 }
 
 /**
