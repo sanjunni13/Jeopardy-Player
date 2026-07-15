@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { FinalRound, Player } from '../../types/game'
 import type { FinalJeopardyWager } from '../../types/session'
+import { Component as EtherealShadows } from '../ui/framer-motion-animations/etherealShadows'
 import './FinalJeopardy.css'
 
 interface FinalJeopardyProps {
@@ -96,6 +97,14 @@ export function FinalJeopardy({ finalRound, players, onComplete, onClueRevealed,
         className="fj-category-wrapper"
         onClick={() => { if (allWagersSubmitted) { setPhase('clue'); onClueRevealed?.() } }}
       >
+        <div className="fj-category-bg">
+          <EtherealShadows
+            color="rgba(0, 22, 153, 1)"
+            animation={{ scale: 100, speed: 90 }}
+            noise={{ opacity: 1, scale: 1.2 }}
+            sizing="fill"
+          />
+        </div>
         <div className="fj-category-content">
           <p className="fj-category-label">Final Jeopardy</p>
           <h1 className="fj-category-name">

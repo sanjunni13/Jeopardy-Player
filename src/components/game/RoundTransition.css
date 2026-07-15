@@ -1,13 +1,24 @@
 /* ─── Round Transition ──────────────────────────────────────────────────────── */
 
 .round-transition {
+  position: relative;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
-  min-height: 60vh;
+  padding-top: 15vh;
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+.round-transition-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
 }
 
 .round-transition-content {
+  position: relative;
+  z-index: 10;
   text-align: center;
 }
 
