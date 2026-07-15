@@ -11,6 +11,7 @@ export type MediaData =
 
 /** Form-level state for a single clue row */
 export interface ClueFormState {
+  _id: string
   value: string
   clue: string
   solution: string
@@ -20,6 +21,7 @@ export interface ClueFormState {
 
 /** Form-level state for a single category */
 export interface CategoryFormState {
+  _id: string
   name: string
   clues: [ClueFormState, ClueFormState, ClueFormState, ClueFormState, ClueFormState]
 }
@@ -57,6 +59,12 @@ const ROUND_NAMES = [
 
 // ─── Functions ─────────────────────────────────────────────────────────────────
 
+/** Simple incrementing ID generator for form-level identity tracking */
+let _nextId = 0
+export function uid(): string {
+  return `_${_nextId++}`
+}
+
 /**
  * Returns the first N RoundName values in order.
  */
@@ -74,6 +82,7 @@ export function generateEmptyFormState(
   categoriesPerRound: number,
 ): BuilderFormState {
   const createEmptyClue = (clueIndex: number, roundIndex: number): ClueFormState => ({
+    _id: uid(),
     value: String(computeClueValue(clueIndex + 1, roundIndex + 1)),
     clue: '',
     solution: '',
@@ -82,6 +91,7 @@ export function generateEmptyFormState(
   })
 
   const createEmptyCategory = (roundIndex: number): CategoryFormState => ({
+    _id: uid(),
     name: '',
     clues: [
       createEmptyClue(0, roundIndex),

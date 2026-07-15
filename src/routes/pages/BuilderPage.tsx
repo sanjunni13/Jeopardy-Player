@@ -15,6 +15,7 @@ import { BackgroundGradient } from '../../components/ui/background-gradient'
 import { BuilderForm } from '../../components/builder/BuilderForm'
 import { ExitGuardDialog } from '../../components/builder/ExitGuardDialog'
 import { DeleteConfirmationDialog } from '../../components/builder/DeleteConfirmationDialog'
+import { BackToTopFab } from '../../components/ui/framer-motion-animations'
 import type { MediaData } from '../../utils/builderFormStructure'
 import './BuilderPage.css'
 
@@ -52,6 +53,8 @@ export function BuilderPage() {
     setCategoryName,
     setClueField,
     setFinalField,
+    reorderCategories,
+    reorderClues,
     validateField,
     validateForPublish,
     resetDirty,
@@ -500,6 +503,8 @@ export function BuilderPage() {
           onSetCategoryName={setCategoryName}
           onSetClueField={setClueField}
           onSetFinalField={setFinalField}
+          onReorderCategories={reorderCategories}
+          onReorderClues={reorderClues}
           onValidateField={validateField}
           onSave={handleSave}
           onPublish={handlePublish}
@@ -536,6 +541,8 @@ export function BuilderPage() {
         onConfirm={handleDeleteConfirm}
         onCancel={handleDeleteCancel}
       />
+
+      <BackToTopFab />
     </div>
   )
 }

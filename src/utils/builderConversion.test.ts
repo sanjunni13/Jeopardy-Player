@@ -126,9 +126,11 @@ describe('builderConversion', () => {
   })
 
   describe('round-trip: draftToBuilderState(builderStateToDraft(state))', () => {
-    it('produces a state deeply equal to the original', () => {
+    it('produces a state deeply equal to the original (ignoring ephemeral _id fields)', () => {
       const roundTripped = draftToBuilderState(builderStateToDraft(sampleState))
-      expect(roundTripped).toEqual(sampleState)
+      // Strip _id fields for comparison since they are ephemeral and regenerated on load
+      const stripIds = (obj: unknown): unknown => JSON.parse(JSON.stringify(obj, (key, val) => key === '_id' ? undefined : val))
+      expect(stripIds(roundTripped)).toEqual(stripIds(sampleState))
     })
   })
 

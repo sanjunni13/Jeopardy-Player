@@ -1,0 +1,12 @@
+/* UnderlineGlide: CSS for animated tab underline */
+
+.underline-glide-indicator {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  border-radius: 1px;
+  background: #6A1B9A;
+  z-index: 1;
+}

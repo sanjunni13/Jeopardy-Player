@@ -4,6 +4,7 @@ import ReactPlayer from 'react-player'
 import type { MediaData } from '../../utils/builderFormStructure'
 import { validateMediaFile, validateYouTubeUrl } from '../../utils/mediaApi'
 import { DeleteButton } from '../DeleteButton'
+import { ContextMenuMorph, ContextMenuItem } from '../ui/framer-motion-animations'
 
 interface MediaAttachmentProps {
   media: MediaData | null
@@ -33,6 +34,7 @@ export function MediaAttachment({
   size = 'compact',
 }: MediaAttachmentProps) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
+  const [dropdownAnchor, setDropdownAnchor] = useState({ x: 0, y: 0 })
   const [youtubeInput, setYoutubeInput] = useState('')
   const [showYoutubeInput, setShowYoutubeInput] = useState(false)
   const [localError, setLocalError] = useState<string | null>(null)
@@ -59,17 +61,9 @@ export function MediaAttachment({
     }
   }, [displayError])
 
-  // Close dropdown on outside click
+  // Close dropdown on outside click (handled by ContextMenuMorph now)
   useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setIsDropdownOpen(false)
-      }
-    }
-    if (isDropdownOpen) {
-      document.addEventListener('mousedown', handleClickOutside)
-    }
-    return () => document.removeEventListener('mousedown', handleClickOutside)
+    // No-op: ContextMenuMorph handles its own close-on-click-outside
   }, [isDropdownOpen])
 
   const clearError = useCallback(() => {
@@ -303,7 +297,11 @@ export function MediaAttachment({
           <div ref={dropdownRef} className="relative">
             <button
               type="button"
-              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+              onClick={(e) => {
+                const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+                setDropdownAnchor({ x: rect.right, y: rect.bottom + 4 })
+                setIsDropdownOpen(!isDropdownOpen)
+              }}
               disabled={isUploading}
               className="flex items-center justify-center w-7 h-7 rounded text-muted-foreground hover:text-foreground hover:bg-slate-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               aria-label="Attach media"
@@ -346,31 +344,16 @@ export function MediaAttachment({
               )}
             </button>
 
-            {isDropdownOpen && (
-              <div className="absolute z-10 right-0 top-full mt-1 w-32 rounded-md border border-border bg-slate-800 shadow-lg py-1">
-                <button
-                  type="button"
-                  onClick={handleImageSelect}
-                  className="w-full text-left px-3 py-1.5 text-xs text-foreground hover:bg-slate-700 transition-colors"
-                >
-                  Image
-                </button>
-                <button
-                  type="button"
-                  onClick={handleAudioSelect}
-                  className="w-full text-left px-3 py-1.5 text-xs text-foreground hover:bg-slate-700 transition-colors"
-                >
-                  Audio
-                </button>
-                <button
-                  type="button"
-                  onClick={handleYoutubeSelect}
-                  className="w-full text-left px-3 py-1.5 text-xs text-foreground hover:bg-slate-700 transition-colors"
-                >
-                  YouTube
-                </button>
-              </div>
-            )}
+            <ContextMenuMorph
+              open={isDropdownOpen}
+              onClose={() => setIsDropdownOpen(false)}
+              anchorX={dropdownAnchor.x - 128}
+              anchorY={dropdownAnchor.y}
+            >
+              <ContextMenuItem onClick={handleImageSelect} isFirst>Image</ContextMenuItem>
+              <ContextMenuItem onClick={handleAudioSelect}>Audio</ContextMenuItem>
+              <ContextMenuItem onClick={handleYoutubeSelect}>YouTube</ContextMenuItem>
+            </ContextMenuMorph>
           </div>
         </div>
 
@@ -407,7 +390,11 @@ export function MediaAttachment({
         <div ref={dropdownRef} className="relative">
           <button
             type="button"
-            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+            onClick={(e) => {
+              const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+              setDropdownAnchor({ x: rect.right, y: rect.bottom + 4 })
+              setIsDropdownOpen(!isDropdownOpen)
+            }}
             disabled={isUploading}
             className="flex items-center justify-center w-7 h-7 rounded text-muted-foreground hover:text-foreground hover:bg-slate-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             aria-label="Attach media"
@@ -450,31 +437,16 @@ export function MediaAttachment({
             )}
           </button>
 
-          {isDropdownOpen && (
-            <div className="absolute z-10 right-0 top-full mt-1 w-32 rounded-md border border-border bg-slate-800 shadow-lg py-1">
-              <button
-                type="button"
-                onClick={handleImageSelect}
-                className="w-full text-left px-3 py-1.5 text-xs text-foreground hover:bg-slate-700 transition-colors"
-              >
-                Image
-              </button>
-              <button
-                type="button"
-                onClick={handleAudioSelect}
-                className="w-full text-left px-3 py-1.5 text-xs text-foreground hover:bg-slate-700 transition-colors"
-              >
-                Audio
-              </button>
-              <button
-                type="button"
-                onClick={handleYoutubeSelect}
-                className="w-full text-left px-3 py-1.5 text-xs text-foreground hover:bg-slate-700 transition-colors"
-              >
-                YouTube
-              </button>
-            </div>
-          )}
+          <ContextMenuMorph
+            open={isDropdownOpen}
+            onClose={() => setIsDropdownOpen(false)}
+            anchorX={dropdownAnchor.x - 128}
+            anchorY={dropdownAnchor.y}
+          >
+            <ContextMenuItem onClick={handleImageSelect} isFirst>Image</ContextMenuItem>
+            <ContextMenuItem onClick={handleAudioSelect}>Audio</ContextMenuItem>
+            <ContextMenuItem onClick={handleYoutubeSelect}>YouTube</ContextMenuItem>
+          </ContextMenuMorph>
         </div>
       </div>
 
