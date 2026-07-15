@@ -106,7 +106,7 @@ export function FinalJeopardy({ finalRound, players, onComplete, onClueRevealed,
           />
         </div>
         <div className="fj-category-content">
-          <p className="fj-category-label">Final Jeopardy</p>
+          <p className="fj-category-label">Final Jeopardy Category</p>
           <h1 className="fj-category-name">
             {finalRound.category}
           </h1>
