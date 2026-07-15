@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { FrostedGlassModal } from './ui/framer-motion-animations'
 import './DeleteAccountDialog.css'
 
 interface DeleteAccountDialogProps {
@@ -70,24 +71,12 @@ export function DeleteAccountDialog({
     []
   )
 
-  function handleBackdropClick() {
-    if (!isLoading) {
-      onCancel()
-    }
-  }
-
   if (!isOpen) return null
 
   return (
-    <div
-      className="delete-account-dialog-overlay"
-      onClick={handleBackdropClick}
-    >
+    <FrostedGlassModal open={isOpen} onClose={!isLoading ? onCancel : () => {}} ariaLabelledBy="delete-account-title">
       <div
         ref={dialogRef}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="delete-account-title"
         className="delete-account-dialog"
         onClick={(e) => e.stopPropagation()}
         onKeyDown={handleKeyDown}
@@ -149,7 +138,7 @@ export function DeleteAccountDialog({
           </>
         )}
       </div>
-    </div>
+    </FrostedGlassModal>
   )
 }
 

@@ -14,6 +14,11 @@ import { usePlayerProfileContext } from '../../hooks/usePlayerProfileContext'
 import { useGameRatings } from '../../hooks/useGameRatings'
 import { fetchFavorites, addFavorite, removeFavorite } from '../../utils/favoritesApi'
 import { sortGames } from '../../utils/gameSorting'
+import {
+  MeltAwayList,
+  MeltAwayItem,
+  BackToTopFab,
+} from '../../components/ui/framer-motion-animations'
 import type { SortOption } from '../../utils/gameSorting'
 import type { GameRecord } from '../../types/game'
 import './GameLibraryPage.css'
@@ -490,23 +495,24 @@ export function GameLibraryPage() {
         )}
 
         {status === 'success' && displayedGames.length > 0 && !favouritesLoading && !favouritesError && (!profile || favouritesLoaded) && (
-          <div className="library-grid">
+          <MeltAwayList className="library-grid">
             {displayedGames.map((game) => (
-              <GameCard
-                key={game.id}
-                id={game.id}
-                gameName={game.game_name}
-                totalRounds={game.total_rounds}
-                creatorName={game.creator_name}
-                onClick={handleCardClick}
-                averageRating={ratings.get(game.id)?.averageRating ?? null}
-                ratingCount={ratings.get(game.id)?.ratingCount ?? 0}
-                isFavorited={favouriteIds.has(game.id)}
-                onToggleFavorite={() => handleToggleFavorite(game.id)}
-                showFavorite={profile != null}
-              />
+              <MeltAwayItem key={game.id} itemKey={game.id} className="library-grid-item">
+                <GameCard
+                  id={game.id}
+                  gameName={game.game_name}
+                  totalRounds={game.total_rounds}
+                  creatorName={game.creator_name}
+                  onClick={handleCardClick}
+                  averageRating={ratings.get(game.id)?.averageRating ?? null}
+                  ratingCount={ratings.get(game.id)?.ratingCount ?? 0}
+                  isFavorited={favouriteIds.has(game.id)}
+                  onToggleFavorite={() => handleToggleFavorite(game.id)}
+                  showFavorite={profile != null}
+                />
+              </MeltAwayItem>
             ))}
-          </div>
+          </MeltAwayList>
         )}
       </BackgroundGradient>
 
@@ -523,6 +529,8 @@ export function GameLibraryPage() {
       />
 
       <FAQCard items={gameLibraryFAQ} />
+
+      <BackToTopFab />
     </div>
   )
 }

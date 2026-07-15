@@ -1,4 +1,5 @@
-import { useEffect, useRef, useCallback } from 'react'
+import { useRef, useCallback } from 'react'
+import { FrostedGlassModal } from './ui/framer-motion-animations'
 import './DeleteGameDialog.css'
 
 interface DeleteGameDialogProps {
@@ -12,27 +13,6 @@ export function DeleteGameDialog({ isOpen, gameName, onConfirm, onCancel }: Dele
   const cancelRef = useRef<HTMLButtonElement>(null)
   const confirmRef = useRef<HTMLButtonElement>(null)
   const dialogRef = useRef<HTMLDivElement>(null)
-
-  // Focus the cancel button when dialog opens
-  useEffect(() => {
-    if (isOpen) {
-      cancelRef.current?.focus()
-    }
-  }, [isOpen])
-
-  // Handle Escape key to close dialog
-  useEffect(() => {
-    if (!isOpen) return
-
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape') {
-        onCancel()
-      }
-    }
-
-    document.addEventListener('keydown', handleKeyDown)
-    return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [isOpen, onCancel])
 
   // Focus trap: Tab cycles between cancel and confirm buttons
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
@@ -57,18 +37,10 @@ export function DeleteGameDialog({ isOpen, gameName, onConfirm, onCancel }: Dele
     }
   }, [])
 
-  if (!isOpen) return null
-
   return (
-    <div
-      className="delete-game-dialog-overlay"
-      onClick={onCancel}
-    >
+    <FrostedGlassModal open={isOpen} onClose={onCancel} ariaLabelledBy="delete-game-dialog-title">
       <div
         ref={dialogRef}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="delete-game-dialog-title"
         className="delete-game-dialog"
         onClick={(e) => e.stopPropagation()}
         onKeyDown={handleKeyDown}
@@ -98,6 +70,6 @@ export function DeleteGameDialog({ isOpen, gameName, onConfirm, onCancel }: Dele
           </button>
         </div>
       </div>
-    </div>
+    </FrostedGlassModal>
   )
 }

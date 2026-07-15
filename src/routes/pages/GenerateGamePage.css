@@ -62,6 +62,7 @@
 }
 
 .generate-tab {
+  position: relative;
   padding: 0.5rem 1rem;
   font-size: 0.875rem;
   font-weight: 500;
@@ -79,7 +80,7 @@
 
 .generate-tab.active {
   color: rgb(241 245 249); /* slate-100 */
-  border-bottom-color: #6A1B9A;
+  border-bottom-color: transparent;
 }
 
 .generate-tab:disabled {
