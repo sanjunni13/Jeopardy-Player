@@ -116,7 +116,7 @@ interface CoopConfig {
 }
 ```
 
-**Purpose**: All players share a single score pool instead of competing individually.
+**Purpose**: All players share a single score pool instead of competing individually. The team wins if the pool reaches a configurable target threshold by game end. Ideal for classrooms, icebreakers, or groups where competition isn't appropriate.
 
 **Key Functions** (`coopScoring.ts`):
 - `calculateBoardTotal(game)`: Sum of all clue values across all rounds (excludes FJ)
@@ -126,7 +126,68 @@ interface CoopConfig {
 
 **Victory Condition**: `teamPool >= targetScore`
 
-The pool can go negative — this is intentional.
+The pool can go negative — this is intentional and allows dramatic comebacks.
+
+#### Co-op Mode In-Depth
+
+**Initialization** (when host clicks "Play"):
+1. `calculateBoardTotal(game)` sums all clue values across all rounds
+2. `calculateTargetScore(boardTotal, config.coop.targetPercentage)` computes the target
+3. `GameSession` is initialized with `teamPool: 0`, `targetScore`, and `boardTotal`
+
+**Scoring Flow** (`GamePage.handleMark` when co-op is active):
+1. Player buzzes in and host marks them correct/incorrect (standard buzzer flow)
+2. Instead of calling `applyModifiers()`, calls `applyCoopScoring()`:
+   - Reverses any previous marking on this player for this clue
+   - Applies new marking: +baseValue (correct) or -baseValue (incorrect)
+   - Returns `{ poolDelta, newPool }`
+3. `session.teamPool` updated with `newPool`
+4. Individual player stats still tracked (`correctCount`, `incorrectCount`, `totalEarned`) for analytics
+5. Broadcasts `coop_pool_update` message to all connected player devices
+
+**Composition with Other Toggles**:
+- **Co-op + Wagering**: The wager amount replaces the clue's base value for pool calculations. Each player's wager determines how much is added/deducted from the pool for their answer.
+- **Co-op + Timed Clues**: Timer locks the buzzer system at zero exactly as in competitive mode. No special interaction with co-op scoring.
+- **Co-op + Rules Engine**: MUTUALLY EXCLUSIVE. When co-op is enabled, the Rules Engine section is hidden, disabled, and reset to defaults. Competitive-only modifiers (steal bonus, streak multiplier, penalty doubler) don't apply in collaborative play.
+
+**Daily Doubles in Co-op**:
+- The DD max wager is `Math.max(teamPool, 1000)` when `teamPool > 0`
+- If `teamPool ≤ 0`, max wager is `$1000` (allows team to recover from negative)
+- DD result adds to or deducts from the team pool, not an individual score
+
+**Final Jeopardy in Co-op** (see detailed doc in `06-final-jeopardy.md`):
+- Host enters a single team wager (max = `Math.max(teamPool, 1000)`)
+- All players can still submit individual answers via their devices for discussion
+- Host views all submitted answers and makes ONE collective correct/incorrect judgment
+- Result adjusts `teamPool` by the wager amount
+
+**Game Over**:
+- Victory: `teamPool >= targetScore` → "Team Victory! 🎉" heading + confetti
+- Defeat: `teamPool < targetScore` → "Team Defeat 😔" heading, no confetti
+- Contribution table shows each player's correct count, incorrect count, and net contribution
+- Leaderboard submission is **skipped entirely** — no `updateGameStats()` call
+- Only `incrementTimesPlayed()` is called on the game record
+
+**Edge Cases**:
+- `boardTotal` is 0 → target is 0, team wins by default
+- Single-player co-op → valid; one player plays against the board solo
+- `teamPool` goes deeply negative → progress bar clamps to 0% visually, but numeric display shows actual value
+
+#### Buzzing in Co-op Mode
+
+The buzzer system is **completely unchanged** in co-op mode. All buzzer mechanics work identically to competitive play:
+
+1. **First buzz wins**: When a clue is activated, all players race to buzz in. The first buzz (by timestamp) goes to the front of the queue.
+2. **Lockout on incorrect**: If a player answers incorrectly, they are added to the `lockedOut` list and cannot buzz again for that clue. Other players can still attempt.
+3. **System lock/unlock**: The host can manually lock or unlock the buzzer system at any time.
+4. **Timed clues**: If Timed Clues toggle is active, the countdown locks buzzers at zero.
+5. **Queue clearing**: When the host moves on (returns to board), the queue is cleared and lockouts are reset for the next clue.
+
+The only difference is what happens AFTER the host marks a player's answer:
+- Competitive: `applyModifiers()` adjusts that player's individual score
+- Co-op: `applyCoopScoring()` adjusts the shared `teamPool`
+
+Individual player `Player.score` fields are set to 0 and unused for display in co-op mode. The `CoopScoreboard` shows the team pool instead of individual scores. However, `correctCount`, `incorrectCount`, and `totalEarned` are still tracked per-player for the contribution table in `CoopGameOver`.
 
 ## The `applyModifiers()` Function
 

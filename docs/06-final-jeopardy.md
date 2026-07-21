@@ -95,30 +95,135 @@ interface FinalJeopardySubmission {
 
 ## Scoring Logic (`finalJeopardyScoring.ts`)
 
-For each player:
-- **Correct**: `score += wager`
-- **Incorrect**: `score -= wager`
+### Competitive Mode
 
-In co-op mode:
+For each player, the host marks their answer on the scoring panel:
+
+```typescript
+// Simple application
+applyScoreMark(currentScore: number, wager: number, isCorrect: boolean): number
+// Returns: isCorrect ? currentScore + wager : currentScore - wager
+
+// Reversal + re-application (when host changes their mind)
+reverseAndApplyMark(currentScore: number, wager: number, previousMark: boolean, newMark: boolean): number
+// First reverses the previous mark, then applies the new one
+```
+
+The `FinalJeopardy.tsx` component maintains local player state and handles marking with full reversal support — if the host clicks "Correct" then changes to "Incorrect", the previous correct is undone before the incorrect is applied.
+
+Player stats updated per marking:
+- `correctFinalJeopardy`: Set to 1 on correct (0 or 1 per game)
+- `incorrectFinalJeopardy`: Set to 1 on incorrect (0 or 1 per game)
+- `totalEarned`: Adjusted by wager amount on correct
+
+### Co-op Mode
+
+- Single team wager applied to `teamPool`
 - **Correct**: `teamPool += wager`
 - **Incorrect**: `teamPool -= wager`
+- Uses `onCoopMarkAnswer` callback which flows back up to `GamePage`
 
-Player stats are also updated:
-- `correctFinalJeopardy` incremented on correct (0 or 1 per game)
-- `incorrectFinalJeopardy` incremented on incorrect (0 or 1 per game)
+## Player Panel Workflow (In-Depth)
+
+The player-side Final Jeopardy experience is managed by `FinalJeopardyEntryPage.tsx` and the `useFinalJeopardyEntry` hook. Here's the complete step-by-step flow from the player's perspective:
+
+### Phase 1: Wager Entry
+
+**What the player sees**: Their name, current score, max wager amount, and a numeric input field with a "Submit Wager" button.
+
+**Technical flow**:
+1. On mount, `FinalJeopardyEntryPage` fetches the current session to check if the player has already submitted a wager (handles reconnect case)
+2. Player types a dollar amount (only digits allowed via `pattern="[0-9]*"`)
+3. Client-side validation on submit:
+   - Cannot be empty or NaN
+   - Cannot be negative
+   - Cannot exceed `maxWager` (player's current score if positive, or $1000 if score ≤ 0)
+   - Must be a whole integer
+4. On valid submission:
+   - Fetches latest session state from DB (double-check for duplicate submission)
+   - Appends a `FinalJeopardyWager` object to `final_jeopardy_state.wagers[]` in DB
+   - Broadcasts `fj_wager_received` message on the channel so host sees real-time status
+   - Sets local `wagerSubmitted = true`
+
+**Wager range rules** (`getValidWagerRange`):
+- Score > 0 → range is `[$0, $score]`
+- Score ≤ 0 → range is `[$0, $1000]` (allows participation even with negative scores)
+
+### Phase 2: Waiting for Clue
+
+**What the player sees**: "Wager submitted! Waiting for the clue to be revealed…" confirmation message plus the ScoreboardStrip showing current scores.
+
+**Technical detail**: The `submissionsLocked` prop (passed from `PlaySessionPage`) controls whether the answer input is shown. This prop is `true` until the host reveals the clue (detected via channel message or session phase change).
+
+### Phase 3: Answer Entry
+
+**What the player sees**: A textarea labeled "Your Answer" with a "Submit Answer" button, character counter (max 200), and the `ScoreboardStrip`.
+
+**Technical flow** (via `useFinalJeopardyEntry` hook):
+1. Player types answer (max 200 characters, counter shows remaining)
+2. On submit:
+   - `validateAnswer(answer)`: Must be non-empty after trim, max 200 chars
+   - `validateWager(wager, playerScore)`: Re-validates the wager for safety
+   - Fetches latest session to check `canSubmitFinalJeopardy()` (prevents double submission)
+   - Appends a `FinalJeopardySubmission` to `final_jeopardy_state.submissions[]` in DB
+   - Broadcasts `fj_submission_received` on the channel
+   - Sets `status: 'submitted'`
+3. On error: Status set to `'error'`, form stays populated for retry
+
+### Phase 4: Submission Confirmed
+
+**What the player sees**: "Your answer has been submitted" confirmation. No further interaction needed.
+
+### Co-op Mode Player Experience
+
+When co-op mode is detected (via session state or props), the player sees an entirely different screen:
+
+**What the player sees**: "The host is handling the team wager and answer." with a subtext "Discuss the answer with your team!"
+
+Players do NOT submit individual wagers or answers in co-op FJ. The host handles everything on their device. Players can still submit answers for the host to review (team discussion), but the wager and judgment are centralized.
+
+### Reconnection Handling
+
+Both the wager and answer phases check on mount whether the player has already submitted:
+- Wager: `fetchSession()` checks if `wagers[]` contains an entry for this player name (case-insensitive)
+- Answer: `fetchSession()` checks via `canSubmitFinalJeopardy(submissions, playerName)`
+
+If already submitted, the component immediately shows the confirmation state without requiring re-submission.
+
+### Validation Functions (`finalJeopardyValidation.ts`)
+
+```typescript
+// Wager range for a given score
+getValidWagerRange(playerScore: number): { min: number; max: number }
+
+// Validates a specific wager amount
+validateWager(wager: number, playerScore: number): ValidationResult
+
+// Validates answer text
+validateAnswer(answer: string): ValidationResult
+
+// Can this player still submit? (prevents double submission)
+canSubmitFinalJeopardy(submissions: FinalJeopardySubmission[], playerName: string): boolean
+
+// Have ALL players submitted? (host uses this to know when to proceed)
+allPlayersSubmitted(players: SessionPlayer[], submissions: FinalJeopardySubmission[]): boolean
+```
 
 ## Host Panel Workflow
 
-1. **Wager Phase**: Host sees which players have submitted wagers. Cannot proceed until all wagers are in.
-2. **Clue Phase**: Host reveals the clue to all players.
-3. **Submission Phase**: Host waits for all player answers to come in.
-4. **Reveal Phase**: Host reveals submissions one at a time (in chosen order), marks each as correct/incorrect.
-5. **Scoring**: After each marking, the score update is broadcast.
+1. **Wager Phase**: Host sees which players have submitted wagers (green checkmark vs. "Waiting…" for each). Cannot proceed until all wagers are in. An "All Submitted ✓" badge appears when complete.
+2. **Clue Phase**: Host reveals the clue to all players (click or Space/Enter). Players then see the answer entry form on their devices.
+3. **Submission Phase**: Host waits for all player answers to come in. Same status indicators (submitted ✓ vs. waiting).
+4. **Reveal Phase**: Once all answers are in and the host reveals the solution, a scoring panel appears showing each player with their wager, their answer text, and Correct/Incorrect buttons. Host clicks to mark each player.
+5. **Finish**: After all players are marked, "Finish Game" button becomes enabled. Clicking transitions to Game Over.
 
-### Co-op Variant
-- Shows all received answers grouped under "Team Answers" instead of individual player reveals
-- Single correct/incorrect button pair for the collective team judgment
-- One wager input controlled by the host
+### Co-op Host Panel Variant
+
+When `coopMode` is active and answers are revealed:
+- Shows all submitted answers grouped under "Team Answers" (player name + their answer text)
+- Single "Team Judgment" section with one Correct/Incorrect button pair
+- Host makes one collective decision for the whole team
+- "Finish Game" button enabled after the team marking is made
 
 ## Channel Messages
 
