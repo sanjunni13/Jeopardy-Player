@@ -41,12 +41,7 @@ export function FinalJeopardyEntryPage({
   const maxWager = playerScore > 0 ? playerScore : 1000;
 
   // Check on mount if wager was already submitted (reconnect case)
-  const [coopDetected, setCoopDetected] = useState(coopMode);
-
-  // Update coopDetected when prop changes (channel message arrives)
-  useEffect(() => {
-    if (coopMode) setCoopDetected(true);
-  }, [coopMode]);
+  const [coopDetectedFromDb, setCoopDetectedFromDb] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -54,7 +49,7 @@ export function FinalJeopardyEntryPage({
       if (cancelled || !session) return;
       // Check if co-op mode is flagged in the FJ state (stored in DB by host)
       if ((session.final_jeopardy_state as { coopMode?: boolean }).coopMode) {
-        setCoopDetected(true);
+        setCoopDetectedFromDb(true);
       }
       const wagers = session.final_jeopardy_state.wagers ?? [];
       const existing = wagers.find(w => w.playerName.toLowerCase() === playerName.toLowerCase());
@@ -154,7 +149,7 @@ export function FinalJeopardyEntryPage({
 
   // ─── Co-op mode: skip wager/answer entry entirely ─────────────────────────
 
-  const isCoopMode = coopDetected || coopMode || (teamPool != null && targetScore != null);
+  const isCoopMode = coopMode || coopDetectedFromDb || (teamPool != null && targetScore != null);
 
   if (isCoopMode) {
     return (
