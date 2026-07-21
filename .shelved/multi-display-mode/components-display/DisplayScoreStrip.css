@@ -1,0 +1,78 @@
+/* ─── Display Score Strip ─────────────────────────────────────────────────── */
+/* TV-optimized bottom score bar for the display page                          */
+
+.display-score-strip {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background: linear-gradient(to top, rgba(15, 23, 42, 0.95), rgba(15, 23, 42, 0.85));
+  border-top: 1px solid rgba(148, 163, 184, 0.15);
+  padding: 1rem 2rem;
+  backdrop-filter: blur(8px);
+}
+
+.display-score-strip__inner {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 2rem;
+  max-width: 100%;
+  flex-wrap: nowrap;
+}
+
+.display-score-strip__player {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.5rem 1.25rem;
+  border-radius: 0.75rem;
+  min-width: 0;
+  transition: background 0.3s ease, box-shadow 0.3s ease;
+}
+
+.display-score-strip__player--leader {
+  background: rgba(250, 204, 21, 0.1);
+  box-shadow: 0 0 16px rgba(250, 204, 21, 0.25), 0 0 4px rgba(250, 204, 21, 0.15);
+  border: 1px solid rgba(250, 204, 21, 0.3);
+}
+
+.display-score-strip__name {
+  font-size: calc(2rem * var(--score-scale, 1));
+  font-weight: 500;
+  color: #e2e8f0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 12rem;
+}
+
+.display-score-strip__player--leader .display-score-strip__name {
+  color: #fde68a;
+}
+
+.display-score-strip__score {
+  font-size: calc(2.5rem * var(--score-scale, 1));
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #f8fafc;
+  white-space: nowrap;
+}
+
+.display-score-strip__player--leader .display-score-strip__score {
+  color: #facc15;
+}
+
+/* ─── Reduced Motion ─────────────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .display-score-strip__score {
+    transition: none;
+  }
+
+  .display-score-strip__player {
+    transition: none;
+  }
+}

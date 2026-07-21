@@ -14,6 +14,9 @@ interface FinalJeopardyEntryPageProps {
   channel: RealtimeChannel | null;
   submissionsLocked?: boolean;
   players?: SessionPlayer[];
+  teamPool?: number | null;
+  targetScore?: number | null;
+  coopMode?: boolean;
 }
 
 const MAX_ANSWER_LENGTH = 200;
@@ -25,25 +28,42 @@ export function FinalJeopardyEntryPage({
   channel,
   submissionsLocked = true,
   players = [],
+  teamPool,
+  targetScore,
+  coopMode = false,
 }: FinalJeopardyEntryPageProps) {
   const [wagerValue, setWagerValue] = useState('');
   const [wagerError, setWagerError] = useState<string | null>(null);
   const [wagerSubmitted, setWagerSubmitted] = useState(false);
   const [wagerSubmitting, setWagerSubmitting] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
 
   const maxWager = playerScore > 0 ? playerScore : 1000;
 
   // Check on mount if wager was already submitted (reconnect case)
+  const [coopDetected, setCoopDetected] = useState(coopMode);
+
+  // Update coopDetected when prop changes (channel message arrives)
+  useEffect(() => {
+    if (coopMode) setCoopDetected(true);
+  }, [coopMode]);
+
   useEffect(() => {
     let cancelled = false;
     fetchSession(sessionId).then(session => {
       if (cancelled || !session) return;
+      // Check if co-op mode is flagged in the FJ state (stored in DB by host)
+      if ((session.final_jeopardy_state as { coopMode?: boolean }).coopMode) {
+        setCoopDetected(true);
+      }
       const wagers = session.final_jeopardy_state.wagers ?? [];
       const existing = wagers.find(w => w.playerName.toLowerCase() === playerName.toLowerCase());
       if (existing) {
         setWagerSubmitted(true);
       }
-    }).catch(() => {});
+    }).catch(() => {}).finally(() => {
+      if (!cancelled) setInitialLoading(false);
+    });
     return () => { cancelled = true; };
   }, [sessionId, playerName]);
 
@@ -114,6 +134,49 @@ export function FinalJeopardyEntryPage({
     hasSubmitted: hasSubmittedAnswer,
   } = useFinalJeopardyEntry(sessionId, playerName, playerScore, channel);
 
+  // ─── Loading: wait for initial fetchSession before deciding what to show ──
+
+  if (initialLoading) {
+    return (
+      <div className="fj-entry">
+        <div className="fj-entry__header">
+          <p className="fj-entry__player-name">{playerName}</p>
+          <p className="fj-entry__player-score" style={{ fontSize: '0.875rem', color: '#94a3b8' }}>
+            Final Jeopardy
+          </p>
+        </div>
+        <div className="fj-entry__confirmation">
+          <p className="fj-entry__confirmation-text">Loading…</p>
+        </div>
+      </div>
+    );
+  }
+
+  // ─── Co-op mode: skip wager/answer entry entirely ─────────────────────────
+
+  const isCoopMode = coopDetected || coopMode || (teamPool != null && targetScore != null);
+
+  if (isCoopMode) {
+    return (
+      <div className="fj-entry">
+        <div className="fj-entry__header">
+          <p className="fj-entry__player-name">{playerName}</p>
+          <p className="fj-entry__player-score" style={{ fontSize: '0.875rem', color: '#94a3b8' }}>
+            Final Jeopardy — Co-op Mode
+          </p>
+        </div>
+        <div className="fj-entry__confirmation">
+          <p className="fj-entry__confirmation-text">
+            The host is handling the team wager and answer.
+          </p>
+          <p style={{ fontSize: '0.875rem', color: '#64748b', marginTop: '0.5rem' }}>
+            Discuss the answer with your team!
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   // ─── Wager phase ──────────────────────────────────────────────────────────
 
   if (!wagerSubmitted) {
@@ -133,7 +196,7 @@ export function FinalJeopardyEntryPage({
           </p>
         </div>
 
-        <ScoreboardStrip players={players} currentPlayerName={playerName} />
+        <ScoreboardStrip players={players} currentPlayerName={playerName} teamPool={teamPool} targetScore={targetScore} />
 
         <form className="fj-entry__form" onSubmit={(e) => { e.preventDefault(); submitWager(); }} noValidate>
           <div className="fj-entry__field">
@@ -191,7 +254,7 @@ export function FinalJeopardyEntryPage({
         <div className="fj-entry__header">
           <p className="fj-entry__player-name">{playerName}</p>
         </div>
-        <ScoreboardStrip players={players} currentPlayerName={playerName} />
+        <ScoreboardStrip players={players} currentPlayerName={playerName} teamPool={teamPool} targetScore={targetScore} />
         <div className="fj-entry__confirmation">
           <p className="fj-entry__confirmation-text">
             Your answer has been submitted
@@ -210,7 +273,7 @@ export function FinalJeopardyEntryPage({
             Final Jeopardy
           </p>
         </div>
-        <ScoreboardStrip players={players} currentPlayerName={playerName} />
+        <ScoreboardStrip players={players} currentPlayerName={playerName} teamPool={teamPool} targetScore={targetScore} />
         <div className="fj-entry__confirmation">
           <p className="fj-entry__confirmation-text">
             Wager submitted! Waiting for the clue to be revealed…
@@ -234,7 +297,7 @@ export function FinalJeopardyEntryPage({
         </p>
       </div>
 
-      <ScoreboardStrip players={players} currentPlayerName={playerName} />
+      <ScoreboardStrip players={players} currentPlayerName={playerName} teamPool={teamPool} targetScore={targetScore} />
 
       <form className="fj-entry__form" onSubmit={(e) => { e.preventDefault(); submitAnswer(); }} noValidate>
         <div className="fj-entry__field">

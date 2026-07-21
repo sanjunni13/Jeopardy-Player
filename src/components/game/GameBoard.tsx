@@ -11,6 +11,8 @@ interface GameBoardProps {
   onClueSelect: (categoryIndex: number, clueIndex: number) => void
   onAllRevealed?: () => void
   skipReveal?: boolean
+  /** Optional custom scoreboard element to render instead of the default Scoreboard */
+  customScoreboard?: React.ReactNode
 }
 
 export function GameBoard({
@@ -21,6 +23,7 @@ export function GameBoard({
   onClueSelect,
   onAllRevealed,
   skipReveal,
+  customScoreboard,
 }: GameBoardProps) {
   const [revealedCount, setRevealedCount] = useState(() =>
     skipReveal ? categories.length + 1 : 0
@@ -102,7 +105,7 @@ export function GameBoard({
 
           {/* Scoreboard during reveal */}
           <div className="board-reveal-scoreboard">
-            <Scoreboard players={players} />
+            {customScoreboard ?? <Scoreboard players={players} />}
           </div>
         </div>
       </div>
@@ -166,7 +169,7 @@ export function GameBoard({
 
         {/* Scoreboard */}
         <div className="board-scoreboard">
-          <Scoreboard players={players} />
+          {customScoreboard ?? <Scoreboard players={players} />}
         </div>
       </div>
     </div>

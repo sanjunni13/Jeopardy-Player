@@ -1,0 +1,132 @@
+.display-daily-double {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #060CE9;
+  overflow: hidden;
+  container-type: inline-size;
+}
+
+/* ─── Splash Phase ─────────────────────────────────────────────────────────── */
+
+.display-daily-double__splash {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+.display-daily-double__splash-text {
+  font-size: clamp(4rem, 10vw, 10rem);
+  font-weight: 900;
+  color: #fbbf24;
+  text-align: center;
+  line-height: 1.1;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  text-shadow: 0 0 20px rgba(251, 191, 36, 0.8);
+}
+
+/* ─── Wager Waiting Phase ──────────────────────────────────────────────────── */
+
+.display-daily-double__wager {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(1rem, 3vh, 2.5rem);
+  width: 100%;
+  height: 100%;
+}
+
+.display-daily-double__player-name {
+  font-size: clamp(2.5rem, 5vw, 5rem);
+  color: #ffffff;
+  font-weight: 700;
+  text-align: center;
+}
+
+.display-daily-double__wager-prompt {
+  font-size: clamp(3rem, 6vw, 6rem);
+  color: #fbbf24;
+  font-weight: 700;
+  text-align: center;
+}
+
+/* ─── Clue Phase (with wager confirmed) ────────────────────────────────────── */
+
+.display-daily-double__clue {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  padding: clamp(1rem, 3vw, 3rem);
+  box-sizing: border-box;
+}
+
+.display-daily-double__clue-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  margin-bottom: clamp(0.5rem, 1.5vh, 1rem);
+  flex-shrink: 0;
+}
+
+.display-daily-double__wager-amount {
+  font-size: clamp(2rem, 4vw, 3.5rem);
+  color: #fbbf24;
+  font-weight: 700;
+  text-align: center;
+}
+
+.display-daily-double__clue-category {
+  font-size: clamp(1.5rem, 2.5vw, 2.5rem);
+  color: #ffffff;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  text-align: center;
+  opacity: 0.85;
+  margin-bottom: clamp(1rem, 2.5vh, 2rem);
+  flex-shrink: 0;
+}
+
+.display-daily-double__clue-text {
+  font-size: clamp(2.5rem, 5vw, 4.5rem);
+  color: #ffffff;
+  text-align: center;
+  line-height: 1.3;
+  max-width: 90%;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  flex-shrink: 1;
+}
+
+.display-daily-double__solution {
+  margin-top: clamp(1.5rem, 3vh, 3rem);
+  font-size: clamp(2.5rem, 4vw, 4rem);
+  color: #f97316;
+  text-align: center;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.display-daily-double__solution-prefix {
+  color: #fbbf24;
+  margin-right: 0.5rem;
+}
+
+/* ─── Reduced Motion Support ───────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .display-daily-double__splash-text {
+    /* Disable the glow pulse — static text-shadow instead */
+    text-shadow: 0 0 30px rgba(251, 191, 36, 0.9) !important;
+    animation: none !important;
+  }
+}

@@ -132,6 +132,9 @@ export function PlaySessionPage() {
             channel={channel}
             submissionsLocked={!session.buzz_state.clueActive}
             players={session.players}
+            teamPool={session.team_pool}
+            targetScore={session.target_score}
+            coopMode={session.coop_mode ?? false}
           />
         );
 

@@ -9,6 +9,8 @@ export interface UseClueTimerOptions {
   duration: number;
   /** Called once when remaining hits 0 */
   onExpire: () => void;
+  /** Optional callback invoked on each tick with the current remaining seconds */
+  onTick?: (remaining: number) => void;
 }
 
 export interface UseClueTimerReturn {
@@ -40,6 +42,7 @@ export function useClueTimer({
   enabled,
   duration,
   onExpire,
+  onTick,
 }: UseClueTimerOptions): UseClueTimerReturn {
   const [remaining, setRemaining] = useState<number>(duration);
   const [isRunning, setIsRunning] = useState<boolean>(false);
@@ -48,12 +51,18 @@ export function useClueTimer({
   // latest values without needing the effect to re-run.
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const onExpireRef = useRef<() => void>(onExpire);
+  const onTickRef = useRef<((remaining: number) => void) | undefined>(onTick);
   const remainingRef = useRef<number>(duration);
 
   // Keep onExpireRef in sync with the latest callback prop.
   useEffect(() => {
     onExpireRef.current = onExpire;
   }, [onExpire]);
+
+  // Keep onTickRef in sync with the latest callback prop.
+  useEffect(() => {
+    onTickRef.current = onTick;
+  }, [onTick]);
 
   // ─── Internal helpers ───────────────────────────────────────────────────────
 
@@ -107,6 +116,9 @@ export function useClueTimer({
     intervalRef.current = setInterval(() => {
       remainingRef.current -= 1;
       setRemaining(remainingRef.current);
+
+      // Notify consumer of each tick with current remaining seconds
+      onTickRef.current?.(remainingRef.current);
 
       if (remainingRef.current <= 0) {
         clearInterval(intervalRef.current!);

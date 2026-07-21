@@ -1,0 +1,58 @@
+.display-timer {
+  position: absolute;
+  top: clamp(1rem, 2vh, 2rem);
+  right: clamp(1rem, 2vw, 2rem);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.display-timer__countdown {
+  font-size: clamp(4rem, 6vw, 7rem);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  transition: color 0.5s ease;
+}
+
+.display-timer__countdown--white {
+  color: #ffffff;
+}
+
+.display-timer__countdown--yellow {
+  color: #facc15;
+}
+
+.display-timer__countdown--red {
+  color: #ef4444;
+}
+
+.display-timer__expired {
+  font-size: clamp(3rem, 5vw, 5rem);
+  font-weight: 700;
+  color: #ef4444;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  animation: display-timer-pulse 1s ease-in-out 3;
+}
+
+@keyframes display-timer-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .display-timer__countdown {
+    transition: none;
+  }
+
+  .display-timer__expired {
+    animation: none;
+  }
+}

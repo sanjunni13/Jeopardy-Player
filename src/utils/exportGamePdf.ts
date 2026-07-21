@@ -231,3 +231,155 @@ export function exportGamePdf(game: NormalizedGame, gameName?: string): void {
   link.click()
   document.body.removeChild(link)
 }
+
+/**
+ * Co-op player contribution data for PDF export.
+ */
+export interface CoopPlayerContribution {
+  name: string
+  correctCount: number
+  incorrectCount: number
+  totalEarned: number
+}
+
+/**
+ * Options for exporting a co-op game PDF.
+ */
+export interface CoopPdfOptions {
+  teamPool: number
+  targetScore: number
+  boardTotal: number
+  players: CoopPlayerContribution[]
+  gameName?: string
+}
+
+/**
+ * Export a Co-op Mode game result as a PDF with:
+ * - Team result (Victory / Defeat)
+ * - Final pool vs target comparison
+ * - Player contribution table
+ * Omits individual rankings and winner declaration.
+ */
+export function exportCoopGamePdf(options: CoopPdfOptions): void {
+  const { teamPool, targetScore, boardTotal, players, gameName } = options
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'letter' })
+  const pageWidth = doc.internal.pageSize.getWidth()
+
+  const isVictory = teamPool >= targetScore
+
+  // ─── Title ────────────────────────────────────────────────────────────────
+  doc.setFontSize(22)
+  doc.setFont('helvetica', 'bold')
+  doc.text('Co-op Game Results', pageWidth / 2, 40, { align: 'center' })
+
+  if (gameName) {
+    doc.setFontSize(11)
+    doc.setFont('helvetica', 'normal')
+    doc.text(gameName, pageWidth / 2, 58, { align: 'center' })
+  }
+
+  // ─── Team Result ──────────────────────────────────────────────────────────
+  let yPos = gameName ? 90 : 76
+
+  doc.setFontSize(18)
+  doc.setFont('helvetica', 'bold')
+  const resultText = isVictory ? 'Team Result: Victory' : 'Team Result: Defeat'
+  doc.text(resultText, pageWidth / 2, yPos, { align: 'center' })
+
+  // ─── Pool vs Target ───────────────────────────────────────────────────────
+  yPos += 32
+
+  doc.setFontSize(12)
+  doc.setFont('helvetica', 'normal')
+  doc.text(`Final Team Pool: ${teamPool} pts`, pageWidth / 2, yPos, { align: 'center' })
+
+  yPos += 18
+  doc.text(`Target Score: ${targetScore} pts`, pageWidth / 2, yPos, { align: 'center' })
+
+  yPos += 18
+  doc.text(`Board Total: ${boardTotal} pts`, pageWidth / 2, yPos, { align: 'center' })
+
+  yPos += 18
+  const percentage = targetScore > 0 ? Math.round((teamPool / targetScore) * 100) : 100
+  doc.text(`Achievement: ${percentage}% of target`, pageWidth / 2, yPos, { align: 'center' })
+
+  // ─── Progress Bar ─────────────────────────────────────────────────────────
+  yPos += 24
+
+  const barWidth = 300
+  const barHeight = 18
+  const barX = (pageWidth - barWidth) / 2
+  const fillRatio = targetScore > 0 ? Math.min(1, Math.max(0, teamPool / targetScore)) : 1
+
+  // Background bar
+  doc.setFillColor(220, 220, 220)
+  doc.rect(barX, yPos, barWidth, barHeight, 'F')
+
+  // Filled bar
+  if (isVictory) {
+    doc.setFillColor(34, 197, 94) // green
+  } else {
+    doc.setFillColor(139, 92, 246) // purple
+  }
+  doc.rect(barX, yPos, barWidth * fillRatio, barHeight, 'F')
+
+  // Bar border
+  doc.setDrawColor(100, 100, 100)
+  doc.rect(barX, yPos, barWidth, barHeight, 'S')
+
+  // ─── Contribution Table ───────────────────────────────────────────────────
+  yPos += barHeight + 36
+
+  doc.setFontSize(14)
+  doc.setFont('helvetica', 'bold')
+  doc.text('Team Contributions', pageWidth / 2, yPos, { align: 'center' })
+
+  yPos += 16
+
+  const tableHeaders = ['Player', 'Correct', 'Incorrect', 'Net Contribution']
+  const tableBody = players.map(p => [
+    p.name,
+    String(p.correctCount),
+    String(p.incorrectCount),
+    `${p.totalEarned >= 0 ? '+' : ''}${p.totalEarned} pts`,
+  ])
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ;(doc as any).autoTable({
+    startY: yPos,
+    head: [tableHeaders],
+    body: tableBody,
+    theme: 'grid',
+    styles: {
+      fontSize: 10,
+      cellPadding: 6,
+      valign: 'middle',
+      halign: 'center',
+      lineWidth: 0.5,
+    },
+    headStyles: {
+      fillColor: [16, 24, 72],
+      textColor: [255, 255, 255],
+      fontStyle: 'bold',
+      fontSize: 10,
+      halign: 'center',
+    },
+    columnStyles: {
+      0: { halign: 'left', cellWidth: 180 },
+    },
+    margin: { left: 60, right: 60 },
+  })
+
+  // ─── Save ─────────────────────────────────────────────────────────────────
+  const filename = gameName
+    ? `${gameName.replace(/[^a-zA-Z0-9 _-]/g, '').trim()} - Co-op Results.pdf`
+    : 'jeopardy-coop-results.pdf'
+
+  const pdfDataUri = doc.output('datauristring', { filename })
+  const link = document.createElement('a')
+  link.href = pdfDataUri
+  link.download = filename
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+}

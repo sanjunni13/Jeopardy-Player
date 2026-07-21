@@ -196,6 +196,15 @@ export function useGameSession(sessionId: string | undefined): UseGameSessionRes
           return { ...prev, players: updatedPlayers, updated_at: new Date().toISOString() };
         }
 
+        case 'coop_pool_update':
+          return {
+            ...prev,
+            team_pool: message.teamPool,
+            target_score: message.targetScore,
+            coop_mode: true,
+            updated_at: new Date().toISOString(),
+          };
+
         case 'session_ended':
           return { ...prev, phase: 'ended', updated_at: new Date().toISOString() };
 
@@ -327,6 +336,20 @@ export function useGameSession(sessionId: string | undefined): UseGameSessionRes
       }
     };
   }, [sessionId, setupChannel, reconcileState, handleMessage]);
+
+  // ─── Periodic reconciliation: poll DB every 3s while in buzzer phase ──────
+  useEffect(() => {
+    if (!sessionId || !session || session.phase === 'ended') return;
+    const interval = setInterval(() => {
+      fetchSession(sessionId).then(latest => {
+        if (mountedRef.current && latest) {
+          setSession(latest);
+        }
+      }).catch(() => {});
+    }, 3000);
+    return () => clearInterval(interval);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionId, session?.phase]);
 
   // When no sessionId is provided, return disconnected state
   if (!sessionId) {

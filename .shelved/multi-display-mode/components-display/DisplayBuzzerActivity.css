@@ -1,0 +1,108 @@
+.display-buzzer-activity {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 20;
+  pointer-events: none;
+}
+
+.display-buzzer-activity__card {
+  display: flex;
+  align-items: center;
+  gap: clamp(1rem, 2vw, 2rem);
+  padding: clamp(1.5rem, 3vh, 3rem) clamp(2rem, 5vw, 5rem);
+  border-radius: 1rem;
+  background: rgba(15, 23, 42, 0.9);
+  border: 3px solid rgba(248, 250, 252, 0.3);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  transition: background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+/* Correct answer flash: green background + glow */
+.display-buzzer-activity__card.display-buzzer-activity--correct {
+  background: rgba(22, 163, 74, 0.85);
+  border-color: rgba(74, 222, 128, 0.8);
+  box-shadow:
+    0 0 40px rgba(34, 197, 94, 0.5),
+    0 8px 32px rgba(0, 0, 0, 0.3);
+  animation: display-buzzer-flash-green 0.6s ease-out;
+}
+
+/* Incorrect answer flash: red background + glow */
+.display-buzzer-activity__card.display-buzzer-activity--incorrect {
+  background: rgba(220, 38, 38, 0.85);
+  border-color: rgba(248, 113, 113, 0.8);
+  box-shadow:
+    0 0 40px rgba(239, 68, 68, 0.5),
+    0 8px 32px rgba(0, 0, 0, 0.3);
+  animation: display-buzzer-flash-red 0.6s ease-out;
+}
+
+.display-buzzer-activity__player-name {
+  font-size: clamp(3rem, 5vw, 5rem);
+  font-weight: 700;
+  color: #f8fafc;
+  letter-spacing: 0.02em;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.display-buzzer-activity__icon {
+  font-size: clamp(3.5rem, 5.5vw, 5.5rem);
+  font-weight: 900;
+  line-height: 1;
+}
+
+.display-buzzer-activity__icon--correct {
+  color: #bbf7d0;
+  text-shadow: 0 0 12px rgba(74, 222, 128, 0.7);
+}
+
+.display-buzzer-activity__icon--incorrect {
+  color: #fecaca;
+  text-shadow: 0 0 12px rgba(248, 113, 113, 0.7);
+}
+
+/* Green flash keyframe animation */
+@keyframes display-buzzer-flash-green {
+  0% {
+    background: rgba(22, 163, 74, 1);
+    box-shadow:
+      0 0 80px rgba(34, 197, 94, 0.8),
+      0 8px 32px rgba(0, 0, 0, 0.3);
+  }
+  100% {
+    background: rgba(22, 163, 74, 0.85);
+    box-shadow:
+      0 0 40px rgba(34, 197, 94, 0.5),
+      0 8px 32px rgba(0, 0, 0, 0.3);
+  }
+}
+
+/* Red flash keyframe animation */
+@keyframes display-buzzer-flash-red {
+  0% {
+    background: rgba(220, 38, 38, 1);
+    box-shadow:
+      0 0 80px rgba(239, 68, 68, 0.8),
+      0 8px 32px rgba(0, 0, 0, 0.3);
+  }
+  100% {
+    background: rgba(220, 38, 38, 0.85);
+    box-shadow:
+      0 0 40px rgba(239, 68, 68, 0.5),
+      0 8px 32px rgba(0, 0, 0, 0.3);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .display-buzzer-activity__card {
+    transition: none;
+  }
+
+  .display-buzzer-activity__card.display-buzzer-activity--correct,
+  .display-buzzer-activity__card.display-buzzer-activity--incorrect {
+    animation: none;
+  }
+}

@@ -443,3 +443,104 @@
   font-size: 0.875rem;
   color: rgba(255, 255, 255, 0.5);
 }
+
+
+/* ── Co-op Mode ── */
+.fj-coop-wager-section {
+  margin-top: 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.fj-coop-pool-display {
+  color: rgb(203 213 225); /* slate-300 */
+  font-size: 1.125rem;
+}
+
+.fj-coop-pool-display strong {
+  color: #c99f57;
+  font-size: 1.25rem;
+}
+
+.fj-coop-wager-form {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  max-width: 20rem;
+}
+
+.fj-coop-wager-label {
+  color: rgb(148 163 184); /* slate-400 */
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.fj-coop-scoring-inner {
+  max-width: 48rem;
+  margin-left: auto;
+  margin-right: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding: 1rem;
+}
+
+.fj-coop-answers-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.fj-coop-answers-title {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.fj-coop-answers-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.fj-coop-answer-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 1rem;
+  border-radius: 0.75rem;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.fj-coop-answer-player {
+  color: rgb(203 213 225);
+  font-weight: 600;
+  font-size: 0.875rem;
+  min-width: 6rem;
+}
+
+.fj-coop-answer-text {
+  color: rgb(226 232 240);
+  font-size: 0.875rem;
+}
+
+.fj-coop-mark-section {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding-top: 0.5rem;
+}
+
+.fj-coop-mark-label {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 1rem;
+  font-weight: 600;
+}

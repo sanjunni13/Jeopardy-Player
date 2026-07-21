@@ -248,6 +248,34 @@
   margin: 0.25rem 0 0;
 }
 
+/* ── Co-op Mode ── */
+
+.gsp-coop-info-note {
+  font-size: 0.8125rem;
+  color: rgb(148 163 184); /* slate-400 */
+  line-height: 1.5;
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  background: rgb(99 102 241 / 0.08);
+  border: 1px solid rgb(99 102 241 / 0.2);
+}
+
+.gsp-coop-target-score {
+  font-size: 0.8125rem;
+  color: rgb(203 213 225); /* slate-300 */
+  margin: 0.25rem 0 0;
+  text-align: center;
+}
+
+.gsp-coop-target-score strong {
+  color: rgb(165 180 252); /* indigo-300 */
+}
+
+.gsp-input-suffix {
+  padding: 0 0.5rem 0 0;
+}
+
 /* ── Settings Summary ── */
 
 .gsp-summary {
