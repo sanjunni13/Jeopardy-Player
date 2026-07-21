@@ -15,6 +15,9 @@ export interface GameSessionRow {
   players: SessionPlayer[];
   buzz_state: BuzzState;
   final_jeopardy_state: FinalJeopardyState;
+  team_pool?: number;
+  target_score?: number;
+  coop_mode?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -60,6 +63,7 @@ export interface FinalJeopardyState {
   wagers: FinalJeopardyWager[];
   submissions: FinalJeopardySubmission[];
   revealedIndex: number;    // -1 = none revealed, 0+ = revealing in sequence
+  coopMode?: boolean;       // true when co-op mode is active (host-set, stored in DB)
 }
 
 export interface FinalJeopardySubmission {
@@ -90,4 +94,5 @@ export type ChannelMessage =
   | { type: 'fj_submission_received'; playerName: string }
   | { type: 'fj_reveal'; index: number; submission: FinalJeopardySubmission }
   | { type: 'fj_score_update'; playerName: string; newScore: number }
+  | { type: 'coop_pool_update'; teamPool: number; targetScore: number }
   | { type: 'session_ended' };

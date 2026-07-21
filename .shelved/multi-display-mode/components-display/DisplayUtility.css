@@ -1,0 +1,91 @@
+/* Shared styles for display utility components: Loading, Error, Waiting */
+
+.display-utility {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #0f172a;
+  color: #f8fafc;
+  overflow: hidden;
+  user-select: none;
+  cursor: default;
+}
+
+.display-utility__content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(1.5rem, 3vh, 3rem);
+}
+
+.display-utility__text {
+  font-size: clamp(2rem, 4vw, 3.5rem);
+  font-weight: 500;
+  text-align: center;
+  margin: 0;
+  padding: 0 2rem;
+  line-height: 1.3;
+}
+
+/* --- DisplayLoading spinner --- */
+
+.display-loading__spinner {
+  width: clamp(3rem, 6vw, 5rem);
+  height: clamp(3rem, 6vw, 5rem);
+  border: 4px solid rgba(248, 250, 252, 0.2);
+  border-top-color: #f8fafc;
+  border-radius: 50%;
+  animation: display-spinner-rotate 1s linear infinite;
+}
+
+@keyframes display-spinner-rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* --- DisplayError --- */
+
+.display-error__icon {
+  font-size: clamp(3rem, 5vw, 5rem);
+  line-height: 1;
+  opacity: 0.8;
+}
+
+.display-error__message {
+  color: #fca5a5;
+}
+
+/* --- DisplayWaiting --- */
+
+.display-waiting__text {
+  animation: display-waiting-pulse 2.5s ease-in-out infinite;
+}
+
+@keyframes display-waiting-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* --- Reduced motion --- */
+
+@media (prefers-reduced-motion: reduce) {
+  .display-loading__spinner {
+    animation: none;
+    border-top-color: #f8fafc;
+    opacity: 0.7;
+  }
+
+  .display-waiting__text {
+    animation: none;
+  }
+}

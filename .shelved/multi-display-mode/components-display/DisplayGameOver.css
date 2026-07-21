@@ -1,0 +1,101 @@
+/* ─── Display Game Over ───────────────────────────────────────────────────── */
+/* TV-optimized final scores screen with winner celebration                     */
+
+.display-game-over {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  padding: 3rem 4rem;
+  gap: 2.5rem;
+}
+
+.display-game-over__heading {
+  font-size: clamp(4rem, 8vw, 7rem);
+  font-weight: 800;
+  color: #f8fafc;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  text-shadow: 0 0 30px rgba(250, 204, 21, 0.4), 0 0 60px rgba(250, 204, 21, 0.2);
+  margin: 0;
+}
+
+.display-game-over__scores {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 1rem;
+  width: 100%;
+  max-width: 50rem;
+}
+
+.display-game-over__player {
+  display: grid;
+  grid-template-columns: 3rem 1fr auto;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 1rem 2rem;
+  border-radius: 1rem;
+  background: rgba(30, 41, 59, 0.6);
+  border: 1px solid rgba(148, 163, 184, 0.1);
+}
+
+.display-game-over__player--winner {
+  background: rgba(250, 204, 21, 0.1);
+  border: 2px solid rgba(250, 204, 21, 0.4);
+  box-shadow: 0 0 24px rgba(250, 204, 21, 0.2), 0 0 8px rgba(250, 204, 21, 0.15);
+  padding: 1.25rem 2rem;
+}
+
+.display-game-over__rank {
+  font-size: clamp(1.5rem, 2.5vw, 2.5rem);
+  font-weight: 700;
+  color: #94a3b8;
+  text-align: center;
+}
+
+.display-game-over__player--winner .display-game-over__rank {
+  color: #facc15;
+  font-size: clamp(2rem, 3vw, 3rem);
+}
+
+.display-game-over__name {
+  font-size: clamp(2rem, 3vw, 3rem);
+  font-weight: 600;
+  color: #e2e8f0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.display-game-over__player--winner .display-game-over__name {
+  color: #fde68a;
+  font-size: clamp(2.5rem, 3.5vw, 3.5rem);
+}
+
+.display-game-over__score {
+  font-size: clamp(2rem, 3vw, 3rem);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #f8fafc;
+  white-space: nowrap;
+}
+
+.display-game-over__player--winner .display-game-over__score {
+  color: #facc15;
+  font-size: clamp(2.5rem, 3.5vw, 3.5rem);
+}
+
+/* ─── Reduced Motion ─────────────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .display-game-over__heading {
+    text-shadow: none;
+  }
+
+  .display-game-over__player--winner {
+    box-shadow: none;
+  }
+}

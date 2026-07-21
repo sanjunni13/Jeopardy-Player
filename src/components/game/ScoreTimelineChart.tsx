@@ -15,6 +15,7 @@ interface ScoreTimelineChartProps {
 }
 
 // 6 visually distinct colours — Requirements 5.3
+// eslint-disable-next-line react-refresh/only-export-components
 export const PALETTE = [
   '#6A1B9A', // purple
   '#1976D2', // blue

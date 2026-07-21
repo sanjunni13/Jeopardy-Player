@@ -1,0 +1,137 @@
+/* ─── Co-op Scoreboard ──────────────────────────────────────────────────────── */
+
+.coop-scoreboard {
+  background-color: #001699;
+  padding: 0.5rem 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+  flex: 1;
+  min-width: 0;
+  max-width: none;
+  flex-wrap: nowrap;
+  border-radius: 0;
+  box-sizing: border-box;
+}
+
+/* ── Pool value ── */
+.coop-scoreboard__pool {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.coop-scoreboard__pool-value {
+  font-family: 'Korinna', 'Swiss921', Arial, sans-serif;
+  font-weight: bold;
+  font-size: 1.25rem;
+  color: #c99f57;
+  text-shadow: 1px 1px black;
+  display: inline-block;
+}
+
+.coop-scoreboard__pool-value--negative {
+  color: rgb(251 113 133);
+}
+
+/* ── Progress bar ── */
+.coop-scoreboard__progress-container {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 4rem;
+  height: 0.75rem;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 0.625rem;
+  overflow: hidden;
+}
+
+.coop-scoreboard__progress-container--success {
+  box-shadow: 0 0 8px rgba(34, 197, 94, 0.4);
+}
+
+.coop-scoreboard__progress-bar {
+  height: 100%;
+  border-radius: 0.625rem;
+  background: #7c3aed;
+  transition: width 0.4s ease, background-color 0.3s ease;
+}
+
+.coop-scoreboard__progress-bar--success {
+  background: #22c55e;
+}
+
+.coop-scoreboard__checkmark {
+  position: absolute;
+  right: 0.5rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: white;
+  font-weight: bold;
+  font-size: 0.8rem;
+  line-height: 1;
+}
+
+/* ── Target label ── */
+.coop-scoreboard__target {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+  font-family: 'Korinna', 'Swiss921', Arial, sans-serif;
+}
+
+/* ── Player names ── */
+.coop-scoreboard__players {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: nowrap;
+  list-style: none;
+  margin: 0;
+  padding: 0 0.5rem 0 0;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.coop-scoreboard__player {
+  color: white;
+  font-weight: 600;
+  font-size: 0.8125rem;
+  font-family: 'Korinna', 'Swiss921', Arial, sans-serif;
+  text-shadow: 1px 1px black;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ─── Responsive: stack vertically on narrow screens ────────────────────────── */
+
+@media (max-width: 600px) {
+  .coop-scoreboard {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+  }
+
+  .coop-scoreboard__pool {
+    justify-content: center;
+  }
+
+  .coop-scoreboard__progress-container {
+    min-width: unset;
+    width: 100%;
+  }
+
+  .coop-scoreboard__target {
+    text-align: center;
+  }
+
+  .coop-scoreboard__players {
+    justify-content: center;
+    gap: 0.75rem;
+  }
+}

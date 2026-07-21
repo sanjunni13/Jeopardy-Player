@@ -74,6 +74,11 @@ export interface DailyDoubleRecord {
 
 // ─── Special Game Toggle types ────────────────────────────────────────────────
 
+export interface CoopConfig {
+  enabled: boolean
+  targetPercentage: number  // integer 50-100, default 75
+}
+
 export interface WageringConfig {
   enabled: boolean
   wagerFloor: number  // integer 1-10000, default 100
@@ -111,12 +116,14 @@ export interface TimedClueConfig {
  * Stored in GameSession. Never mutated after the session begins.
  */
 export interface ToggleConfig {
+  coop: CoopConfig
   wagering: WageringConfig
   rulesEngine: RulesEngineConfig
   timedClues: TimedClueConfig
 }
 
 export const DEFAULT_TOGGLE_CONFIG: ToggleConfig = {
+  coop: { enabled: false, targetPercentage: 75 },
   wagering: { enabled: false, wagerFloor: 100 },
   rulesEngine: {
     enabled: false,
@@ -164,6 +171,12 @@ export interface GameSession {
   perRoundIncorrect: Record<string, number>;
   /** Wagers recorded during WagerEntry phase; null when not in wagering phase */
   activeWagers: Record<string, number> | null;
+  /** Shared co-op score pool; starts at 0, only used when toggleConfig.coop.enabled */
+  teamPool: number;
+  /** Target score the team must reach (boardTotal × targetPercentage / 100); frozen at game start */
+  targetScore: number;
+  /** Sum of all clue point values across all rounds (excluding Final Jeopardy) */
+  boardTotal: number;
 }
 
 export type GamePhase =

@@ -2,10 +2,11 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams, useRouterState } from '@tanstack/react-router'
 import { supabase } from '../../utils/supabase'
 import { normalizeGame } from '../../utils/gameNormalizer'
-import { createSession, endSession, updateSessionPhase, updateBuzzState, updateSessionState, fetchSession, cleanupStaleSessions, updateSessionPlayers } from '../../utils/sessionApi'
+import { createSession, endSession, updateSessionPhase, updateBuzzState, updateSessionState, fetchSession, cleanupStaleSessions, updateSessionPlayers, updateFinalJeopardyState } from '../../utils/sessionApi'
 import { debounce } from '../../utils/debounce'
 import { createSessionChannel, subscribeToChannel, unsubscribeFromChannel, broadcastMessage, onChannelMessage, onPresenceChange } from '../../utils/sessionChannel'
 import { SessionQRCode } from '../../components/host/SessionQRCode'
+
 import { BuzzerHostPanel } from '../../components/host/BuzzerHostPanel'
 import { FinalJeopardyHostPanel } from '../../components/host/FinalJeopardyHostPanel'
 import { BackgroundGradient } from '../../components/ui/background-gradient'
@@ -21,9 +22,11 @@ import type {
   ToggleConfig,
 } from '../../types/game'
 import type { BuzzState, FinalJeopardyState, SessionPlayer, ChannelMessage } from '../../types/session'
+
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import { PlayerEntry } from '../../components/game/PlayerEntry'
-import { exportGamePdf } from '../../utils/exportGamePdf'
+import { exportGamePdf, exportCoopGamePdf } from '../../utils/exportGamePdf'
+import { incrementTimesPlayed } from '../../utils/gameApi'
 import { GameBoard } from '../../components/game/GameBoard'
 import { ClueScreen } from '../../components/game/ClueScreen'
 import { DailyDoubleScreen } from '../../components/game/DailyDoubleScreen'
@@ -34,10 +37,12 @@ import { RoundTransition } from '../../components/game/RoundTransition'
 // GameOver is kept on disk but no longer rendered — AnalyticsScreen takes its place
 // import { GameOver } from '../../components/game/GameOver'
 import { AnalyticsScreen } from '../../components/game/AnalyticsScreen'
-import { CheatSheetButton } from '../../components/game/CheatSheetButton'
+import { CoopScoreboard } from '../../components/game/CoopScoreboard'
+import { CoopGameOver } from '../../components/game/CoopGameOver'
 import { CheatSheet } from '../../components/game/CheatSheet'
 import { shouldShowCheatSheet } from '../../utils/cheatSheetVisibility'
 import { applyModifiers } from '../../utils/gameToggles'
+import { calculateBoardTotal, calculateTargetScore, applyCoopScoring, getCoopDailyDoubleMaxWager } from '../../utils/coopScoring'
 import { useClueTimer } from '../../hooks/useClueTimer'
 import { ActiveRulesIndicator } from '../../components/game/ActiveRulesIndicator'
 import { GameSettingsPanel } from '../../components/game/GameSettingsPanel'
@@ -118,6 +123,11 @@ export function GamePage() {
   // Steal bonus tracking (Task 9.5)
   const [stealBonusAwardedTo, setStealBonusAwardedTo] = useState<string | null>(null)
 
+  // Co-op Final Jeopardy wager tracking
+  const coopFjWagerRef = useRef<number>(0)
+
+
+
   // Timer state (Task 9.6)
   const [isTimesUp, setIsTimesUp] = useState(false)
 
@@ -129,6 +139,8 @@ export function GamePage() {
     setToggleConfig(config)
     setHasSettingsErrors(hasErrors)
   }
+
+
 
   // Load game from Supabase Storage on mount
   useEffect(() => {
@@ -247,7 +259,9 @@ export function GamePage() {
           const ch = createSessionChannel(gameSessionRow.id)
           // Register presence listeners BEFORE subscribing (required by Supabase)
           onPresenceChange(ch, {
-            onSync: (names) => setOnlinePlayers(names),
+            onSync: (names) => {
+              setOnlinePlayers(names)
+            },
           })
           // Register message listener before subscription
           onChannelMessage(ch, (message: ChannelMessage) => {
@@ -377,7 +391,38 @@ export function GamePage() {
     if (!sessionId) return
 
     if (phase === 'final-jeopardy') {
-      updateSessionPhase(sessionId, 'final-jeopardy').catch(() => {})
+      // For co-op: write coopMode to DB FIRST (before phase change), so players see it on fetchSession
+      if (session?.toggleConfig.coop.enabled) {
+        updateFinalJeopardyState(sessionId, {
+          wagers: [],
+          submissions: [],
+          revealedIndex: -1,
+          coopMode: true,
+        }).then(() => {
+          // Only broadcast phase change AFTER DB write completes
+          updateSessionPhase(sessionId, 'final-jeopardy').catch(() => {})
+          if (sessionChannelRef.current) {
+            broadcastMessage(sessionChannelRef.current, { type: 'phase_change', phase: 'final-jeopardy' }).catch(() => {})
+            broadcastMessage(sessionChannelRef.current, {
+              type: 'coop_pool_update',
+              teamPool: session.teamPool,
+              targetScore: session.targetScore,
+            }).catch(() => {})
+          }
+        }).catch(() => {
+          // Still broadcast even if DB write fails
+          updateSessionPhase(sessionId, 'final-jeopardy').catch(() => {})
+          if (sessionChannelRef.current) {
+            broadcastMessage(sessionChannelRef.current, { type: 'phase_change', phase: 'final-jeopardy' }).catch(() => {})
+          }
+        })
+      } else {
+        // Competitive mode: no sequencing needed
+        updateSessionPhase(sessionId, 'final-jeopardy').catch(() => {})
+        if (sessionChannelRef.current) {
+          broadcastMessage(sessionChannelRef.current, { type: 'phase_change', phase: 'final-jeopardy' }).catch(() => {})
+        }
+      }
       // Sync current player scores to the session DB so buzzer players know their max wager
       if (session) {
         const sessionPlayersWithScores = session.players.map(p => ({
@@ -386,9 +431,6 @@ export function GamePage() {
           joinedAt: new Date().toISOString(),
         }))
         updateSessionPlayers(sessionId, sessionPlayersWithScores).catch(() => {})
-      }
-      if (sessionChannelRef.current) {
-        broadcastMessage(sessionChannelRef.current, { type: 'phase_change', phase: 'final-jeopardy' }).catch(() => {})
       }
     } else if (phase === 'clue' && activeClue && !isDailyDouble) {
       // Enter clue screen: buzzers start LOCKED, queue cleared.
@@ -418,7 +460,7 @@ export function GamePage() {
       if (sessionChannelRef.current) {
         broadcastMessage(sessionChannelRef.current, { type: 'buzz_state_sync', buzzState: newBuzzState }).catch(() => {})
       }
-    } else if (phase === 'daily-double' || phase === 'daily-double-wager' || phase === 'round-transition') {
+    } else if (phase === 'daily-double' || phase === 'daily-double-wager' || phase === 'wager-entry' || phase === 'round-transition') {
       updateSessionPhase(sessionId, 'buzzer').catch(() => {})
       if (sessionChannelRef.current) {
         broadcastMessage(sessionChannelRef.current, { type: 'phase_change', phase: 'buzzer' }).catch(() => {})
@@ -427,6 +469,10 @@ export function GamePage() {
       endSession(sessionId).catch(() => {})
       if (sessionChannelRef.current) {
         broadcastMessage(sessionChannelRef.current, { type: 'session_ended' }).catch(() => {})
+      }
+      // Increment times_played for co-op mode (competitive mode handles this in AnalyticsScreen)
+      if (session?.toggleConfig.coop.enabled) {
+        incrementTimesPlayed(gameId).catch(() => {})
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -543,6 +589,9 @@ export function GamePage() {
       }
     }
 
+    const boardTotal = calculateBoardTotal(game)
+    const targetScore = calculateTargetScore(boardTotal, config.coop.targetPercentage)
+
     setSession({
       game,
       gameId,
@@ -555,8 +604,20 @@ export function GamePage() {
       streakCounts: {},
       perRoundIncorrect: {},
       activeWagers: null,
+      teamPool: 0,
+      targetScore,
+      boardTotal,
     })
     setPhase('category-reveal')
+
+    // Broadcast initial co-op state to player devices
+    if (config.coop.enabled && sessionChannelRef.current) {
+      broadcastMessage(sessionChannelRef.current, {
+        type: 'coop_pool_update',
+        teamPool: 0,
+        targetScore,
+      }).catch(() => {})
+    }
   }
 
   function handleClueSelect(categoryIndex: number, clueIndex: number) {
@@ -617,6 +678,80 @@ export function GamePage() {
 
     // Build the updated playerMarkings FIRST (applyModifiers needs the post-change state)
     const updatedPlayerMarkings = { ...clueState.playerMarkings, [playerName]: result }
+
+    // ─── Co-op Mode scoring ─────────────────────────────────────────────────
+    if (session.toggleConfig.coop.enabled) {
+      // Determine base value: use wager if wagering is active and player has a recorded wager
+      let baseValue = clue.value
+      if (clue.dailyDouble && ddWager != null && playerName === ddSelectedPlayer) {
+        baseValue = ddWager
+      } else if (session.toggleConfig.wagering.enabled && session.activeWagers && session.activeWagers[playerName] != null) {
+        baseValue = session.activeWagers[playerName]
+      }
+
+      const coopResult = applyCoopScoring({
+        prevMarking: prev,
+        newMarking: result,
+        baseValue,
+        currentPool: session.teamPool,
+      })
+
+      // Still update individual player analytics (correctCount, incorrectCount, totalEarned)
+      const updatedPlayers = session.players.map(p => {
+        if (p.name !== playerName) return p
+
+        let newCorrect = p.correctCount
+        let newIncorrect = p.incorrectCount
+        let newTotalEarned = p.totalEarned
+        let newCorrectDD = p.correctDailyDoubles
+        let newIncorrectDD = p.incorrectDailyDoubles
+
+        if (prev === 'correct') { newCorrect--; newTotalEarned -= baseValue }
+        if (prev === 'incorrect') { newIncorrect-- }
+        if (result === 'correct') { newCorrect++; newTotalEarned += baseValue }
+        if (result === 'incorrect') { newIncorrect++ }
+
+        // Track Daily Double stats
+        if (clue.dailyDouble && playerName === ddSelectedPlayer) {
+          if (prev === 'correct') newCorrectDD--
+          if (prev === 'incorrect') newIncorrectDD--
+          if (result === 'correct') newCorrectDD++
+          if (result === 'incorrect') newIncorrectDD++
+        }
+
+        return { ...p, correctCount: newCorrect, incorrectCount: newIncorrect, totalEarned: newTotalEarned, correctDailyDoubles: newCorrectDD, incorrectDailyDoubles: newIncorrectDD }
+      })
+
+      // Update clue state markings
+      const updatedClueStates = {
+        ...session.clueStates,
+        [key]: {
+          ...clueState,
+          playerMarkings: updatedPlayerMarkings,
+        },
+      }
+
+      const newSession = {
+        ...session,
+        players: updatedPlayers,
+        clueStates: updatedClueStates,
+        teamPool: coopResult.newPool,
+      }
+      setSession(newSession)
+
+      // Broadcast co-op pool update to buzzer players
+      if (sessionChannelRef.current) {
+        broadcastMessage(sessionChannelRef.current, {
+          type: 'coop_pool_update',
+          teamPool: newSession.teamPool,
+          targetScore: session.targetScore,
+        }).catch(() => {})
+      }
+
+      return
+    }
+
+    // ─── Competitive Mode scoring (unchanged) ───────────────────────────────
 
     // Determine whether to use applyModifiers (non-DD clues with any enabled modifier)
     const hasModifiers =
@@ -770,6 +905,15 @@ export function GamePage() {
 
     if (nextIndex >= session.orderedRoundNames.length) {
       setPhase('final-jeopardy')
+
+      // Broadcast co-op pool state so player devices know co-op is active
+      if (session.toggleConfig.coop.enabled && sessionChannelRef.current) {
+        broadcastMessage(sessionChannelRef.current, {
+          type: 'coop_pool_update',
+          teamPool: session.teamPool,
+          targetScore: session.targetScore,
+        }).catch(() => {})
+      }
     } else {
       // Reset perRoundIncorrect for the new round (Requirement 7.5)
       setSession({ ...session, currentRoundIndex: nextIndex, perRoundIncorrect: {} })
@@ -892,7 +1036,7 @@ export function GamePage() {
         <div style={{ flex: '0 0 auto', paddingTop: '2rem' }}>
           <BackgroundGradient>
             <div style={{ maxWidth: '20rem', padding: '1.5rem', borderRadius: '1.5rem', border: '1px solid rgb(30 41 59)', background: 'rgb(15 23 42 / 0.95)', boxShadow: '0 25px 50px -12px rgb(15 23 42 / 0.3)' }}>
-              <GameSettingsPanel onConfigChange={handleConfigChange} />
+              <GameSettingsPanel onConfigChange={handleConfigChange} boardTotal={game ? calculateBoardTotal(game) : undefined} />
               {game && (
                 <>
                   <hr style={{ border: 'none', borderTop: '1px solid rgb(51 65 85)', margin: '1.25rem 0' }} />
@@ -928,9 +1072,9 @@ export function GamePage() {
   if (!session) return null
 
   // Fix #2: Full-screen overlay for all active game phases (after player-entry)
-  const gameContent = renderGamePhase()
   const hiddenPhases: GamePhase[] = ['player-entry', 'game-over']
   const showCheatSheet = shouldShowCheatSheet(gameSource, fromLibrary) && !hiddenPhases.includes(phase)
+  const gameContent = renderGamePhase()
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 50, background: 'black' }}>
@@ -956,20 +1100,6 @@ export function GamePage() {
             onlinePlayers={onlinePlayers}
           />
         </div>
-      )}
-      {/* QR Code popup button — next to answer sheet button */}
-      {sessionId && (phase === 'category-reveal' || phase === 'board') && (
-        <button
-          type="button"
-          onClick={() => setQrPopupOpen(true)}
-          className="fixed bottom-4 z-40 rounded-full bg-[#6A1B9A] px-4 py-2 text-sm font-semibold text-white shadow-lg transition hover:bg-[#7B1FA2] hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#CE93D8] focus-visible:ring-offset-2 focus-visible:ring-offset-black"
-          style={{ right: showCheatSheet ? '10rem' : '1rem' }}
-        >
-          Buzzer Code
-        </button>
-      )}
-      {showCheatSheet && (
-        <CheatSheetButton onClick={() => setCheatSheetOpen(true)} />
       )}
       {/* QR Code popup overlay */}
       {qrPopupOpen && sessionId && (
@@ -1016,18 +1146,64 @@ export function GamePage() {
       const roundIdx = session!.currentRoundIndex
       const isRevealed = categoriesRevealed[roundIdx] ?? false
 
+      const actionButtons = (
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexShrink: 0, paddingRight: '0.5rem' }}>
+          {sessionId && (
+            <button
+              type="button"
+              onClick={() => setQrPopupOpen(true)}
+              className="rounded-full bg-[#6A1B9A] px-3 py-1.5 text-xs font-semibold text-white shadow-lg transition hover:bg-[#7B1FA2] hover:shadow-xl"
+            >
+              Buzzer Code
+            </button>
+          )}
+          {showCheatSheet && (
+            <button
+              type="button"
+              onClick={() => setCheatSheetOpen(true)}
+              className="rounded-full bg-[#6A1B9A] px-3 py-1.5 text-xs font-semibold text-white shadow-lg transition hover:bg-[#7B1FA2] hover:shadow-xl"
+            >
+              Answer Sheet
+            </button>
+          )}
+        </div>
+      )
+
+      const coopScoreboardEl = session!.toggleConfig.coop.enabled
+        ? (
+          <div style={{ display: 'flex', alignItems: 'center', width: '100%', backgroundColor: '#001699' }}>
+            <CoopScoreboard teamPool={session!.teamPool} targetScore={session!.targetScore} playerNames={session!.players.map(p => p.name)} />
+            {actionButtons}
+          </div>
+        )
+        : undefined
+
       return (
-        <GameBoard
-          categories={categories}
-          clueStates={session!.clueStates}
-          roundName={roundName}
-          players={session!.players}
-          onClueSelect={handleClueSelect}
-          skipReveal={isRevealed}
-          onAllRevealed={() => {
-            setCategoriesRevealed(prev => ({ ...prev, [roundIdx]: true }))
-          }}
-        />
+        <>
+          <GameBoard
+            categories={categories}
+            clueStates={session!.clueStates}
+            roundName={roundName}
+            players={session!.players}
+            onClueSelect={handleClueSelect}
+            skipReveal={isRevealed}
+            onAllRevealed={() => {
+              setCategoriesRevealed(prev => ({ ...prev, [roundIdx]: true }))
+            }}
+            customScoreboard={coopScoreboardEl}
+          />
+          {/* For competitive mode, show buttons as fixed overlay since they're not in the scoreboard */}
+          {!session!.toggleConfig.coop.enabled && (
+            <div style={{ position: 'fixed', bottom: '1rem', right: '1rem', zIndex: 45, display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+              {sessionId && (
+                <button type="button" onClick={() => setQrPopupOpen(true)} className="rounded-full bg-[#6A1B9A] px-4 py-2 text-sm font-semibold text-white shadow-lg transition hover:bg-[#7B1FA2] hover:shadow-xl">Buzzer Code</button>
+              )}
+              {showCheatSheet && (
+                <button type="button" onClick={() => setCheatSheetOpen(true)} className="rounded-full bg-[#6A1B9A] px-4 py-2 text-sm font-semibold text-white shadow-lg transition hover:bg-[#7B1FA2] hover:shadow-xl">Answer Sheet</button>
+              )}
+            </div>
+          )}
+        </>
       )
     }
 
@@ -1045,9 +1221,14 @@ export function GamePage() {
       const roundName = activeClue.roundName
       const category = session!.game.rounds[roundName][activeClue.categoryIndex]
 
+      // In co-op mode, use co-op DD max wager; pass a player with score = teamPool
+      const ddPlayer = session!.toggleConfig.coop.enabled
+        ? { ...player, score: getCoopDailyDoubleMaxWager(session!.teamPool) }
+        : player
+
       return (
         <DailyDoubleWager
-          player={player}
+          player={ddPlayer}
           categoryName={category.category}
           onSubmit={handleDDWagerSubmit}
         />
@@ -1066,6 +1247,11 @@ export function GamePage() {
               setPhase('clue')
             }}
           />
+          {session!.toggleConfig.coop.enabled && (
+            <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 60, width: '100vw' }}>
+              <CoopScoreboard teamPool={session!.teamPool} targetScore={session!.targetScore} playerNames={session!.players.map(p => p.name)} />
+            </div>
+          )}
         </>
       )
     }
@@ -1122,6 +1308,11 @@ export function GamePage() {
               }
             }}
           />
+          {session!.toggleConfig.coop.enabled && (
+            <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 60, width: '100vw' }}>
+              <CoopScoreboard teamPool={session!.teamPool} targetScore={session!.targetScore} playerNames={session!.players.map(p => p.name)} />
+            </div>
+          )}
         </>
       )
     }
@@ -1155,6 +1346,8 @@ export function GamePage() {
     }
 
     if (phase === 'final-jeopardy') {
+      const isCoopActive = session!.toggleConfig.coop.enabled
+
       return (
         <FinalJeopardy
           finalRound={session!.game.final}
@@ -1162,8 +1355,31 @@ export function GamePage() {
           onComplete={handleFJComplete}
           onClueRevealed={handleFJClueRevealed}
           wagers={finalJeopardyState.wagers}
-          allWagersSubmitted={finalJeopardyState.wagers.length >= session!.players.length}
-          allAnswersSubmitted={finalJeopardyState.submissions.length >= session!.players.length}
+          allWagersSubmitted={isCoopActive ? true : finalJeopardyState.wagers.length >= session!.players.length}
+          allAnswersSubmitted={isCoopActive ? true : finalJeopardyState.submissions.length >= session!.players.length}
+          coopMode={isCoopActive}
+          teamPool={isCoopActive ? session!.teamPool : undefined}
+          onCoopWagerSubmit={isCoopActive ? (wager: number) => {
+            coopFjWagerRef.current = wager
+          } : undefined}
+          onCoopMarkAnswer={isCoopActive ? (result: 'correct' | 'incorrect') => {
+            const wager = coopFjWagerRef.current
+            const newPool = result === 'correct'
+              ? session!.teamPool + wager
+              : session!.teamPool - wager
+            setSession(prev => prev ? { ...prev, teamPool: newPool } : prev)
+            // Broadcast pool update
+            if (sessionChannelRef.current) {
+              broadcastMessage(sessionChannelRef.current, {
+                type: 'coop_pool_update',
+                teamPool: newPool,
+                targetScore: session!.targetScore,
+              }).catch(() => {})
+            }
+            // Transition to game-over after FJ marking in co-op
+            setPhase('game-over')
+          } : undefined}
+          submissions={finalJeopardyState.submissions}
           onAnswerRevealed={() => {
             setFjAnswerRevealed(true)
             // Lock submissions when answer is revealed
@@ -1184,6 +1400,33 @@ export function GamePage() {
     }
 
     if (phase === 'game-over') {
+      // Co-op mode: render CoopGameOver (skip leaderboard submission)
+      if (session!.toggleConfig.coop.enabled) {
+        return (
+          <CoopGameOver
+            teamPool={session!.teamPool}
+            targetScore={session!.targetScore}
+            boardTotal={session!.boardTotal}
+            players={session!.players}
+            onExportPdf={() => {
+              exportCoopGamePdf({
+                teamPool: session!.teamPool,
+                targetScore: session!.targetScore,
+                boardTotal: session!.boardTotal,
+                players: session!.players.map(p => ({
+                  name: p.name,
+                  correctCount: p.correctCount,
+                  incorrectCount: p.incorrectCount,
+                  totalEarned: p.totalEarned,
+                })),
+              })
+            }}
+            onPlayAgain={() => navigate({ to: '/home' })}
+          />
+        )
+      }
+
+      // Competitive mode: render AnalyticsScreen (with leaderboard submission)
       return (
         <AnalyticsScreen
           session={session!}

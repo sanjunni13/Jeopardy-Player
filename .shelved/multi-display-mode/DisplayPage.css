@@ -1,0 +1,163 @@
+/* ─── Display Page — TV-Optimized Base Styles ──────────────────────────────── */
+
+/*
+ * WCAG AAA contrast: #f8fafc on #0f172a = ~15.4:1 (exceeds 7:1 minimum).
+ * Full viewport, no scrollbars, no interaction cues.
+ */
+
+.display-page {
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background: #0f172a;
+  color: #f8fafc;
+  font-family: 'Figtree Variable', sans-serif;
+  font-size: clamp(1.5rem, 2.5vw, 2.5rem);
+  line-height: 1.4;
+  position: relative;
+}
+
+/* Hide application shell elements (header, nav, settings) */
+.display-page ~ header,
+.display-page ~ nav,
+.display-page ~ .app-header,
+.display-page ~ .app-nav {
+  display: none !important;
+}
+
+/* ─── No Interaction Cues ──────────────────────────────────────────────────── */
+
+.display-page * {
+  cursor: default;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Remove all hover states */
+.display-page *:hover {
+  outline: none;
+  box-shadow: none;
+}
+
+/* Remove all focus indicators */
+.display-page *:focus {
+  outline: none;
+  box-shadow: none;
+}
+
+.display-page *:focus-visible {
+  outline: none;
+}
+
+/* ─── Scrollbar Hiding (fallback if overflow somehow triggers) ──────────────── */
+
+.display-page::-webkit-scrollbar {
+  display: none;
+}
+
+.display-page {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* ─── Typography Scale — clamp() for responsive viewport sizing ────────────── */
+
+.display-page h1 {
+  font-size: clamp(3rem, 6vw, 5rem);
+  font-weight: 800;
+  line-height: 1.1;
+  margin: 0;
+}
+
+.display-page h2 {
+  font-size: clamp(2.5rem, 5vw, 4rem);
+  font-weight: 700;
+  line-height: 1.2;
+  margin: 0;
+}
+
+.display-page h3 {
+  font-size: clamp(2rem, 4vw, 3.5rem);
+  font-weight: 600;
+  line-height: 1.2;
+  margin: 0;
+}
+
+.display-page h4 {
+  font-size: clamp(1.75rem, 3.5vw, 3rem);
+  font-weight: 600;
+  line-height: 1.3;
+  margin: 0;
+}
+
+.display-page p {
+  font-size: clamp(1.5rem, 2.5vw, 2.5rem);
+  margin: 0;
+}
+
+/* Score values */
+.display-page .score-value {
+  font-size: clamp(2rem, 3.5vw, 3rem);
+  font-weight: 700;
+}
+
+/* Player names */
+.display-page .player-name {
+  font-size: clamp(1.5rem, 2.5vw, 2.5rem);
+  font-weight: 500;
+}
+
+/* ─── Reduced Motion ───────────────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .display-page *,
+  .display-page *::before,
+  .display-page *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ─── Landscape / 16:9 Optimization ───────────────────────────────────────── */
+
+@media (orientation: portrait) {
+  .display-page {
+    /* Nudge users toward landscape — content still renders but not optimized */
+    font-size: clamp(1.25rem, 3vw, 2rem);
+  }
+}
+
+/* ─── Common TV Resolutions ────────────────────────────────────────────────── */
+
+/* 720p */
+@media (max-width: 1280px) and (max-height: 720px) {
+  .display-page {
+    font-size: clamp(1.25rem, 2.2vw, 2rem);
+  }
+}
+
+/* 4K — allow larger fonts */
+@media (min-width: 3840px) {
+  .display-page {
+    font-size: clamp(2.5rem, 2.5vw, 4rem);
+  }
+}
+
+/* ─── Host Disconnect Indicator ────────────────────────────────────────────── */
+
+.display-host-disconnected {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  background: rgba(30, 30, 40, 0.85);
+  color: #fbbf24;
+  font-size: clamp(0.875rem, 1.2vw, 1.1rem);
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 0.9;
+}

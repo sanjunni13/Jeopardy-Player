@@ -1,0 +1,62 @@
+.display-clue {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background-color: #060CE9;
+  padding: clamp(1rem, 3vw, 3rem);
+  box-sizing: border-box;
+  container-type: inline-size;
+}
+
+.display-clue__header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  margin-bottom: clamp(1rem, 3vh, 2.5rem);
+  flex-shrink: 0;
+}
+
+.display-clue__category {
+  font-size: clamp(1.5rem, 3vw, 2.5rem);
+  color: #ffffff;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  text-align: center;
+  opacity: 0.9;
+}
+
+.display-clue__value {
+  font-size: clamp(1.5rem, 3vw, 2.5rem);
+  color: #fbbf24;
+  font-weight: 700;
+  text-align: center;
+}
+
+.display-clue__text {
+  font-size: clamp(3rem, 5vw, 5rem);
+  color: #ffffff;
+  text-align: center;
+  line-height: 1.3;
+  max-width: 90%;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  flex-shrink: 1;
+}
+
+.display-clue__solution {
+  margin-top: clamp(1.5rem, 3vh, 3rem);
+  font-size: clamp(2.5rem, 4vw, 4rem);
+  color: #f97316;
+  text-align: center;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.display-clue__solution-prefix {
+  color: #fbbf24;
+  margin-right: 0.5rem;
+}

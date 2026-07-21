@@ -1,0 +1,277 @@
+/* ─── Co-op Game Over ───────────────────────────────────────────────────────── */
+
+.coop-gameover-page {
+  padding: 2rem;
+}
+
+.coop-gameover-gradient-container {
+  max-width: 40rem;
+  margin: 0 auto;
+}
+
+.coop-gameover-card {
+  margin-left: auto;
+  margin-right: auto;
+  max-width: 40rem;
+  border-radius: 1.5rem;
+  border: 1px solid rgb(30 41 59); /* slate-800 */
+  background: rgb(15 23 42 / 0.95); /* slate-900/95 */
+  padding: 2.5rem;
+  box-shadow: 0 25px 50px -12px rgb(15 23 42 / 0.3);
+}
+
+/* ── Title ── */
+.coop-gameover-title {
+  font-size: 2.5rem;
+  font-weight: bold;
+  letter-spacing: 1px;
+  color: #c99f57;
+  text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.5);
+  font-family: 'Korinna', 'Swiss921', Arial, sans-serif;
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+/* ── Score summary ── */
+.coop-gameover-score-summary {
+  display: flex;
+  justify-content: center;
+  gap: 2rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.coop-gameover-pool,
+.coop-gameover-target,
+.coop-gameover-board-total {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.coop-gameover-pool-label,
+.coop-gameover-target-label,
+.coop-gameover-board-total-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.6);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.coop-gameover-pool-value {
+  font-family: 'Korinna', 'Swiss921', Arial, sans-serif;
+  font-weight: bold;
+  font-size: 1.75rem;
+  color: #c99f57;
+  text-shadow: 1px 1px black;
+}
+
+.coop-gameover-pool-value--negative {
+  color: rgb(251 113 133);
+}
+
+.coop-gameover-target-value {
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  font-weight: 600;
+  font-size: 1.25rem;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.coop-gameover-board-total-value {
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  font-weight: 600;
+  font-size: 1.25rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* ── Progress bar ── */
+.coop-gameover-progress-container {
+  position: relative;
+  width: 100%;
+  height: 1.5rem;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 0.75rem;
+  overflow: hidden;
+  margin-bottom: 0.5rem;
+}
+
+.coop-gameover-progress-container--success {
+  box-shadow: 0 0 12px rgba(34, 197, 94, 0.4);
+}
+
+.coop-gameover-progress-bar {
+  height: 100%;
+  border-radius: 0.75rem;
+  background: #7c3aed;
+  transition: width 0.6s ease;
+}
+
+.coop-gameover-progress-bar--success {
+  background: #22c55e;
+}
+
+.coop-gameover-progress-label {
+  text-align: center;
+  font-size: 0.8125rem;
+  color: rgba(255, 255, 255, 0.7);
+  margin-bottom: 2rem;
+}
+
+/* ── Contributions table ── */
+.coop-gameover-contributions {
+  margin-bottom: 2rem;
+}
+
+.coop-gameover-contributions-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+  margin-bottom: 0.75rem;
+  text-align: center;
+}
+
+.coop-gameover-table-wrapper {
+  overflow-x: auto;
+}
+
+.coop-gameover-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.coop-gameover-table th {
+  color: rgba(255, 255, 255, 0.6);
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.7rem;
+  letter-spacing: 0.5px;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  text-align: left;
+}
+
+.coop-gameover-table td {
+  padding: 0.625rem 0.75rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.coop-gameover-table-name {
+  font-weight: 600;
+  color: rgb(241 245 249) !important;
+}
+
+.coop-gameover-table-correct {
+  color: #22c55e !important;
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  text-align: center !important;
+}
+
+.coop-gameover-table-incorrect {
+  color: rgb(251 113 133) !important;
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  text-align: center !important;
+}
+
+.coop-gameover-table-contributed {
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  font-weight: 600;
+  text-align: right !important;
+}
+
+/* ── Action buttons ── */
+.coop-gameover-actions {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.coop-gameover-btn {
+  border-radius: 100px;
+  padding: 12px 28px;
+  font-size: 0.875rem;
+  font-weight: bold;
+  color: white;
+  border: 0;
+  cursor: pointer;
+  transition: all 0.5s;
+  -webkit-transition: all 0.5s;
+}
+
+.coop-gameover-btn--export {
+  background-color: rgb(30 41 59); /* slate-800 */
+  border: 1px solid rgb(51 65 85); /* slate-700 */
+}
+
+.coop-gameover-btn--export:hover {
+  background-color: rgb(51 65 85);
+  box-shadow: 0 0 15px rgba(51, 65, 85, 0.3);
+  transform: scale(1.05);
+}
+
+.coop-gameover-btn--export:active {
+  background-color: rgb(15 23 42);
+  transition: all 0.25s;
+  -webkit-transition: all 0.25s;
+  box-shadow: none;
+  transform: scale(0.98);
+}
+
+.coop-gameover-btn--play-again {
+  background-color: #6A1B9A;
+}
+
+.coop-gameover-btn--play-again:hover {
+  background-color: #8E24AA;
+  box-shadow: 0 0 20px rgba(142, 36, 170, 0.3);
+  transform: scale(1.05);
+}
+
+.coop-gameover-btn--play-again:active {
+  background-color: #4A148C;
+  transition: all 0.25s;
+  -webkit-transition: all 0.25s;
+  box-shadow: none;
+  transform: scale(0.98);
+}
+
+/* ─── Responsive ────────────────────────────────────────────────────────────── */
+
+@media (max-width: 600px) {
+  .coop-gameover-page {
+    padding: 1rem;
+  }
+
+  .coop-gameover-card {
+    padding: 1.5rem;
+  }
+
+  .coop-gameover-title {
+    font-size: 1.75rem;
+  }
+
+  .coop-gameover-score-summary {
+    gap: 1rem;
+  }
+
+  .coop-gameover-pool-value {
+    font-size: 1.5rem;
+  }
+
+  .coop-gameover-table {
+    font-size: 0.8rem;
+  }
+
+  .coop-gameover-actions {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .coop-gameover-btn {
+    width: 80%;
+  }
+}

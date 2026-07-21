@@ -68,3 +68,48 @@
 .scoreboard-strip__item--current .scoreboard-strip__score {
   color: #c084fc;
 }
+
+/* ─── Co-op Mode Styles ──────────────────────────────────────────────────── */
+
+.scoreboard-strip--coop {
+  text-align: center;
+}
+
+.scoreboard-strip__pool-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #f1f5f9;
+  margin-bottom: 0.5rem;
+}
+
+.scoreboard-strip__progress-container {
+  width: 100%;
+  height: 0.5rem;
+  background: rgba(148, 163, 184, 0.2);
+  border-radius: 9999px;
+  overflow: hidden;
+  margin-bottom: 0.375rem;
+}
+
+.scoreboard-strip__progress-bar {
+  height: 100%;
+  background: #7c3aed;
+  border-radius: 9999px;
+  transition: width 0.4s ease;
+}
+
+.scoreboard-strip__progress-bar--success {
+  background: #22c55e;
+}
+
+.scoreboard-strip__target-label {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  margin: 0;
+}
+
+.scoreboard-strip__checkmark {
+  color: #22c55e;
+  font-weight: 600;
+}

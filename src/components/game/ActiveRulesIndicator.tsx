@@ -13,6 +13,10 @@ interface ActiveRulesIndicatorProps {
 export function ActiveRulesIndicator({ config }: ActiveRulesIndicatorProps) {
   const labels: string[] = []
 
+  if (config.coop.enabled) {
+    labels.push(`Co-op: Target ${config.coop.targetPercentage}%`)
+  }
+
   if (config.wagering.enabled) {
     labels.push(`Wagering: ${config.wagering.wagerFloor} pt min`)
   }

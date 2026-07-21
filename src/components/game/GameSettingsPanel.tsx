@@ -1,14 +1,23 @@
 import { useState, useCallback } from 'react'
 import type { ToggleConfig } from '../../types/game'
 import { DEFAULT_TOGGLE_CONFIG } from '../../types/game'
+import { calculateTargetScore } from '../../utils/coopScoring'
 import { readPreferences } from '../../utils/preferencesStore'
 import './GameSettingsPanel.css'
 
 interface GameSettingsPanelProps {
   onConfigChange: (config: ToggleConfig, hasErrors: boolean) => void
+  boardTotal?: number
 }
 
 // ─── Validation helpers ───────────────────────────────────────────────────────
+
+function validateTargetPercentage(value: string): string | null {
+  if (value === '') return 'Enter a value between 50 and 100.'
+  const n = Number(value)
+  if (!Number.isInteger(n) || n < 50 || n > 100) return 'Must be an integer between 50 and 100.'
+  return null
+}
 
 function validateWagerFloor(value: string): string | null {
   if (value === '' || value === '0') return 'Enter a value between 1 and 10,000.'
@@ -52,7 +61,12 @@ function filterInt(value: string): string {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export function GameSettingsPanel({ onConfigChange }: GameSettingsPanelProps) {
+export function GameSettingsPanel({ onConfigChange, boardTotal }: GameSettingsPanelProps) {
+  // ── Co-op Mode state ──
+  const [coopEnabled, setCoopEnabled] = useState(false)
+  const [targetPercentage, setTargetPercentage] = useState('75')
+  const [targetPercentageError, setTargetPercentageError] = useState<string | null>(null)
+
   // ── Toggle enabled states ──
   const [wageringEnabled, setWageringEnabled] = useState(false)
   const [rulesEnabled, setRulesEnabled] = useState(false)
@@ -82,6 +96,9 @@ export function GameSettingsPanel({ onConfigChange }: GameSettingsPanelProps) {
   // ─── Build config and report to parent ───────────────────────────────────
 
   const buildAndReport = useCallback((overrides: {
+    coopEnabled?: boolean
+    targetPercentage?: string
+    targetPercentageError?: string | null
     wageringEnabled?: boolean
     rulesEnabled?: boolean
     timedEnabled?: boolean
@@ -99,6 +116,9 @@ export function GameSettingsPanel({ onConfigChange }: GameSettingsPanelProps) {
     timerDuration?: string
     timerDurationError?: string | null
   }) => {
+    const ce = overrides.coopEnabled ?? coopEnabled
+    const tp = overrides.targetPercentage ?? targetPercentage
+    const tpErr = overrides.targetPercentageError !== undefined ? overrides.targetPercentageError : targetPercentageError
     const we = overrides.wageringEnabled ?? wageringEnabled
     const re = overrides.rulesEnabled ?? rulesEnabled
     const te = overrides.timedEnabled ?? timedEnabled
@@ -117,25 +137,31 @@ export function GameSettingsPanel({ onConfigChange }: GameSettingsPanelProps) {
     const tdErr = overrides.timerDurationError !== undefined ? overrides.timerDurationError : timerDurationError
 
     const config: ToggleConfig = {
+      coop: {
+        enabled: ce,
+        targetPercentage: ce ? (Number(tp) || 75) : DEFAULT_TOGGLE_CONFIG.coop.targetPercentage,
+      },
       wagering: {
         enabled: we,
         wagerFloor: we ? (Number(wf) || 100) : DEFAULT_TOGGLE_CONFIG.wagering.wagerFloor,
       },
-      rulesEngine: {
-        enabled: re,
-        stealBonus: {
-          enabled: re && sbe,
-          bonusPoints: re && sbe ? (Number(sbp) || 200) : DEFAULT_TOGGLE_CONFIG.rulesEngine.stealBonus.bonusPoints,
-        },
-        streakMultiplier: {
-          enabled: re && ske,
-          threshold: re && ske ? (Number(skt) || 3) : DEFAULT_TOGGLE_CONFIG.rulesEngine.streakMultiplier.threshold,
-          multiplier: re && ske ? (Number(skm) || 2) : DEFAULT_TOGGLE_CONFIG.rulesEngine.streakMultiplier.multiplier,
-        },
-        penaltyDoubler: {
-          enabled: re && pe,
-        },
-      },
+      rulesEngine: ce
+        ? { ...DEFAULT_TOGGLE_CONFIG.rulesEngine }
+        : {
+            enabled: re,
+            stealBonus: {
+              enabled: re && sbe,
+              bonusPoints: re && sbe ? (Number(sbp) || 200) : DEFAULT_TOGGLE_CONFIG.rulesEngine.stealBonus.bonusPoints,
+            },
+            streakMultiplier: {
+              enabled: re && ske,
+              threshold: re && ske ? (Number(skt) || 3) : DEFAULT_TOGGLE_CONFIG.rulesEngine.streakMultiplier.threshold,
+              multiplier: re && ske ? (Number(skm) || 2) : DEFAULT_TOGGLE_CONFIG.rulesEngine.streakMultiplier.multiplier,
+            },
+            penaltyDoubler: {
+              enabled: re && pe,
+            },
+          },
       timedClues: {
         enabled: te,
         timerDuration: te ? (Number(td) || 30) : DEFAULT_TOGGLE_CONFIG.timedClues.timerDuration,
@@ -143,13 +169,15 @@ export function GameSettingsPanel({ onConfigChange }: GameSettingsPanelProps) {
     }
 
     const hasErrors =
+      (ce && tpErr !== null) ||
       (we && wfe !== null) ||
-      (re && sbe && sbErr !== null) ||
-      (re && ske && (sktErr !== null || skmErr !== null)) ||
+      (!ce && re && sbe && sbErr !== null) ||
+      (!ce && re && ske && (sktErr !== null || skmErr !== null)) ||
       (te && tdErr !== null)
 
     onConfigChange(config, hasErrors)
   }, [
+    coopEnabled, targetPercentage, targetPercentageError,
     wageringEnabled, rulesEnabled, timedEnabled,
     wagerFloor, wagerFloorError,
     stealBonusEnabled, stealBonusPoints, stealBonusError,
@@ -160,6 +188,63 @@ export function GameSettingsPanel({ onConfigChange }: GameSettingsPanelProps) {
   ])
 
   // ─── Toggle handlers ──────────────────────────────────────────────────────
+
+  function handleCoopToggle(checked: boolean) {
+    setCoopEnabled(checked)
+    if (checked) {
+      // Disable and reset Rules Engine
+      setRulesEnabled(false)
+      setStealBonusEnabled(false)
+      setStealBonusPoints('200')
+      setStealBonusError(null)
+      setStreakEnabled(false)
+      setStreakThreshold('3')
+      setStreakThresholdError(null)
+      setStreakMultiplier('2')
+      setStreakMultiplierError(null)
+      setPenaltyEnabled(false)
+      buildAndReport({
+        coopEnabled: true,
+        rulesEnabled: false,
+        stealBonusEnabled: false,
+        stealBonusPoints: '200',
+        stealBonusError: null,
+        streakEnabled: false,
+        streakThreshold: '3',
+        streakThresholdError: null,
+        streakMultiplier: '2',
+        streakMultiplierError: null,
+        penaltyEnabled: false,
+      })
+    } else {
+      // Hide co-op sub-section, re-enable Rules Engine toggle (stays disabled by default)
+      setTargetPercentage('75')
+      setTargetPercentageError(null)
+      buildAndReport({
+        coopEnabled: false,
+        targetPercentage: '75',
+        targetPercentageError: null,
+      })
+    }
+  }
+
+  function handleTargetPercentageChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const filtered = filterInt(e.target.value)
+    setTargetPercentage(filtered)
+    if (targetPercentageError !== null) {
+      const err = validateTargetPercentage(filtered)
+      setTargetPercentageError(err)
+      buildAndReport({ targetPercentage: filtered, targetPercentageError: err })
+    } else {
+      buildAndReport({ targetPercentage: filtered })
+    }
+  }
+
+  function handleTargetPercentageBlur() {
+    const err = validateTargetPercentage(targetPercentage)
+    setTargetPercentageError(err)
+    buildAndReport({ targetPercentageError: err })
+  }
 
   function handleWageringToggle(checked: boolean) {
     setWageringEnabled(checked)
@@ -357,13 +442,69 @@ export function GameSettingsPanel({ onConfigChange }: GameSettingsPanelProps) {
 
   // ─── Summary strip ────────────────────────────────────────────────────────
 
-  const anyEnabled = wageringEnabled || rulesEnabled || timedEnabled
+  const anyEnabled = coopEnabled || wageringEnabled || rulesEnabled || timedEnabled
 
   // ─── Render ───────────────────────────────────────────────────────────────
 
   return (
     <div className="gsp-container">
       <h2 className="gsp-title">Game Settings</h2>
+
+      {/* ── Co-op Mode ── */}
+      <div className="gsp-section">
+        <label className="gsp-toggle-row">
+          <input
+            type="checkbox"
+            className="gsp-toggle-checkbox"
+            checked={coopEnabled}
+            onChange={e => handleCoopToggle(e.target.checked)}
+            aria-label="Enable Co-op Mode"
+          />
+          <span className="gsp-toggle-track" aria-hidden="true">
+            <span className="gsp-toggle-thumb" />
+          </span>
+          <span className="gsp-toggle-label">Co-op Mode</span>
+        </label>
+
+        {coopEnabled && (
+          <div className="gsp-subsection">
+            <p className="gsp-coop-info-note">
+              All players share one score pool. Work together to reach the target!
+            </p>
+            <div className="gsp-field">
+              <label htmlFor="gsp-target-percentage" className="gsp-field-label">
+                Target percentage
+              </label>
+              <div className="gsp-input-wrapper">
+                <input
+                  id="gsp-target-percentage"
+                  type="text"
+                  inputMode="numeric"
+                  className={`gsp-input gsp-input-with-prefix${targetPercentageError ? ' gsp-input-error' : ''}`}
+                  value={targetPercentage}
+                  onChange={handleTargetPercentageChange}
+                  onBlur={handleTargetPercentageBlur}
+                  aria-describedby={targetPercentageError ? 'gsp-target-percentage-error' : 'gsp-target-score-display'}
+                  aria-invalid={!!targetPercentageError}
+                />
+                <span className="gsp-input-prefix gsp-input-suffix">%</span>
+              </div>
+              {targetPercentageError && (
+                <p id="gsp-target-percentage-error" className="gsp-error" role="alert">
+                  {targetPercentageError}
+                </p>
+              )}
+            </div>
+            {boardTotal !== undefined && !targetPercentageError && targetPercentage !== '' && (
+              <p id="gsp-target-score-display" className="gsp-coop-target-score">
+                Team must reach:{' '}
+                <strong>{calculateTargetScore(boardTotal, Number(targetPercentage) || 75)}</strong>{' '}
+                pts (of {boardTotal} total)
+              </p>
+            )}
+          </div>
+        )}
+      </div>
 
       {/* ── Wagering Mode ── */}
       <div className="gsp-section">
@@ -411,7 +552,8 @@ export function GameSettingsPanel({ onConfigChange }: GameSettingsPanelProps) {
         )}
       </div>
 
-      {/* ── Rules Engine ── */}
+      {/* ── Rules Engine (hidden when Co-op is enabled) ── */}
+      {!coopEnabled && (
       <div className="gsp-section">
         <label className="gsp-toggle-row">
           <input
@@ -569,6 +711,7 @@ export function GameSettingsPanel({ onConfigChange }: GameSettingsPanelProps) {
           </div>
         )}
       </div>
+      )}
 
       {/* ── Timed Clue Responses ── */}
       <div className="gsp-section">
@@ -618,6 +761,11 @@ export function GameSettingsPanel({ onConfigChange }: GameSettingsPanelProps) {
         <div className="gsp-summary">
           <p className="gsp-summary-title">Active settings</p>
           <ul className="gsp-summary-list">
+            {coopEnabled && (
+              <li className="gsp-summary-item">
+                Co-op Mode: Target {targetPercentage || '75'}%
+              </li>
+            )}
             {wageringEnabled && (
               <li className="gsp-summary-item">
                 Minimum wager: {wagerFloor || '100'} pts

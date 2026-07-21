@@ -81,6 +81,39 @@ export async function saveGame(
   }
 }
 
+/**
+ * Increment times_played by 1 without updating winners or high score.
+ * Used for co-op mode where individual rankings don't apply.
+ */
+export async function incrementTimesPlayed(gameId: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { data: game, error: fetchErr } = await supabase
+      .from('games')
+      .select('times_played')
+      .eq('id', gameId)
+      .single();
+
+    if (fetchErr || !game) {
+      return { success: false, error: 'Game not found.' };
+    }
+
+    const currentTimesPlayed = (game as Record<string, unknown>).times_played as number ?? 0;
+
+    const { error: updateErr } = await supabase
+      .from('games')
+      .update({ times_played: currentTimesPlayed + 1 })
+      .eq('id', gameId);
+
+    if (updateErr) {
+      return { success: false, error: updateErr.message };
+    }
+
+    return { success: true };
+  } catch {
+    return { success: false, error: 'Network error.' };
+  }
+}
+
 export async function updateGameStats(
   gameId: string,
   players: Player[],

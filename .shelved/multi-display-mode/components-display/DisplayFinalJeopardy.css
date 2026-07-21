@@ -1,0 +1,226 @@
+.display-final-jeopardy {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(160deg, #0a0e3a 0%, #060CE9 40%, #1a0a4e 100%);
+  overflow: hidden;
+  container-type: inline-size;
+}
+
+/* ─── Phase 1: Category Only ───────────────────────────────────────────────── */
+
+.display-fj__category-phase {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  padding: clamp(2rem, 4vw, 5rem);
+  box-sizing: border-box;
+  text-align: center;
+}
+
+.display-fj__label {
+  font-size: clamp(2rem, 3.5vw, 3.5rem);
+  color: #fbbf24;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: clamp(1rem, 3vh, 2.5rem);
+  text-shadow: 0 0 20px rgba(251, 191, 36, 0.6);
+}
+
+.display-fj__category-text {
+  font-size: clamp(3.5rem, 7vw, 8rem);
+  color: #ffffff;
+  font-weight: 800;
+  text-align: center;
+  line-height: 1.15;
+  max-width: 85%;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  text-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+}
+
+/* ─── Phase 2: Clue Revealed ───────────────────────────────────────────────── */
+
+.display-fj__clue-phase {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  padding: clamp(1.5rem, 3vw, 4rem);
+  box-sizing: border-box;
+}
+
+.display-fj__clue-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  margin-bottom: clamp(1.5rem, 3vh, 3rem);
+  flex-shrink: 0;
+}
+
+.display-fj__clue-label {
+  font-size: clamp(1.5rem, 2.5vw, 2.5rem);
+  color: #fbbf24;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.display-fj__clue-category {
+  font-size: clamp(1.5rem, 2.5vw, 2.5rem);
+  color: #ffffff;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.85;
+}
+
+.display-fj__clue-text {
+  font-size: clamp(2.5rem, 5vw, 5rem);
+  color: #ffffff;
+  text-align: center;
+  line-height: 1.3;
+  max-width: 90%;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  flex-shrink: 1;
+}
+
+/* ─── Phase 3: Player Reveals ──────────────────────────────────────────────── */
+
+.display-fj__reveal-phase {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  padding: clamp(1rem, 2vw, 2.5rem);
+  box-sizing: border-box;
+}
+
+.display-fj__reveal-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  margin-bottom: clamp(1rem, 2vh, 2rem);
+  flex-shrink: 0;
+}
+
+.display-fj__reveal-label {
+  font-size: clamp(1.2rem, 2vw, 2rem);
+  color: #fbbf24;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.display-fj__reveal-category {
+  font-size: clamp(1.2rem, 2vw, 2rem);
+  color: #ffffff;
+  opacity: 0.8;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.display-fj__reveal-list {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(0.75rem, 1.5vh, 1.5rem);
+  flex: 1;
+  overflow-y: auto;
+  justify-content: center;
+}
+
+/* ─── Reveal Card ──────────────────────────────────────────────────────────── */
+
+.display-fj__reveal-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: clamp(1rem, 2vw, 2rem) clamp(1.5rem, 3vw, 3rem);
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.08);
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  width: min(90%, 60rem);
+  transition: border-color 0.3s ease, background-color 0.3s ease;
+}
+
+.display-fj__reveal-card--correct {
+  border-color: #22c55e;
+  background: rgba(34, 197, 94, 0.12);
+}
+
+.display-fj__reveal-card--incorrect {
+  border-color: #ef4444;
+  background: rgba(239, 68, 68, 0.12);
+}
+
+.display-fj__reveal-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.display-fj__reveal-player {
+  font-size: clamp(2rem, 3.5vw, 3.5rem);
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.display-fj__reveal-icon {
+  font-size: clamp(2rem, 3.5vw, 3.5rem);
+  font-weight: 900;
+}
+
+.display-fj__reveal-icon--correct {
+  color: #22c55e;
+}
+
+.display-fj__reveal-icon--incorrect {
+  color: #ef4444;
+}
+
+.display-fj__reveal-card-details {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: clamp(0.5rem, 2vw, 2rem);
+}
+
+.display-fj__reveal-answer {
+  font-size: clamp(1.5rem, 2.5vw, 2.5rem);
+  color: #e2e8f0;
+  font-style: italic;
+}
+
+.display-fj__reveal-wager {
+  font-size: clamp(1.5rem, 2.5vw, 2.5rem);
+  color: #fbbf24;
+  font-weight: 600;
+}
+
+/* ─── Reduced Motion Support ───────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .display-fj__category-text {
+    text-shadow: none;
+  }
+
+  .display-fj__label {
+    text-shadow: none;
+  }
+
+  .display-fj__reveal-card {
+    transition: none;
+  }
+}
