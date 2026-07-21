@@ -43,11 +43,6 @@ export function FinalJeopardyEntryPage({
   // Check on mount if wager was already submitted (reconnect case)
   const [coopDetected, setCoopDetected] = useState(coopMode);
 
-  // Update coopDetected when prop changes (channel message arrives)
-  useEffect(() => {
-    if (coopMode) setCoopDetected(true);
-  }, [coopMode]);
-
   useEffect(() => {
     let cancelled = false;
     fetchSession(sessionId).then(session => {
