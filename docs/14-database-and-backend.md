@@ -204,6 +204,7 @@ These are defined in `.env.local` (not committed to git).
 | File | Type | Usage |
 |------|------|-------|
 | `src/utils/supabase.ts` | Standard browser client | Used throughout for DB/storage/auth/realtime |
+| `src/utils/logger.ts` | Structured logger | JSON logging with categories, levels, and timed operations |
 | `lib/client.ts` | SSR browser client | For SSR scenarios (using `@supabase/ssr`) |
 | `lib/server.ts` | Server-side client | For server-side operations |
 
@@ -234,10 +235,72 @@ The database uses RLS policies to protect data:
 | `@supabase/auth-ui-react` | Pre-built auth UI components |
 | `supabase` (CLI, devDep) | Local development, migrations, edge function deployment |
 
+## Structured Logging (`src/utils/logger.ts`)
+
+A lightweight, zero-dependency structured logging utility that outputs JSON to the console. Designed for dual use:
+- **Edge Functions**: Supabase captures JSON console output in its built-in Log Explorer
+- **Client-side**: Structured logs appear in DevTools; queryable if piped to an observability service
+
+### Log Levels
+
+| Level | Function | Console Method |
+|-------|----------|---------------|
+| `info` | `logInfo()` | `console.log` |
+| `warn` | `logWarn()` | `console.warn` |
+| `error` | `logError()` | `console.error` |
+
+### Log Categories
+
+```typescript
+type LogCategory =
+  | 'auth' | 'game' | 'session' | 'buzzer'
+  | 'final_jeopardy' | 'draft' | 'media'
+  | 'rating' | 'favorite' | 'leaderboard'
+  | 'settings' | 'generation' | 'realtime' | 'storage'
+```
+
+### Timed Operations
+
+```typescript
+const timer = logTimed('game', 'saveGame', { gameId })
+// ... perform operation ...
+timer.done({ success: true })
+// Automatically logs duration in milliseconds
+```
+
+### Log Output Format
+
+```json
+{
+  "level": "info",
+  "category": "game",
+  "action": "saveGame",
+  "msg": "saveGame completed",
+  "meta": { "gameId": "abc-123" },
+  "durationMs": 245,
+  "ts": "2026-07-27T12:00:00.000Z"
+}
+```
+
+### Integration Points
+
+All API modules use the logger:
+- `favoritesApi.ts` — add/remove/fetch operations
+- `ratingsApi.ts` — upsert with timed operations
+- `mediaApi.ts` — upload/delete with timed operations
+- `settingsApi.ts` — name update, game delete, account delete (all timed)
+- `sessionApi.ts` — session creation, phase changes, cleanup
+- `gameApi.ts` — save/update operations
+- `generateApi.ts` — all three generation modes (timed)
+- `leaderboardApi.ts` — player stats queries
+- `sessionChannel.ts` — realtime connection events
+- `draftApi.ts` — draft lifecycle operations
+
 ## Key Implementation Patterns
 
 - **Optimistic updates**: UI updates immediately, DB write happens async
 - **Graceful degradation**: All API calls handle errors without crashing; return error objects
+- **Structured logging**: All API operations emit structured JSON logs with category, action, and optional timing via `logTimed()`
 - **Null coalescing**: All numeric fields from DB are defaulted to 0 (`?? 0`)
 - **Case-insensitive matching**: Player names use `.ilike()` for lookups
 - **Upsert pattern**: Ratings use `upsert` with conflict resolution on unique constraint

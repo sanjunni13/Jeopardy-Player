@@ -84,6 +84,7 @@ Use `fast-check` to generate random inputs and verify invariants hold for all po
 |------|------------------------|
 | `buzzerLogic.property.test.ts` | Buzz eligibility rules hold for all state combinations |
 | `gameApi.property.test.ts` | Save/update operations maintain data integrity |
+| `gameToggles.property.test.ts` | All toggle scoring paths verified (streak, steal, penalty, wagering, combinations) |
 | `analyticsUtils.property.test.ts` | Timeline ordinals are monotonic, accuracy never exceeds 100% |
 | `builderConversion.property.test.ts` | Conversion preserves all clue data |
 | `builderFormStructure.property.test.ts` | Form structure invariants |
@@ -94,7 +95,6 @@ Use `fast-check` to generate random inputs and verify invariants hold for all po
 | `favoritesApi.property.test.ts` | Add/remove are idempotent as expected |
 | `finalJeopardyScoring.property.test.ts` | FJ scoring is symmetric |
 | `finalJeopardyValidation.property.test.ts` | Wager ranges are correct for all scores |
-| `gameApi.property.test.ts` | Game save/update contracts |
 | `gameSorting.property.test.ts` | Sort output is always ordered correctly |
 | `mediaApi.property.test.ts` | Validation accepts/rejects correct file types |
 | `playerNameValidation.property.test.ts` | All invalid names rejected, valid names accepted |
@@ -105,6 +105,10 @@ Use `fast-check` to generate random inputs and verify invariants hold for all po
 | `sessionRegistration.property.test.ts` | Registration contracts |
 | `storageMigration.property.test.ts` | Migration preserves data |
 | `StarRating.property.test.tsx` | Renders correctly for all valid rating values |
+| `GameSettingsPanel.property.test.tsx` | Co-op toggle disables Rules Engine, target percentage validation |
+| `ActiveRulesIndicator.property.test.tsx` | Rules indicator renders correct labels for all toggle combinations |
+| `WagerEntry.property.test.tsx` | Wager input enforces range constraints for all score values |
+| `useClueTimer.property.test.ts` | Timer decrements correctly, expires at zero, respects start/stop/reset |
 
 ### Integration Tests (`*.integration.test.ts`)
 
@@ -202,10 +206,16 @@ const mockChannel = {
 | `@testing-library/jest-dom` | Extended DOM assertions (toBeInTheDocument, etc.) |
 | `fast-check` | Property-based testing framework |
 
+## Structured Logging Integration
+
+All API modules now include structured logging via `src/utils/logger.ts`. This affects test setup — tests that call API functions will produce structured JSON log output to the console. Tests mock Supabase but generally do **not** mock the logger (logs are harmless and useful for debugging test failures).
+
+The logger itself is a pure utility with no external dependencies beyond `console` and `performance.now()`, so it requires no mocking infrastructure.
+
 ## Test Coverage Areas vs. Gaps
 
 ### Well-Covered
-- Scoring logic (all toggles, reversals, co-op)
+- Scoring logic (all toggles, reversals, co-op) — including comprehensive `gameToggles.property.test.ts` (584 lines)
 - Validation (game files, player names, wagers, ratings)
 - Buzzer eligibility logic
 - Analytics computations
@@ -213,6 +223,10 @@ const mockChannel = {
 - Preferences store
 - Session ID generation
 - Sorting/filtering utilities
+- Timer hook behavior (`useClueTimer.property.test.ts`)
+- Toggle UI interactions (`GameSettingsPanel.property.test.tsx`)
+- Active rules display (`ActiveRulesIndicator.property.test.tsx`)
+- Wager entry validation (`WagerEntry.property.test.tsx`)
 
 ### Areas That Could Use More Coverage
 - GamePage integration (complex component with many state interactions)
@@ -220,6 +234,7 @@ const mockChannel = {
 - Display mode (shelved, tests exist but may be stale)
 - Full accessibility audit across all pages
 - Visual regression testing
+- Logger utility unit tests (currently tested indirectly through API tests)
 
 ## Best Practices Observed
 
@@ -228,3 +243,4 @@ const mockChannel = {
 3. **Pure function preference**: Scoring and validation logic extracted into pure functions for easy testing
 4. **Deterministic tests**: Property tests use seeded generators for reproducibility
 5. **No network calls**: All external services mocked in tests
+6. **Structured logging**: All API modules emit structured JSON logs; tests let these pass through (useful for debugging) without mocking the logger
