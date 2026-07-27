@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { logTimed } from './logger'
 import type { PlayerRow } from './leaderboardUtils'
 
 /**
@@ -12,6 +13,7 @@ import type { PlayerRow } from './leaderboardUtils'
 export async function fetchAllPlayers(
   options?: { signal?: AbortSignal },
 ): Promise<PlayerRow[]> {
+  const timer = logTimed('leaderboard', 'fetchAllPlayers');
   const query = supabase
     .from('players')
     .select(
@@ -25,10 +27,12 @@ export async function fetchAllPlayers(
   const { data, error } = await query
 
   if (error) {
+    timer.done({ success: false, error: error.message });
     throw new Error(`Failed to fetch players: ${error.message}`)
   }
 
   if (!data) {
+    timer.done({ success: true });
     return []
   }
 
@@ -48,5 +52,6 @@ export async function fetchAllPlayers(
     total_money_earned: row.total_money_earned ?? 0,
   }))
 
+  timer.done({ success: true });
   return players
 }

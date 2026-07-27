@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { logTimed } from './logger';
 import type { NormalizedGame, Player, SaveGameResponse, UpdateStatsResponse } from '../types/game';
 
 export async function saveGame(
@@ -6,10 +7,12 @@ export async function saveGame(
   gameData: NormalizedGame,
   playerId?: number,
 ): Promise<SaveGameResponse> {
+  const timer = logTimed('game', 'saveGame', { gameName, playerId });
   try {
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
+      timer.done({ success: false, error: 'Not authenticated' });
       return { error: 'Not authenticated.' } as SaveGameResponse;
     }
 
@@ -72,11 +75,14 @@ export async function saveGame(
     if (insertErr || !row) {
       // Rollback: best-effort delete of uploaded file
       await supabase.storage.from('games').remove([storagePath]);
+      timer.done({ success: false, error: `Database insert failed: ${insertErr?.message ?? 'Unknown error'}` });
       return { error: `Database insert failed: ${insertErr?.message ?? 'Unknown error'}` } as SaveGameResponse;
     }
 
+    timer.done({ success: true });
     return { success: true, id: row.id } as SaveGameResponse;
   } catch {
+    timer.done({ success: false, error: 'Network error' });
     return { error: 'Network error. Please try again.' } as SaveGameResponse;
   }
 }
@@ -86,6 +92,7 @@ export async function saveGame(
  * Used for co-op mode where individual rankings don't apply.
  */
 export async function incrementTimesPlayed(gameId: string): Promise<{ success: boolean; error?: string }> {
+  const timer = logTimed('game', 'incrementTimesPlayed', { gameId });
   try {
     const { data: game, error: fetchErr } = await supabase
       .from('games')
@@ -94,6 +101,7 @@ export async function incrementTimesPlayed(gameId: string): Promise<{ success: b
       .single();
 
     if (fetchErr || !game) {
+      timer.done({ success: false, error: 'Game not found.' });
       return { success: false, error: 'Game not found.' };
     }
 
@@ -105,11 +113,14 @@ export async function incrementTimesPlayed(gameId: string): Promise<{ success: b
       .eq('id', gameId);
 
     if (updateErr) {
+      timer.done({ success: false, error: updateErr.message });
       return { success: false, error: updateErr.message };
     }
 
+    timer.done({ success: true });
     return { success: true };
   } catch {
+    timer.done({ success: false, error: 'Network error.' });
     return { success: false, error: 'Network error.' };
   }
 }
@@ -120,6 +131,7 @@ export async function updateGameStats(
   winnerNames: string[],
   authenticatedPlayer?: { playerId: number; playerName: string },
 ): Promise<UpdateStatsResponse> {
+  const timer = logTimed('game', 'updateGameStats', { gameId, playerCount: players.length, winnerNames });
   try {
     // Get auth user
     const { data: { user } } = await supabase.auth.getUser();
@@ -294,11 +306,14 @@ export async function updateGameStats(
     }
 
     if (errors.length > 0) {
+      timer.done({ success: false, error: errors.join('; ') });
       return { success: false, error: errors.join('; ') };
     }
 
+    timer.done({ success: true });
     return { success: true };
   } catch {
+    timer.done({ success: false, error: 'Network error' });
     return { success: false, error: 'Network error. Please try again.' };
   }
 }

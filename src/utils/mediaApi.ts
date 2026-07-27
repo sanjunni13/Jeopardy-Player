@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { logTimed } from './logger';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -72,9 +73,13 @@ export async function uploadClueMedia(
   categoryIndex: number,
   clueIndex: number
 ): Promise<{ success: true; url: string; storagePath: string } | { success: false; error: string }> {
+  const timer = logTimed('media', 'uploadClueMedia', { draftId, roundIndex, categoryIndex, clueIndex, fileName: file.name, fileSize: file.size });
   try {
     const user = await getAuthUser();
-    if (!user) return { success: false, error: 'Not authenticated.' };
+    if (!user) {
+      timer.done({ success: false, error: 'Not authenticated' });
+      return { success: false, error: 'Not authenticated.' };
+    }
 
     const safeName = sanitizeFileName(file.name);
     const storagePath = `${user.id}/clue-media/${draftId}/${roundIndex}-${categoryIndex}-${clueIndex}/${safeName}`;
@@ -87,6 +92,7 @@ export async function uploadClueMedia(
       });
 
     if (uploadErr) {
+      timer.done({ success: false, error: `Upload failed: ${uploadErr.message}` });
       return { success: false, error: `Upload failed: ${uploadErr.message}` };
     }
 
@@ -100,11 +106,14 @@ export async function uploadClueMedia(
       const { data: urlData } = supabase.storage
         .from('games')
         .getPublicUrl(storagePath);
+      timer.done({ success: true });
       return { success: true, url: urlData.publicUrl, storagePath };
     }
 
+    timer.done({ success: true });
     return { success: true, url: signedData.signedUrl, storagePath };
   } catch {
+    timer.done({ success: false, error: 'Network error' });
     return { success: false, error: 'Network error. Please try again.' };
   }
 }
@@ -113,9 +122,13 @@ export async function deleteClueMedia(
   url: string,
   storagePath?: string
 ): Promise<{ success: true } | { success: false; error: string }> {
+  const timer = logTimed('media', 'deleteClueMedia', { storagePath });
   try {
     const user = await getAuthUser();
-    if (!user) return { success: false, error: 'Not authenticated.' };
+    if (!user) {
+      timer.done({ success: false, error: 'Not authenticated' });
+      return { success: false, error: 'Not authenticated.' };
+    }
 
     let resolvedPath = storagePath;
 
@@ -148,11 +161,14 @@ export async function deleteClueMedia(
       .remove([resolvedPath]);
 
     if (removeErr) {
+      timer.done({ success: false, error: `Deletion failed: ${removeErr.message}` });
       return { success: false, error: `Deletion failed: ${removeErr.message}` };
     }
 
+    timer.done({ success: true });
     return { success: true };
   } catch {
+    timer.done({ success: false, error: 'Network error' });
     return { success: false, error: 'Network error. Please try again.' };
   }
 }

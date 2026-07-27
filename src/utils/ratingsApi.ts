@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { logTimed } from './logger';
 
 export interface RatingRecord {
   id: number
@@ -28,6 +29,8 @@ export async function upsertRating(
     return { success: false, error: 'Rating must be an integer between 1 and 5.' };
   }
 
+  const timer = logTimed('rating', 'upsertRating', { playerId, gameId, rating });
+
   try {
     const { error } = await supabase
       .from('game_ratings')
@@ -41,11 +44,14 @@ export async function upsertRating(
       );
 
     if (error) {
+      timer.done({ success: false, error: error.message });
       return { success: false, error: `Failed to save rating: ${error.message}` };
     }
 
+    timer.done({ success: true });
     return { success: true };
   } catch {
+    timer.done({ success: false, error: 'Network error' });
     return { success: false, error: 'Network error. Please try again.' };
   }
 }

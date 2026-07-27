@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { logTimed } from './logger';
 import type { RoundName, Category, FinalRound } from '../types/game';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -47,9 +48,13 @@ async function getAuthUser() {
 export async function createDraft(
   draft: BuilderDraft
 ): Promise<{ success: true; id: string } | { success: false; error: string }> {
+  const timer = logTimed('draft', 'createDraft', { gameName: draft.gameName });
   try {
     const user = await getAuthUser();
-    if (!user) return { success: false, error: 'Not authenticated.' };
+    if (!user) {
+      timer.done({ success: false, error: 'Not authenticated' });
+      return { success: false, error: 'Not authenticated.' };
+    }
 
     const id = generateUUID();
     const storagePath = `${user.id}/drafts/${id}.json`;
@@ -90,13 +95,16 @@ export async function createDraft(
     if (insertErr) {
       // Rollback: delete the uploaded file
       await supabase.storage.from('games').remove([storagePath]);
+      timer.done({ success: false, error: `Database insert failed: ${insertErr.message}` });
       return { success: false, error: `Database insert failed: ${insertErr.message}` };
     }
 
+    timer.done({ success: true });
     return { success: true, id };
   } catch (err) {
     console.error('[draftApi] createDraft caught error:', err);
     const message = err instanceof Error ? err.message : 'Unknown error';
+    timer.done({ success: false, error: message });
     return { success: false, error: `Save failed: ${message}` };
   }
 }
@@ -105,9 +113,13 @@ export async function updateDraft(
   draftId: string,
   draft: BuilderDraft
 ): Promise<{ success: true } | { success: false; error: string }> {
+  const timer = logTimed('draft', 'updateDraft', { draftId, gameName: draft.gameName });
   try {
     const user = await getAuthUser();
-    if (!user) return { success: false, error: 'Not authenticated.' };
+    if (!user) {
+      timer.done({ success: false, error: 'Not authenticated' });
+      return { success: false, error: 'Not authenticated.' };
+    }
 
     const storagePath = `${user.id}/drafts/${draftId}.json`;
 
@@ -133,13 +145,16 @@ export async function updateDraft(
       .eq('id', draftId);
 
     if (updateErr) {
+      timer.done({ success: false, error: `Database update failed: ${updateErr.message}` });
       return { success: false, error: `Database update failed: ${updateErr.message}` };
     }
 
+    timer.done({ success: true });
     return { success: true };
   } catch (err) {
     console.error('[draftApi] updateDraft caught error:', err);
     const message = err instanceof Error ? err.message : 'Unknown error';
+    timer.done({ success: false, error: message });
     return { success: false, error: `Save failed: ${message}` };
   }
 }
@@ -173,9 +188,13 @@ export async function loadDraft(
 export async function deleteDraft(
   draftId: string
 ): Promise<{ success: true } | { success: false; error: string }> {
+  const timer = logTimed('draft', 'deleteDraft', { draftId });
   try {
     const user = await getAuthUser();
-    if (!user) return { success: false, error: 'Not authenticated.' };
+    if (!user) {
+      timer.done({ success: false, error: 'Not authenticated' });
+      return { success: false, error: 'Not authenticated.' };
+    }
 
     const storagePath = `${user.id}/drafts/${draftId}.json`;
 
@@ -233,11 +252,14 @@ export async function deleteDraft(
       .eq('id', draftId);
 
     if (dbErr) {
+      timer.done({ success: false, error: `Database deletion failed: ${dbErr.message}` });
       return { success: false, error: `Database deletion failed: ${dbErr.message}` };
     }
 
+    timer.done({ success: true });
     return { success: true };
   } catch {
+    timer.done({ success: false, error: 'Network error' });
     return { success: false, error: 'Network error. Please try again.' };
   }
 }

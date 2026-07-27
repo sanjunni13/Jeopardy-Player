@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { logInfo, logError, logWarn } from './logger';
 
 export interface FavoriteRecord {
   id: number
@@ -20,13 +21,17 @@ export async function addFavorite(
     if (error) {
       // 409 / 23505 = duplicate key — treat as success (already favorited)
       if (error.code === '23505') {
+        logInfo('favorite', 'addFavorite', 'Already favorited (duplicate key)', { playerId, gameId });
         return { success: true };
       }
+      logError('favorite', 'addFavorite', `Failed to add favorite: ${error.message}`, { playerId, gameId });
       return { success: false, error: error.message };
     }
 
+    logInfo('favorite', 'addFavorite', 'Favorite added', { playerId, gameId });
     return { success: true };
   } catch {
+    logError('favorite', 'addFavorite', 'Network error', { playerId, gameId });
     return { success: false, error: 'Network error. Please try again.' };
   }
 }
@@ -43,11 +48,14 @@ export async function removeFavorite(
       .match({ player_id: playerId, game_id: gameId });
 
     if (error) {
+      logError('favorite', 'removeFavorite', `Failed to remove favorite: ${error.message}`, { playerId, gameId });
       return { success: false, error: error.message };
     }
 
+    logInfo('favorite', 'removeFavorite', 'Favorite removed', { playerId, gameId });
     return { success: true };
   } catch {
+    logError('favorite', 'removeFavorite', 'Network error', { playerId, gameId });
     return { success: false, error: 'Network error. Please try again.' };
   }
 }
@@ -69,7 +77,7 @@ export async function fetchFavorites(
       .eq('player_id', playerId);
 
     if (error) {
-      console.warn('[fetchFavorites] Error:', error.message, error.code);
+      logWarn('favorite', 'fetchFavorites', `Error fetching favorites: ${error.message}`, { playerId, code: error.code });
       return [];
     }
 
@@ -79,7 +87,7 @@ export async function fetchFavorites(
 
     return data.map((row) => String(row.game_id));
   } catch (e) {
-    console.warn('[fetchFavorites] Exception:', e);
+    logWarn('favorite', 'fetchFavorites', 'Exception fetching favorites', { playerId, error: e instanceof Error ? e.message : 'unknown' });
     return [];
   }
 }

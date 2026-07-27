@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { logError, logTimed } from './logger';
 import { validatePlayerName } from './playerProfile';
 
 /**
@@ -13,10 +14,12 @@ export async function updatePlayerName(
   newName: string,
 ): Promise<{ success: boolean; error?: string }> {
   const trimmed = newName.trim();
+  const timer = logTimed('settings', 'updatePlayerName', { playerId });
 
   // Validate name format
   const validation = validatePlayerName(trimmed);
   if (!validation.valid) {
+    timer.done({ success: false, error: validation.error });
     return { success: false, error: validation.error };
   }
 
@@ -29,10 +32,12 @@ export async function updatePlayerName(
       .neq('id', playerId);
 
     if (lookupErr) {
+      timer.done({ success: false, error: lookupErr.message });
       return { success: false, error: `Failed to check name availability: ${lookupErr.message}` };
     }
 
     if (existing && existing.length > 0) {
+      timer.done({ success: false, error: 'Player name is already taken' });
       return { success: false, error: 'Player name is already taken' };
     }
 
@@ -43,11 +48,14 @@ export async function updatePlayerName(
       .eq('id', playerId);
 
     if (updateErr) {
+      timer.done({ success: false, error: updateErr.message });
       return { success: false, error: `Failed to update player name: ${updateErr.message}` };
     }
 
+    timer.done({ success: true });
     return { success: true };
   } catch {
+    timer.done({ success: false, error: 'Network error' });
     return { success: false, error: 'Network error. Please try again.' };
   }
 }
@@ -64,6 +72,7 @@ export async function deleteGame(
   authUuid: string,
   gameName: string,
 ): Promise<{ success: boolean; error?: string }> {
+  const timer = logTimed('game', 'deleteGame', { gameId, gameName });
   try {
     // Delete game row from database
     const { error: deleteErr, count } = await supabase
@@ -72,11 +81,13 @@ export async function deleteGame(
       .eq('id', gameId);
 
     if (deleteErr) {
+      timer.done({ success: false, error: 'Failed to delete game' });
       return { success: false, error: 'Failed to delete game' };
     }
 
     // If count is 0, the row wasn't actually deleted (likely RLS blocking)
     if (count === 0) {
+      timer.done({ success: false, error: 'Permission denied' });
       return { success: false, error: 'Failed to delete game — permission denied' };
     }
 
@@ -84,8 +95,10 @@ export async function deleteGame(
     const storagePath = `${authUuid}/${gameName}.json`;
     await supabase.storage.from('games').remove([storagePath]);
 
+    timer.done({ success: true });
     return { success: true };
   } catch {
+    timer.done({ success: false, error: 'Failed to delete game' });
     return { success: false, error: 'Failed to delete game' };
   }
 }
@@ -103,13 +116,15 @@ export async function deleteAccount(
   authUuid: string,
   playerId: number,
 ): Promise<{ success: boolean; error?: string; failedStep?: string }> {
+  const timer = logTimed('settings', 'deleteAccount', { playerId });
   try {
     const { data: fnData, error: invokeErr } = await supabase.functions.invoke('delete-user', {
       body: { userId: authUuid, playerId },
     });
 
     if (invokeErr) {
-      console.error('delete-user invoke error:', invokeErr);
+      logError('settings', 'deleteAccount', 'Edge Function invoke error', { error: invokeErr.message });
+      timer.done({ success: false, error: 'Failed to delete account' });
       return {
         success: false,
         error: 'Failed to delete account',
@@ -120,6 +135,7 @@ export async function deleteAccount(
     // Check if the response indicates failure
     if (fnData && typeof fnData === 'object' && 'error' in fnData) {
       const response = fnData as { error: string; failedStep?: string };
+      timer.done({ success: false, error: response.error });
       return {
         success: false,
         error: response.error,
@@ -127,8 +143,10 @@ export async function deleteAccount(
       };
     }
 
+    timer.done({ success: true });
     return { success: true };
   } catch {
+    timer.done({ success: false, error: 'Network error' });
     return { success: false, error: 'Network error. Please try again.', failedStep: 'delete_auth' };
   }
 }
