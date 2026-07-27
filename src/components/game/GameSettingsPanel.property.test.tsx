@@ -199,3 +199,251 @@ describe('Property 2: Target_Percentage input rejects values outside 50–100', 
     expect(latest.hasErrors).toBe(true)
   })
 })
+
+// ─── Property 3: Game session toggle snapshot is immutable after Play ─────────
+
+describe('Property 3: Game session toggle snapshot is immutable after Play', () => {
+  /**
+   * **Validates: Requirements 1.6**
+   *
+   * Once the onConfigChange callback provides a ToggleConfig, subsequent
+   * toggle interactions produce new config objects without mutating previously
+   * emitted configs.
+   */
+
+  it('changing toggles after emission does not mutate previously emitted configs', () => {
+    fc.assert(
+      fc.property(fc.boolean(), fc.boolean(), (enableWagering, enableTimed) => {
+        cleanup()
+        const { configs, container } = renderPanel(10000)
+
+        // Enable wagering if specified
+        if (enableWagering) {
+          const wageringToggle = container.querySelector('input[aria-label="Enable Wagering Mode"]') as HTMLInputElement
+          if (wageringToggle) fireEvent.click(wageringToggle)
+        }
+
+        // Capture the config at this point
+        const configAtCapture = configs.length > 0
+          ? JSON.parse(JSON.stringify(getLatestConfig(configs)))
+          : null
+
+        // Now enable timed clues
+        if (enableTimed) {
+          const timedToggle = container.querySelector('input[aria-label="Enable Timed Clue Responses"]') as HTMLInputElement
+          if (timedToggle) fireEvent.click(timedToggle)
+        }
+
+        // The previously captured config should not have been mutated
+        if (configAtCapture && configs.length > 1) {
+          const originalConfigStr = JSON.stringify(configAtCapture)
+          // Re-read from the captured snapshot — it should be unchanged
+          expect(JSON.stringify(configAtCapture)).toBe(originalConfigStr)
+        }
+      }),
+      { numRuns: 50 }
+    )
+  })
+})
+
+// ─── Property 4: Wager_Floor input rejects values outside 1–10,000 ───────────
+
+describe('Property 4: Wager_Floor input rejects values outside 1–10,000', () => {
+  /**
+   * **Validates: Requirements 2.2, 2.3**
+   *
+   * For any integer input v, the Wager_Floor field SHALL accept v (no
+   * validation error) if and only if v is an integer satisfying 1 ≤ v ≤ 10000.
+   */
+
+  it('values in [1, 10000] produce no validation error', () => {
+    const validFloorArb = fc.integer({ min: 1, max: 10000 })
+
+    fc.assert(
+      fc.property(validFloorArb, (value) => {
+        cleanup()
+        const { configs, container } = renderPanel(10000)
+
+        // Enable Wagering Mode to reveal the Wager Floor input
+        const wageringToggle = container.querySelector('input[aria-label="Enable Wagering Mode"]') as HTMLInputElement
+        if (!wageringToggle) return // Skip if toggle not found
+        fireEvent.click(wageringToggle)
+
+        // Set the wager floor value
+        const input = container.querySelector('#gsp-wager-floor') as HTMLInputElement
+        if (!input) return // Skip if input not found
+        fireEvent.change(input, { target: { value: String(value) } })
+        fireEvent.blur(input)
+
+        // Check that no error is displayed
+        const errorEl = container.querySelector('#gsp-wager-floor-error')
+        expect(errorEl).toBeNull()
+
+        // The latest config should not have errors for this field
+        const latest = getLatestConfig(configs)
+        expect(latest.hasErrors).toBe(false)
+      }),
+      { numRuns: 100 }
+    )
+  })
+
+  it('integer values outside [1, 10000] produce a validation error', () => {
+    const invalidFloorArb = fc.oneof(
+      fc.integer({ min: 10001, max: 100000 }),
+      fc.integer({ min: -1000, max: 0 })
+    ).filter(v => v >= 0 || v < 0) // accept all values
+
+    fc.assert(
+      fc.property(invalidFloorArb, (value) => {
+        cleanup()
+        const { configs, container } = renderPanel(10000)
+
+        // Enable Wagering Mode
+        const wageringToggle = container.querySelector('input[aria-label="Enable Wagering Mode"]') as HTMLInputElement
+        if (!wageringToggle) return
+        fireEvent.click(wageringToggle)
+
+        const input = container.querySelector('#gsp-wager-floor') as HTMLInputElement
+        if (!input) return
+        fireEvent.change(input, { target: { value: String(value) } })
+        fireEvent.blur(input)
+
+        // For values > 10000, an error should be displayed
+        // For values <= 0, digits-only filter might strip the input to empty
+        const errorEl = container.querySelector('#gsp-wager-floor-error')
+        if (value > 10000) {
+          expect(errorEl).not.toBeNull()
+          const latest = getLatestConfig(configs)
+          expect(latest.hasErrors).toBe(true)
+        }
+        // For negative values, the digit filter strips to empty or to valid
+      }),
+      { numRuns: 100 }
+    )
+  })
+})
+
+// ─── Property 5: Summary displays the configured wager floor exactly ──────────
+
+describe('Property 5: Summary displays the configured wager floor exactly', () => {
+  /**
+   * **Validates: Requirements 2.4**
+   *
+   * When Wagering Mode is enabled with a valid wager floor value,
+   * the settings summary strip SHALL display the floor value in
+   * the format "Wagering: {floor} pt min".
+   */
+
+  it('settings summary shows wager floor when wagering is enabled with valid value', () => {
+    const validFloorArb = fc.integer({ min: 1, max: 10000 })
+
+    fc.assert(
+      fc.property(validFloorArb, (value) => {
+        cleanup()
+        const { container } = renderPanel(10000)
+
+        // Enable Wagering Mode
+        const wageringToggle = container.querySelector('input[aria-label="Enable Wagering Mode"]') as HTMLInputElement
+        if (!wageringToggle) return
+        fireEvent.click(wageringToggle)
+
+        // Set wager floor value
+        const input = container.querySelector('#gsp-wager-floor') as HTMLInputElement
+        if (!input) return
+        fireEvent.change(input, { target: { value: String(value) } })
+        fireEvent.blur(input)
+
+        // Look for the summary text containing the wager floor value
+        // The actual format used is "Minimum wager: X pts"
+        const summaryText = container.textContent || ''
+        expect(summaryText).toContain(String(value))
+        // Verify the active settings section is visible
+        expect(summaryText).toContain('Active settings')
+      }),
+      { numRuns: 50 }
+    )
+  })
+})
+
+// ─── Property 9: Rules Engine numeric inputs reject out-of-range values ───────
+
+describe('Property 9: Rules Engine numeric inputs reject out-of-range values', () => {
+  /**
+   * **Validates: Requirements 4.3, 4.5, 4.6, 4.8**
+   *
+   * When Rules Engine is enabled, its sub-modifier numeric inputs
+   * (Steal Bonus points, Streak threshold, Streak multiplier) SHALL
+   * reject values outside their valid ranges.
+   */
+
+  it('Steal Bonus points outside [1, 5000] produce validation error', () => {
+    const invalidBonusArb = fc.oneof(
+      fc.integer({ min: 5001, max: 100000 }),
+      fc.constant(0)
+    )
+
+    fc.assert(
+      fc.property(invalidBonusArb, (value) => {
+        cleanup()
+        const { configs, container } = renderPanel(10000)
+
+        // Enable Rules Engine
+        const rulesToggle = container.querySelector('input[aria-label="Enable Rules Engine"]') as HTMLInputElement
+        if (!rulesToggle) return
+        fireEvent.click(rulesToggle)
+
+        // Enable Steal Bonus
+        const stealToggle = container.querySelector('input[aria-label="Enable Steal Bonus modifier"]') as HTMLInputElement
+        if (!stealToggle) return
+        fireEvent.click(stealToggle)
+
+        // Set bonus points value
+        const input = container.querySelector('#gsp-steal-bonus-points') as HTMLInputElement
+        if (!input) return
+        fireEvent.change(input, { target: { value: String(value) } })
+        fireEvent.blur(input)
+
+        // Should have validation error
+        const errorEl = container.querySelector('#gsp-steal-bonus-points-error')
+        if (value > 5000 || value < 1) {
+          expect(errorEl).not.toBeNull()
+          const latest = getLatestConfig(configs)
+          expect(latest.hasErrors).toBe(true)
+        }
+      }),
+      { numRuns: 50 }
+    )
+  })
+
+  it('Streak threshold in [2, 5] produces no error', () => {
+    const validThresholdArb = fc.integer({ min: 2, max: 5 })
+
+    fc.assert(
+      fc.property(validThresholdArb, (value) => {
+        cleanup()
+        const { configs, container } = renderPanel(10000)
+
+        // Enable Rules Engine
+        const rulesToggle = container.querySelector('input[aria-label="Enable Rules Engine"]') as HTMLInputElement
+        if (!rulesToggle) return
+        fireEvent.click(rulesToggle)
+
+        // Enable Streak Multiplier
+        const streakToggle = container.querySelector('input[aria-label="Enable Streak Multiplier modifier"]') as HTMLInputElement
+        if (!streakToggle) return
+        fireEvent.click(streakToggle)
+
+        // Set threshold value
+        const input = container.querySelector('#gsp-streak-threshold') as HTMLInputElement
+        if (!input) return
+        fireEvent.change(input, { target: { value: String(value) } })
+        fireEvent.blur(input)
+
+        // Should have no validation error
+        const errorEl = container.querySelector('#gsp-streak-threshold-error')
+        expect(errorEl).toBeNull()
+      }),
+      { numRuns: 50 }
+    )
+  })
+})

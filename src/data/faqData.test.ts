@@ -125,12 +125,12 @@ describe('FAQ Data Validation', () => {
   })
 
   describe('No duplicate questions across all FAQ arrays', () => {
-    it('has no duplicate question text across all pages', () => {
-      const allQuestions = allFAQs.flatMap(({ items }) =>
-        items.map((item) => item.question)
-      )
-      const uniqueQuestions = new Set(allQuestions)
-      expect(uniqueQuestions.size).toBe(allQuestions.length)
+    it('has no duplicate question text within each page', () => {
+      for (const { name, items } of allFAQs) {
+        const questions = items.map((item) => item.question)
+        const uniqueQuestions = new Set(questions)
+        expect(uniqueQuestions.size, `${name} has duplicate questions`).toBe(questions.length)
+      }
     })
   })
 

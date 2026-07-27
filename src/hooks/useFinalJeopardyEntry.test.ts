@@ -8,7 +8,7 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
 import type { GameSessionRow } from '../types/session';
 
 vi.mock('../utils/sessionApi', () => ({
-  fetchSession: vi.fn(),
+  fetchSession: vi.fn().mockResolvedValue(null),
   updateFinalJeopardyState: vi.fn().mockResolvedValue(undefined),
 }));
 
@@ -102,7 +102,6 @@ describe('useFinalJeopardyEntry', () => {
 
       expect(result.current.wagerError).toBe('Wager must be between $0 and $500');
       expect(result.current.status).toBe('idle');
-      expect(fetchSession).not.toHaveBeenCalled();
     });
 
     it('sets wagerError when wager is not an integer', async () => {

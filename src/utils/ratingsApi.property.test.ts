@@ -38,6 +38,9 @@ const mockFrom = vi.fn().mockImplementation(() => {
 vi.mock('./supabase', () => ({
   supabase: {
     from: (...args: unknown[]) => mockFrom(...args),
+    auth: {
+      getSession: vi.fn().mockResolvedValue({ data: { session: { access_token: 'test-token' } }, error: null }),
+    },
   },
 }))
 

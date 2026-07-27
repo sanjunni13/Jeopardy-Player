@@ -110,6 +110,73 @@ function arbNormalizedGame(): fc.Arbitrary<NormalizedGame> {
 
 // ─── Property Tests ───────────────────────────────────────────────────────────
 
+// Feature: faq-cards-and-cheat-sheet, Property 1: Round selector tab count equals rounds plus Final Jeopardy
+describe('Property 1: Round selector tab count equals rounds plus Final Jeopardy', () => {
+  /**
+   * **Validates: Requirements 6.3**
+   *
+   * For any valid NormalizedGame with 1–6 rounds, getCheatSheetRounds SHALL
+   * return an array of length `orderedRoundNames.length + 1`, where the extra
+   * element is "Final Jeopardy".
+   */
+  it('getCheatSheetRounds returns orderedRoundNames.length + 1 entries', () => {
+    fc.assert(
+      fc.property(arbNormalizedGame(), (game) => {
+        const activeRounds = ROUND_NAMES.filter((name) => game.rounds[name]?.length > 0);
+
+        const rounds = getCheatSheetRounds(game, activeRounds);
+
+        // Length equals activeRounds + 1 (for Final Jeopardy)
+        expect(rounds.length).toBe(activeRounds.length + 1);
+      }),
+      { numRuns: 100 },
+    );
+  });
+
+  it('last entry is always "Final Jeopardy"', () => {
+    fc.assert(
+      fc.property(arbNormalizedGame(), (game) => {
+        const activeRounds = ROUND_NAMES.filter((name) => game.rounds[name]?.length > 0);
+
+        const rounds = getCheatSheetRounds(game, activeRounds);
+
+        expect(rounds[rounds.length - 1]).toBe('Final Jeopardy');
+      }),
+      { numRuns: 100 },
+    );
+  });
+});
+
+
+// Feature: faq-cards-and-cheat-sheet, Property 4: Clues ordered by ascending value
+describe('Property 4: Clues within each category are ordered by ascending point value', () => {
+  /**
+   * **Validates: Requirements 7.2**
+   *
+   * For any valid NormalizedGame and any round, getRoundAnswers SHALL return
+   * clues within each category sorted in ascending order by their `value` field.
+   */
+  it('getRoundAnswers output has clues sorted ascending by value within each category', () => {
+    fc.assert(
+      fc.property(arbNormalizedGame(), (game) => {
+        const activeRounds = ROUND_NAMES.filter((name) => game.rounds[name]?.length > 0);
+
+        for (const roundName of activeRounds) {
+          const result = getRoundAnswers(game, roundName);
+
+          for (const cat of result) {
+            for (let i = 1; i < cat.clues.length; i++) {
+              expect(cat.clues[i].value).toBeGreaterThanOrEqual(cat.clues[i - 1].value);
+            }
+          }
+        }
+      }),
+      { numRuns: 100 },
+    );
+  });
+});
+
+
 // Feature: faq-cards-and-cheat-sheet, Property 5: Cheat sheet content never includes clue question text
 describe('Property 5: Cheat sheet content never includes clue question text', () => {
   /**
