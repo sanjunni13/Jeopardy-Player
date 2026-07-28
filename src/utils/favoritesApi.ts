@@ -65,12 +65,6 @@ export async function fetchFavorites(
   playerId: number
 ): Promise<string[]> {
   try {
-    // Ensure auth session is available before querying RLS-protected table
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      return [];
-    }
-
     const { data, error } = await supabase
       .from('game_favorites')
       .select('game_id')

@@ -68,6 +68,7 @@ export async function saveGame(
         high_score: null,
         high_score_player: null,
         created_by: playerId,
+        storage_path: storagePath,
       })
       .select('id')
       .single();
@@ -125,6 +126,10 @@ export async function incrementTimesPlayed(gameId: string): Promise<{ success: b
   }
 }
 
+/**
+ * Updates game stats and player stats via the update-game-stats Edge Function.
+ * This performs all operations server-side in a single request instead of N+1 client queries.
+ */
 export async function updateGameStats(
   gameId: string,
   players: Player[],
@@ -133,181 +138,45 @@ export async function updateGameStats(
 ): Promise<UpdateStatsResponse> {
   const timer = logTimed('game', 'updateGameStats', { gameId, playerCount: players.length, winnerNames });
   try {
-    // Get auth user
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+    if (!token) {
+      timer.done({ success: false, error: 'Not authenticated' });
       return { success: false, error: 'Not authenticated.' };
     }
 
-    // Fetch the game row
-    const { data: game, error: fetchErr } = await supabase
-      .from('games')
-      .select('times_played, winners, high_score, high_score_player')
-      .eq('id', gameId)
-      .single();
-
-    if (fetchErr || !game) {
-      return { success: false, error: 'Game not found.' };
-    }
-
-    // Update games table: increment times_played, append winnerNames to winners array
-    const currentTimesPlayed = (game as Record<string, unknown>).times_played as number ?? 0;
-    const currentWinners = (game as Record<string, unknown>).winners as string[] ?? [];
-    const currentHighScore = (game as Record<string, unknown>).high_score as number | null;
-
-    // Determine new high score from this game's players
-    let newHighScore = currentHighScore;
-    let newHighScorePlayer = (game as Record<string, unknown>).high_score_player as string | null;
-
-    for (const player of players) {
-      if (player.score > (newHighScore ?? -Infinity)) {
-        newHighScore = player.score;
-        newHighScorePlayer = player.name;
+    const res = await fetch(
+      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/update-game-stats`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          gameId,
+          players: players.map(p => ({
+            name: p.name,
+            score: p.score,
+            correctCount: p.correctCount,
+            incorrectCount: p.incorrectCount,
+            correctDailyDoubles: p.correctDailyDoubles,
+            incorrectDailyDoubles: p.incorrectDailyDoubles,
+            correctFinalJeopardy: p.correctFinalJeopardy,
+            incorrectFinalJeopardy: p.incorrectFinalJeopardy,
+            totalEarned: p.totalEarned,
+          })),
+          winnerNames,
+          authenticatedPlayer,
+        }),
       }
-    }
+    );
 
-    const { error: gameUpdateErr } = await supabase
-      .from('games')
-      .update({
-        times_played: currentTimesPlayed + 1,
-        winners: [...currentWinners, ...winnerNames],
-        high_score: newHighScore,
-        high_score_player: newHighScorePlayer,
-      })
-      .eq('id', gameId);
+    const result = await res.json();
 
-    if (gameUpdateErr) {
-      return { success: false, error: `Games table update failed: ${gameUpdateErr.message}` };
-    }
-
-    // If authenticated player info is provided, verify the player record exists by ID.
-    // If it doesn't exist, fall back to name-based matching for all players (Req 8.3).
-    let verifiedAuthPlayer: { playerId: number; playerName: string } | undefined;
-    if (authenticatedPlayer) {
-      const { data: authRow, error: authLookupErr } = await supabase
-        .from('players')
-        .select('id')
-        .eq('id', authenticatedPlayer.playerId)
-        .maybeSingle();
-
-      if (!authLookupErr && authRow) {
-        verifiedAuthPlayer = authenticatedPlayer;
-      }
-      // If lookup fails or no row found, verifiedAuthPlayer stays undefined → name-based fallback for all
-    }
-
-    // Update players table for each matching player
-    const errors: string[] = [];
-
-    for (const player of players) {
-      if (!player.name) continue;
-
-      // Check if this player is the authenticated user (Req 8.1)
-      const isAuthenticatedPlayer = verifiedAuthPlayer &&
-        player.name.toLowerCase() === verifiedAuthPlayer.playerName.toLowerCase();
-
-      if (isAuthenticatedPlayer) {
-        // Use Player_ID directly for the authenticated user
-        const { data: userRow, error: lookupErr } = await supabase
-          .from('players')
-          .select('id, total_games_played, total_games_won, total_correct_answers, total_incorrect_answers, total_money_earned, total_correct_daily_doubles, total_incorrect_daily_doubles, total_correct_final_jeopardies, total_incorrect_final_jeopardies, current_balance')
-          .eq('id', verifiedAuthPlayer!.playerId)
-          .single();
-
-        if (lookupErr || !userRow) {
-          errors.push(`Lookup error for authenticated player '${player.name}': ${lookupErr?.message ?? 'not found'}`);
-          continue;
-        }
-
-        const row = userRow as Record<string, unknown>;
-        const isWinner = winnerNames.includes(player.name);
-
-        const { error: updateErr } = await supabase
-          .from('players')
-          .update({
-            total_games_played: (row.total_games_played as number ?? 0) + 1,
-            total_games_won: (row.total_games_won as number ?? 0) + (isWinner ? 1 : 0),
-            total_correct_answers: (row.total_correct_answers as number ?? 0) + (player.correctCount ?? 0),
-            total_incorrect_answers: (row.total_incorrect_answers as number ?? 0) + (player.incorrectCount ?? 0),
-            total_correct_daily_doubles: (row.total_correct_daily_doubles as number ?? 0) + (player.correctDailyDoubles ?? 0),
-            total_incorrect_daily_doubles: (row.total_incorrect_daily_doubles as number ?? 0) + (player.incorrectDailyDoubles ?? 0),
-            total_correct_final_jeopardies: (row.total_correct_final_jeopardies as number ?? 0) + (player.correctFinalJeopardy ?? 0),
-            total_incorrect_final_jeopardies: (row.total_incorrect_final_jeopardies as number ?? 0) + (player.incorrectFinalJeopardy ?? 0),
-            current_balance: (row.current_balance as number ?? 0) + player.score,
-            total_money_earned: (row.total_money_earned as number ?? 0) + (player.totalEarned ?? 0),
-          })
-          .eq('id', verifiedAuthPlayer!.playerId);
-
-        if (updateErr) {
-          errors.push(`Update failed for '${player.name}': ${updateErr.message}`);
-        }
-      } else {
-        // Non-authenticated player: use case-insensitive name matching (Req 8.2)
-        const { data: userRow, error: lookupErr } = await supabase
-          .from('players')
-          .select('id, total_games_played, total_games_won, total_correct_answers, total_incorrect_answers, total_money_earned, total_correct_daily_doubles, total_incorrect_daily_doubles, total_correct_final_jeopardies, total_incorrect_final_jeopardies, current_balance')
-          .ilike('player_name', player.name)
-          .maybeSingle();
-
-        if (lookupErr) {
-          errors.push(`Lookup error for '${player.name}': ${lookupErr.message}`);
-          continue;
-        }
-
-        if (!userRow) {
-          // Player doesn't exist — insert a new row
-          const isWinner = winnerNames.includes(player.name);
-
-          const { error: insertErr } = await supabase
-            .from('players')
-            .insert({
-              player_name: player.name,
-              total_games_played: 1,
-              total_games_won: isWinner ? 1 : 0,
-              total_correct_answers: player.correctCount ?? 0,
-              total_incorrect_answers: player.incorrectCount ?? 0,
-              total_correct_daily_doubles: player.correctDailyDoubles ?? 0,
-              total_incorrect_daily_doubles: player.incorrectDailyDoubles ?? 0,
-              total_correct_final_jeopardies: player.correctFinalJeopardy ?? 0,
-              total_incorrect_final_jeopardies: player.incorrectFinalJeopardy ?? 0,
-              current_balance: player.score,
-              total_money_earned: player.totalEarned ?? 0,
-            });
-
-          if (insertErr) {
-            errors.push(`Insert failed for '${player.name}': ${insertErr.message}`);
-          }
-          continue;
-        }
-
-        const row = userRow as Record<string, unknown>;
-        const isWinner = winnerNames.includes(player.name);
-
-        const { error: updateErr } = await supabase
-          .from('players')
-          .update({
-            total_games_played: (row.total_games_played as number ?? 0) + 1,
-            total_games_won: (row.total_games_won as number ?? 0) + (isWinner ? 1 : 0),
-            total_correct_answers: (row.total_correct_answers as number ?? 0) + (player.correctCount ?? 0),
-            total_incorrect_answers: (row.total_incorrect_answers as number ?? 0) + (player.incorrectCount ?? 0),
-            total_correct_daily_doubles: (row.total_correct_daily_doubles as number ?? 0) + (player.correctDailyDoubles ?? 0),
-            total_incorrect_daily_doubles: (row.total_incorrect_daily_doubles as number ?? 0) + (player.incorrectDailyDoubles ?? 0),
-            total_correct_final_jeopardies: (row.total_correct_final_jeopardies as number ?? 0) + (player.correctFinalJeopardy ?? 0),
-            total_incorrect_final_jeopardies: (row.total_incorrect_final_jeopardies as number ?? 0) + (player.incorrectFinalJeopardy ?? 0),
-            current_balance: (row.current_balance as number ?? 0) + player.score,
-            total_money_earned: (row.total_money_earned as number ?? 0) + (player.totalEarned ?? 0),
-          })
-          .eq('id', row.id);
-
-        if (updateErr) {
-          errors.push(`Update failed for '${player.name}': ${updateErr.message}`);
-        }
-      }
-    }
-
-    if (errors.length > 0) {
-      timer.done({ success: false, error: errors.join('; ') });
-      return { success: false, error: errors.join('; ') };
+    if (result.error) {
+      timer.done({ success: false, error: result.error });
+      return { success: false, error: result.error };
     }
 
     timer.done({ success: true });

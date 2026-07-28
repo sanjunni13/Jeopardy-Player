@@ -421,7 +421,7 @@ describe('Property 9: Rules Engine numeric inputs reject out-of-range values', (
     fc.assert(
       fc.property(validThresholdArb, (value) => {
         cleanup()
-        const { configs, container } = renderPanel(10000)
+        const { container } = renderPanel(10000)
 
         // Enable Rules Engine
         const rulesToggle = container.querySelector('input[aria-label="Enable Rules Engine"]') as HTMLInputElement

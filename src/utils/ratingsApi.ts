@@ -65,9 +65,6 @@ export async function fetchMyRating(
   gameId: string
 ): Promise<number | null> {
   try {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) return null;
-
     const { data, error } = await supabase
       .from('game_ratings')
       .select('rating')
@@ -87,6 +84,9 @@ export async function fetchMyRating(
 
 /**
  * Fetch average ratings and counts for a list of game IDs.
+ * Uses a server-side RPC for aggregation when available, falling back to
+ * a select with client-side grouping for compatibility.
+ *
  * Returns a GameRatingSummary for each requested game ID.
  * Games with no ratings will have averageRating: null and ratingCount: 0.
  */
@@ -97,27 +97,45 @@ export async function fetchGameRatings(
     return [];
   }
 
+  const emptySummaries = () => gameIds.map((id) => ({ gameId: id, averageRating: null as number | null, ratingCount: 0 }));
+
   try {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      return gameIds.map((id) => ({ gameId: id, averageRating: null, ratingCount: 0 }));
+    // Try using the aggregated RPC (returns {game_id, avg_rating, rating_count}[])
+    try {
+      if (typeof supabase.rpc === 'function') {
+        const { data: rpcData, error: rpcError } = await supabase
+          .rpc('get_game_rating_summaries', { game_ids: gameIds.map(id => Number(id)) });
+
+        if (!rpcError && rpcData) {
+          const rpcMap = new Map<string, { avg: number; count: number }>();
+          for (const row of rpcData as Array<{ game_id: string; avg_rating: number; rating_count: number }>) {
+            rpcMap.set(String(row.game_id), {
+              avg: Math.round(row.avg_rating * 10) / 10,
+              count: row.rating_count,
+            });
+          }
+
+          return gameIds.map((id) => {
+            const entry = rpcMap.get(id);
+            if (!entry) return { gameId: id, averageRating: null, ratingCount: 0 };
+            return { gameId: id, averageRating: entry.avg, ratingCount: entry.count };
+          });
+        }
+      }
+    } catch {
+      // RPC not available — fall through to legacy query
     }
 
+    // Fallback: fetch only game_id and rating for requested IDs, group client-side
     const { data, error } = await supabase
       .from('game_ratings')
       .select('game_id, rating')
       .in('game_id', gameIds);
 
     if (error || !data) {
-      // Return empty summaries for all requested IDs on failure
-      return gameIds.map((id) => ({
-        gameId: id,
-        averageRating: null,
-        ratingCount: 0,
-      }));
+      return emptySummaries();
     }
 
-    // Group ratings by game_id and compute averages
     const ratingsMap = new Map<string, number[]>();
     for (const row of data) {
       const gid = String(row.game_id);
@@ -138,18 +156,9 @@ export async function fetchGameRatings(
       const sum = ratings.reduce((acc, val) => acc + val, 0);
       const average = Math.round((sum / ratings.length) * 10) / 10;
 
-      return {
-        gameId: id,
-        averageRating: average,
-        ratingCount: ratings.length,
-      };
+      return { gameId: id, averageRating: average, ratingCount: ratings.length };
     });
   } catch {
-    // On network failure, return empty summaries
-    return gameIds.map((id) => ({
-      gameId: id,
-      averageRating: null,
-      ratingCount: 0,
-    }));
+    return emptySummaries();
   }
 }

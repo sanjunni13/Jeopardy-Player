@@ -110,13 +110,19 @@ export async function joinSession(
  * Returns null if the session does not exist.
  */
 export async function fetchSession(
-  sessionId: string
+  sessionId: string,
+  options?: { signal?: AbortSignal }
 ): Promise<GameSessionRow | null> {
-  const { data, error } = await supabase
+  const query = supabase
     .from('game_sessions')
     .select('*')
     .eq('id', sessionId)
-    .maybeSingle();
+
+  if (options?.signal) {
+    query.abortSignal(options.signal);
+  }
+
+  const { data, error } = await query.maybeSingle();
 
   if (error) throw new Error(`Failed to fetch session: ${error.message}`);
   return data as GameSessionRow | null;

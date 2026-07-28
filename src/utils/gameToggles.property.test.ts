@@ -38,6 +38,7 @@ const perRoundIncorrectArb = fc.integer({ min: 0, max: 20 })
 const markingArb = fc.constantFrom('correct' as const, 'incorrect' as const, null)
 
 /** Non-null marking value */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const nonNullMarkingArb = fc.constantFrom('correct' as const, 'incorrect' as const)
 
 /** Player name */

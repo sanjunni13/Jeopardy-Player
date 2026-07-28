@@ -168,12 +168,28 @@ export function useGameSession(sessionId: string | undefined): UseGameSessionRes
           };
 
         case 'fj_wager_received':
+          // Reconcile from DB to get latest wager state
+          if (sessionId) {
+            fetchSession(sessionId).then(latest => {
+              if (mountedRef.current && latest) {
+                setSession(latest);
+              }
+            }).catch(() => {});
+          }
           return prev;
 
         case 'fj_all_wagers_in':
           return prev;
 
         case 'fj_submission_received':
+          // Reconcile from DB to get latest submission state
+          if (sessionId) {
+            fetchSession(sessionId).then(latest => {
+              if (mountedRef.current && latest) {
+                setSession(latest);
+              }
+            }).catch(() => {});
+          }
           return prev;
 
         case 'fj_reveal':
@@ -337,19 +353,11 @@ export function useGameSession(sessionId: string | undefined): UseGameSessionRes
     };
   }, [sessionId, setupChannel, reconcileState, handleMessage]);
 
-  // ─── Periodic reconciliation: poll DB every 3s while in buzzer phase ──────
-  useEffect(() => {
-    if (!sessionId || !session || session.phase === 'ended') return;
-    const interval = setInterval(() => {
-      fetchSession(sessionId).then(latest => {
-        if (mountedRef.current && latest) {
-          setSession(latest);
-        }
-      }).catch(() => {});
-    }, 3000);
-    return () => clearInterval(interval);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessionId, session?.phase]);
+  // ─── Targeted reconciliation for FJ events ──────────────────────────────────
+  // Instead of polling every 3 seconds, only reconcile from DB on specific
+  // message types that require fresh state (wager/submission received).
+  // The message handler above already handles this for phase_change.
+  // Reconnection handler calls reconcileState() on successful reconnect.
 
   // When no sessionId is provided, return disconnected state
   if (!sessionId) {

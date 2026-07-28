@@ -175,9 +175,11 @@ export async function deleteClueMedia(
 
 /** Refresh a signed URL for a media file from its storage path */
 export async function refreshMediaUrl(
-  storagePath: string
+  storagePath: string,
+  signal?: AbortSignal
 ): Promise<string | null> {
   try {
+    if (signal?.aborted) return null;
     const { data, error } = await supabase.storage
       .from('games')
       .createSignedUrl(storagePath, 60 * 60 * 24 * 7, { download: false }); // 7 days, inline

@@ -24,7 +24,6 @@ import type { BuzzState, FinalJeopardyState, SessionPlayer, ChannelMessage } fro
 
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import { PlayerEntry } from '../../components/game/PlayerEntry'
-import { exportGamePdf, exportCoopGamePdf } from '../../utils/exportGamePdf'
 import { incrementTimesPlayed } from '../../utils/gameApi'
 import { GameBoard } from '../../components/game/GameBoard'
 import { ClueScreen } from '../../components/game/ClueScreen'
@@ -134,12 +133,14 @@ export function GamePage() {
 
   // Load game from Supabase Storage on mount
   useEffect(() => {
+    const controller = new AbortController()
+
     async function loadGame() {
       try {
-        // Get game name and creator from games table
+        // Get game metadata including storage_path from games table
         const { data: gameRow, error: fetchErr } = await supabase
           .from('games')
-          .select('game_name, created_by, source')
+          .select('game_name, created_by, source, storage_path')
           .eq('id', gameId)
           .single()
 
@@ -164,51 +165,54 @@ export function GamePage() {
         // Store the user ID for session creation
         setHostUserId(user.id)
 
-        // Build storage path: games are stored under auth_uuid/{game_name}.json
-        // Look up the creator's auth_uuid from the players table
-        let authFolder: string
-        if (gameRow.created_by) {
-          const { data: creatorData } = await supabase
-            .from('players')
-            .select('auth_uuid')
-            .eq('id', gameRow.created_by)
-            .single()
+        // Download game file — use storage_path if available (single request)
+        let fileData: Blob | null = null
 
-          authFolder = creatorData?.auth_uuid ?? user.id
-        } else {
-          // No created_by — default to current user's folder
-          authFolder = user.id
+        if (gameRow.storage_path) {
+          const { data, error: downloadErr } = await supabase.storage
+            .from('games')
+            .download(gameRow.storage_path as string)
+          if (!downloadErr && data) fileData = data
         }
 
-        const gameName = gameRow.game_name as string
-        const basePath = `${authFolder}/${gameName}.json`
+        // Fallback chain for games without storage_path
+        if (!fileData) {
+          let authFolder: string
+          if (gameRow.created_by) {
+            const { data: creatorData } = await supabase
+              .from('players')
+              .select('auth_uuid')
+              .eq('id', gameRow.created_by)
+              .single()
+            authFolder = creatorData?.auth_uuid ?? user.id
+          } else {
+            authFolder = user.id
+          }
 
-        // Try downloading with the resolved auth folder
-        let { data: fileData, error: downloadErr } = await supabase.storage
-          .from('games')
-          .download(basePath)
+          const gameName = gameRow.game_name as string
+          const basePath = `${authFolder}/${gameName}.json`
 
-        // If that fails and we used a creator's folder, fall back to current user's folder
-        if ((downloadErr || !fileData) && authFolder !== user.id) {
-          const fallbackPath = `${user.id}/${gameName}.json`
-          const retry = await supabase.storage.from('games').download(fallbackPath)
-          fileData = retry.data
-          downloadErr = retry.error
+          const { data: d1, error: e1 } = await supabase.storage.from('games').download(basePath)
+          if (!e1 && d1) {
+            fileData = d1
+          } else if (authFolder !== user.id) {
+            const { data: d2, error: e2 } = await supabase.storage.from('games').download(`${user.id}/${gameName}.json`)
+            if (!e2 && d2) fileData = d2
+          }
+
+          if (!fileData) {
+            const { data: d3 } = await supabase.storage.from('games').download(`${gameRow.game_name as string}.json`)
+            if (d3) fileData = d3
+          }
         }
 
-        // Last resort: try the bucket root (legacy games without folder prefix)
-        if (downloadErr || !fileData) {
-          const rootPath = `${gameName}.json`
-          const retry = await supabase.storage.from('games').download(rootPath)
-          fileData = retry.data
-          downloadErr = retry.error
-        }
-
-        if (downloadErr || !fileData) {
+        if (!fileData) {
           setError('Could not load game file.')
           setLoading(false)
           return
         }
+
+        if (controller.signal.aborted) return
 
         const text = await fileData.text()
         const raw = JSON.parse(text)
@@ -228,12 +232,16 @@ export function GamePage() {
 
         setLoading(false)
       } catch {
-        setError('Failed to load game.')
-        setLoading(false)
+        if (!controller.signal.aborted) {
+          setError('Failed to load game.')
+          setLoading(false)
+        }
       }
     }
 
     loadGame()
+
+    return () => { controller.abort() }
   }, [gameId])
 
   // ─── Create session once game is loaded and user is authenticated ─────────
@@ -1039,7 +1047,10 @@ export function GamePage() {
                     </p>
                     <button
                       type="button"
-                      onClick={() => exportGamePdf(game, gameName ?? undefined)}
+                      onClick={async () => {
+                        const { exportGamePdf } = await import('../../utils/exportGamePdf')
+                        exportGamePdf(game, gameName ?? undefined)
+                      }}
                       className="player-play-btn"
                       style={{ marginTop: '0.25rem', width: 'auto', paddingLeft: '1.5rem', paddingRight: '1.5rem' }}
                     >
@@ -1401,7 +1412,8 @@ export function GamePage() {
             targetScore={session!.targetScore}
             boardTotal={session!.boardTotal}
             players={session!.players}
-            onExportPdf={() => {
+            onExportPdf={async () => {
+              const { exportCoopGamePdf } = await import('../../utils/exportGamePdf')
               exportCoopGamePdf({
                 teamPool: session!.teamPool,
                 targetScore: session!.targetScore,
