@@ -337,7 +337,7 @@ export function useGameSession(sessionId: string | undefined): UseGameSessionRes
     };
   }, [sessionId, setupChannel, reconcileState, handleMessage]);
 
-  // ─── Periodic reconciliation: poll DB every 3s while in buzzer phase ──────
+  // ─── Periodic reconciliation: poll DB every 3s while session is active ──────
   useEffect(() => {
     if (!sessionId || !session || session.phase === 'ended') return;
     const interval = setInterval(() => {

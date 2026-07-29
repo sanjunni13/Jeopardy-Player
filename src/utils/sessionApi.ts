@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { logInfo, logError, logWarn, logTimed } from './logger';
 import { generateSessionId } from './sessionIdGenerator';
 import type {
   GameSessionRow,
@@ -18,6 +19,7 @@ export async function createSession(
   hostUserId: string,
   gameId: string
 ): Promise<GameSessionRow> {
+  const timer = logTimed('session', 'create_session', { gameId, hostUserId });
   const id = generateSessionId();
 
   const { data, error } = await supabase
@@ -44,7 +46,12 @@ export async function createSession(
     .select()
     .single();
 
-  if (error) throw new Error(`Failed to create session: ${error.message}`);
+  if (error) {
+    timer.done({ success: false, error: error.message });
+    throw new Error(`Failed to create session: ${error.message}`);
+  }
+  timer.done({ success: true });
+  logInfo('session', 'create_session', `Session ${id} created for game ${gameId}`, { sessionId: id, gameId, hostUserId });
   return data as GameSessionRow;
 }
 
@@ -67,14 +74,13 @@ export async function joinSession(
   );
 
   let updatedPlayers: SessionPlayer[];
+  const isRejoin = existingIndex >= 0;
 
-  if (existingIndex >= 0) {
-    // Rejoin: update the existing player's joinedAt to mark them as reconnected
+  if (isRejoin) {
     updatedPlayers = session.players.map((p, i) =>
       i === existingIndex ? { ...p, joinedAt: new Date().toISOString() } : p
     );
   } else {
-    // New player
     const newPlayer: SessionPlayer = {
       name: playerName,
       score: 0,
@@ -90,7 +96,12 @@ export async function joinSession(
     .select()
     .single();
 
-  if (error) throw new Error(`Failed to join session: ${error.message}`);
+  if (error) {
+    logError('session', 'joinSession', `Failed to join session: ${error.message}`, { sessionId, playerName });
+    throw new Error(`Failed to join session: ${error.message}`);
+  }
+
+  logInfo('session', 'joinSession', `Player ${isRejoin ? 'rejoined' : 'joined'} session`, { sessionId, playerName, isRejoin });
   return data as GameSessionRow;
 }
 
@@ -99,13 +110,19 @@ export async function joinSession(
  * Returns null if the session does not exist.
  */
 export async function fetchSession(
-  sessionId: string
+  sessionId: string,
+  options?: { signal?: AbortSignal }
 ): Promise<GameSessionRow | null> {
-  const { data, error } = await supabase
+  const query = supabase
     .from('game_sessions')
     .select('*')
     .eq('id', sessionId)
-    .maybeSingle();
+
+  if (options?.signal) {
+    query.abortSignal(options.signal);
+  }
+
+  const { data, error } = await query.maybeSingle();
 
   if (error) throw new Error(`Failed to fetch session: ${error.message}`);
   return data as GameSessionRow | null;
@@ -123,7 +140,11 @@ export async function updateSessionPhase(
     .update({ phase, updated_at: new Date().toISOString() })
     .eq('id', sessionId);
 
-  if (error) throw new Error(`Failed to update session phase: ${error.message}`);
+  if (error) {
+    logError('session', 'updateSessionPhase', `Failed to update phase: ${error.message}`, { sessionId, phase });
+    throw new Error(`Failed to update session phase: ${error.message}`);
+  }
+  logInfo('session', 'updateSessionPhase', `Phase updated to ${phase}`, { sessionId, phase });
 }
 
 /**
@@ -138,7 +159,10 @@ export async function updateBuzzState(
     .update({ buzz_state: buzzState, updated_at: new Date().toISOString() })
     .eq('id', sessionId);
 
-  if (error) throw new Error(`Failed to update buzz state: ${error.message}`);
+  if (error) {
+    logError('buzzer', 'updateBuzzState', `Failed to update buzz state: ${error.message}`, { sessionId });
+    throw new Error(`Failed to update buzz state: ${error.message}`);
+  }
 }
 
 /**
@@ -171,8 +195,11 @@ export async function updateFinalJeopardyState(
     .update({ final_jeopardy_state: fjState, updated_at: new Date().toISOString() })
     .eq('id', sessionId);
 
-  if (error)
+  if (error) {
+    logError('final_jeopardy', 'updateFinalJeopardyState', `Failed to update FJ state: ${error.message}`, { sessionId });
     throw new Error(`Failed to update Final Jeopardy state: ${error.message}`);
+  }
+  logInfo('final_jeopardy', 'updateFinalJeopardyState', 'Final Jeopardy state updated', { sessionId, submissionCount: fjState.submissions?.length });
 }
 
 /**
@@ -184,7 +211,11 @@ export async function lockSession(sessionId: string): Promise<void> {
     .update({ is_locked: true, updated_at: new Date().toISOString() })
     .eq('id', sessionId);
 
-  if (error) throw new Error(`Failed to lock session: ${error.message}`);
+  if (error) {
+    logError('session', 'lockSession', `Failed to lock session: ${error.message}`, { sessionId });
+    throw new Error(`Failed to lock session: ${error.message}`);
+  }
+  logInfo('session', 'lockSession', 'Session locked', { sessionId });
 }
 
 /**
@@ -223,7 +254,11 @@ export async function endSession(sessionId: string): Promise<void> {
     .update({ phase: 'ended' as SessionPhase, updated_at: new Date().toISOString() })
     .eq('id', sessionId);
 
-  if (error) throw new Error(`Failed to end session: ${error.message}`);
+  if (error) {
+    logError('session', 'endSession', `Failed to end session: ${error.message}`, { sessionId });
+    throw new Error(`Failed to end session: ${error.message}`);
+  }
+  logInfo('session', 'endSession', 'Session ended', { sessionId });
 }
 
 // ─── Session Cleanup ──────────────────────────────────────────────────────────
@@ -255,7 +290,9 @@ export async function cleanupStaleSessions(): Promise<void> {
       .delete()
       .eq('phase', 'ended')
       .lt('updated_at', deleteThreshold);
-  } catch {
-    // Best-effort — don't throw if cleanup fails
+
+    logInfo('session', 'cleanupStaleSessions', 'Session cleanup completed');
+  } catch (e) {
+    logWarn('session', 'cleanupStaleSessions', 'Session cleanup failed (best-effort)', { error: e instanceof Error ? e.message : 'unknown' });
   }
 }

@@ -23,6 +23,7 @@ vi.mock('../utils/sessionChannel', () => ({
     messageCallback = cb;
     return mockChannel;
   }),
+  onPresenceChange: vi.fn(() => mockChannel),
   createReconnectionHandler: vi.fn(() => ({
     startReconnection: vi.fn(),
     stopReconnection: vi.fn(),

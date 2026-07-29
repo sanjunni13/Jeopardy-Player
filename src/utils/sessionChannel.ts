@@ -1,5 +1,6 @@
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { supabase } from './supabase';
+import { logInfo, logError, logWarn } from './logger';
 import type { ChannelMessage, PresencePayload } from '../types/session';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -27,8 +28,10 @@ export function subscribeToChannel(
   return new Promise((resolve, reject) => {
     channel.subscribe((status, err) => {
       if (status === 'SUBSCRIBED') {
+        logInfo('realtime', 'subscribeToChannel', 'Channel subscribed');
         resolve(channel);
       } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+        logError('realtime', 'subscribeToChannel', `Subscription failed: ${status}`, { status });
         reject(err ?? new Error(`Channel subscription failed: ${status}`));
       }
     });
@@ -111,12 +114,14 @@ export function createReconnectionHandler(
   async function attemptReconnect(): Promise<void> {
     if (state.attempts >= state.maxAttempts) {
       state.isReconnecting = false;
+      logWarn('realtime', 'reconnect', 'Max reconnection attempts reached', { sessionId, attempts: state.maxAttempts });
       callbacks?.onReconnectFailed?.();
       return;
     }
 
     state.attempts++;
     state.isReconnecting = true;
+    logInfo('realtime', 'reconnect', `Reconnection attempt ${state.attempts}/${state.maxAttempts}`, { sessionId, attempt: state.attempts });
     callbacks?.onReconnecting?.(state.attempts);
 
     try {
@@ -124,6 +129,7 @@ export function createReconnectionHandler(
       await subscribeToChannel(channel);
       state.isReconnecting = false;
       state.attempts = 0;
+      logInfo('realtime', 'reconnect', 'Reconnected successfully', { sessionId });
       callbacks?.onReconnected?.(channel);
     } catch {
       // Schedule next attempt

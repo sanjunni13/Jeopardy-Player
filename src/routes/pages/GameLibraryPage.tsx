@@ -1,7 +1,6 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { useNavigate, Link, useRouterState } from '@tanstack/react-router'
 import { toast } from 'react-toastify'
-import Fuse from 'fuse.js'
 import { supabase } from '../../utils/supabase'
 import { GameCard } from '../../components/game/GameCard'
 import { GameDetailsDialog } from '../../components/GameDetailsDialog'
@@ -42,14 +41,64 @@ const EXCLUDED_GAMES = [
   'random_game',
 ]
 
-async function loadGames() {
+const PAGE_SIZE = 30
+
+async function loadGamesPage(options?: {
+  page?: number
+  search?: string
+  filters?: Filters
+  signal?: AbortSignal
+}): Promise<{ games: GameRecord[]; totalCount: number }> {
+  const page = options?.page ?? 0
+  const from = page * PAGE_SIZE
+  const to = from + PAGE_SIZE - 1
+
+  let query = supabase
+    .from('games')
+    .select('*, players(player_name)', { count: 'exact' })
+    .not('game_name', 'in', `(${EXCLUDED_GAMES.join(',')})`)
+    .order('created_at', { ascending: false })
+    .range(from, to)
+
+  if (options?.filters?.rounds != null) {
+    query = query.eq('total_rounds', options.filters.rounds)
+  }
+  if (options?.filters?.source != null) {
+    query = query.eq('source', options.filters.source)
+  }
+  if (options?.search?.trim()) {
+    query = query.ilike('game_name', `%${options.search.trim()}%`)
+  }
+  if (options?.signal) {
+    query.abortSignal(options.signal)
+  }
+
+  const { data, error, count } = await query
+  if (error) throw error
+
+  const games = (data ?? []).map((row: Record<string, unknown>) => ({
+    id: String(row.id),
+    game_name: row.game_name as string,
+    total_rounds: row.total_rounds as number,
+    times_played: row.times_played as number,
+    winners: row.winners as string[],
+    created_by: row.created_by as number | null,
+    source: row.source as string | null,
+    high_score: row.high_score as number | null,
+    high_score_player: row.high_score_player as string | null,
+    creator_name: (row.players as { player_name: string } | null)?.player_name ?? null,
+  })) as GameRecord[]
+
+  return { games, totalCount: count ?? 0 }
+}
+
+async function loadAllGamesMinimal() {
   const { data, error } = await supabase
     .from('games')
-    .select('*, players(player_name)')
+    .select('id, game_name, total_rounds, times_played, winners, created_by, source, high_score, high_score_player, players(player_name)')
     .not('game_name', 'in', `(${EXCLUDED_GAMES.join(',')})`)
   if (error) throw error
 
-  // Map the joined player_name into a flat creator_name field
   return (data ?? []).map((row: Record<string, unknown>) => ({
     id: String(row.id),
     game_name: row.game_name as string,
@@ -68,9 +117,14 @@ export function GameLibraryPage() {
   const navigate = useNavigate()
   const { profile } = usePlayerProfileContext()
   const [games, setGames] = useState<GameRecord[]>([])
+  const [allGames, setAllGames] = useState<GameRecord[]>([])
+  const [totalCount, setTotalCount] = useState(0)
+  const [currentPage, setCurrentPage] = useState(0)
   const [status, setStatus] = useState<FetchStatus>('loading')
+  const [loadingMore, setLoadingMore] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
   const [filters, setFilters] = useState<Filters>({ rounds: null, creator: null, source: null })
   const [showFilters, setShowFilters] = useState(false)
   const [selectedGame, setSelectedGame] = useState<GameRecord | null>(null)
@@ -87,40 +141,107 @@ export function GameLibraryPage() {
 
   const { pickRandom } = useRandomGamePicker()
 
-  const fetchGames = useCallback(async () => {
-    setStatus('loading')
-    setErrorMessage(null)
+  // Debounce search input
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => {
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current)
+    searchTimerRef.current = setTimeout(() => setDebouncedSearch(searchQuery), 300)
+    return () => { if (searchTimerRef.current) clearTimeout(searchTimerRef.current) }
+  }, [searchQuery])
+
+  // Paginated fetch function — resets state internally when page === 0
+  const fetchGamesPage = useCallback(async (page: number, signal?: AbortSignal) => {
+    if (page === 0) { setStatus('loading'); setErrorMessage(null); setCurrentPage(0); setGames([]) }
+    else { setLoadingMore(true) }
 
     try {
-      const data = await loadGames()
-      setGames(data)
+      const { games: newGames, totalCount: count } = await loadGamesPage({
+        page, search: debouncedSearch, filters, signal,
+      })
+      setGames(prev => page === 0 ? newGames : [...prev, ...newGames])
+      setTotalCount(count)
+      setCurrentPage(page)
       setStatus('success')
     } catch (err: unknown) {
+      if (err instanceof Error && err.name === 'AbortError') return
       setStatus('error')
       setErrorMessage(err instanceof Error ? err.message : 'Failed to load games')
+    } finally {
+      setLoadingMore(false)
     }
-  }, [])
+  }, [debouncedSearch, filters])
 
+  // Initial fetch + refetch on search/filter change
   useEffect(() => {
-    let cancelled = false
+    const controller = new AbortController()
 
-    loadGames().then(
-      (data) => { if (!cancelled) { setGames(data); setStatus('success') } },
-      (err) => { if (!cancelled) { setStatus('error'); setErrorMessage(err instanceof Error ? err.message : 'Failed to load games') } },
-    )
+    async function doFetch() {
+      setStatus('loading')
+      setErrorMessage(null)
+      setCurrentPage(0)
+      setGames([])
 
-    return () => { cancelled = true }
+      try {
+        const { games: newGames, totalCount: count } = await loadGamesPage({
+          page: 0, search: debouncedSearch, filters, signal: controller.signal,
+        })
+        if (!controller.signal.aborted) {
+          setGames(newGames)
+          setTotalCount(count)
+          setStatus('success')
+        }
+      } catch (err: unknown) {
+        if (controller.signal.aborted) return
+        setStatus('error')
+        setErrorMessage(err instanceof Error ? err.message : 'Failed to load games')
+      } finally {
+        if (!controller.signal.aborted) setLoadingMore(false)
+      }
+    }
+
+    doFetch()
+    return () => { controller.abort() }
+  }, [debouncedSearch, filters])
+
+  // Load all games in background for random pick and filter option lists
+  useEffect(() => {
+    const controller = new AbortController()
+    loadAllGamesMinimal().then(data => {
+      if (!controller.signal.aborted) setAllGames(data)
+    }).catch(() => {})
+    return () => { controller.abort() }
   }, [])
+
+  const hasMore = games.length < totalCount
+
+  // Infinite scroll via IntersectionObserver
+  const sentinelRef = useRef<HTMLDivElement | null>(null)
+  useEffect(() => {
+    const sentinel = sentinelRef.current
+    if (!sentinel || !hasMore || loadingMore) return
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && !loadingMore && hasMore) {
+          fetchGamesPage(currentPage + 1)
+        }
+      },
+      { rootMargin: '200px' }
+    )
+    observer.observe(sentinel)
+    return () => { observer.disconnect() }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasMore, loadingMore, currentPage])
 
   // Auto-trigger random selection when arriving via the Home page "Feeling Lucky" button
   useEffect(() => {
     if (!feelingLucky || status !== 'success') return
-    if (games.length === 0) {
+    const pool = allGames.length > 0 ? allGames : games
+    if (pool.length === 0) {
       toast.info('No games are available for random selection.')
       return
     }
-    pickRandom(games)
-  }, [feelingLucky, status, games, pickRandom])
+    pickRandom(pool)
+  }, [feelingLucky, status, allGames, games, pickRandom])
 
   // Show error toast when feelingLucky is set and the library fetch fails (Requirement 2.4)
   useEffect(() => {
@@ -178,49 +299,34 @@ export function GameLibraryPage() {
     loadFavourites()
   }, [showFavourites, profile, loadFavourites])
 
-  // Fuse.js instance for fuzzy search
-  const fuse = useMemo(() => new Fuse(games, {
-    keys: ['game_name'],
-    threshold: 0.4,
-    ignoreLocation: true,
-  }), [games])
+  // Unique round counts and creators for filter options (from allGames for comprehensive list)
+  const filterSource = allGames.length > 0 ? allGames : games
 
-  // Unique round counts and creators for filter options
   const roundOptions = useMemo(() =>
-    [...new Set(games.map(g => g.total_rounds))].sort((a, b) => a - b),
-    [games]
+    [...new Set(filterSource.map(g => g.total_rounds))].sort((a, b) => a - b),
+    [filterSource]
   )
 
   const creatorOptions = useMemo(() =>
-    [...new Set(games.map(g => g.creator_name).filter((c): c is string => c != null))].sort((a, b) => a.localeCompare(b)),
-    [games]
+    [...new Set(filterSource.map(g => g.creator_name).filter((c): c is string => c != null))].sort((a, b) => a.localeCompare(b)),
+    [filterSource]
   )
 
   const sourceOptions = useMemo(() =>
-    [...new Set(games.map(g => g.source).filter((s): s is string => s != null))].sort(),
-    [games]
+    [...new Set(filterSource.map(g => g.source).filter((s): s is string => s != null))].sort(),
+    [filterSource]
   )
 
-  // Filtered + searched games
+  // Filtered games (creator filter is client-side since it's from a joined table)
   const filteredGames = useMemo(() => {
-    let results = searchQuery.trim()
-      ? fuse.search(searchQuery).map(r => r.item)
-      : games
-
-    if (filters.rounds != null) {
-      results = results.filter(g => g.total_rounds === filters.rounds)
-    }
+    let results = games
 
     if (filters.creator != null) {
       results = results.filter(g => g.creator_name === filters.creator)
     }
 
-    if (filters.source != null) {
-      results = results.filter(g => g.source === filters.source)
-    }
-
     return results
-  }, [games, searchQuery, filters, fuse])
+  }, [games, filters.creator])
 
   const activeFilterCount = (filters.rounds != null ? 1 : 0) + (filters.creator != null ? 1 : 0) + (filters.source != null ? 1 : 0)
 
@@ -240,7 +346,7 @@ export function GameLibraryPage() {
   }, [filteredGames, showFavourites, profile, favouriteIds, sortOption, ratings])
 
   function handleCardClick(id: string) {
-    const game = filteredGames.find(g => g.id === id) ?? games.find(g => g.id === id)
+    const game = games.find(g => g.id === id)
     if (game) {
       setSelectedGame(game)
     }
@@ -288,11 +394,7 @@ export function GameLibraryPage() {
     loadFavourites()
   }
 
-  // Feeling Lucky button visibility:
-  //   loading  → visible, disabled
-  //   success + games.length > 0 → visible, enabled  (rendered inside library-search-row)
-  //   success + games.length === 0 → hidden
-  //   error → hidden
+  // Feeling Lucky button visibility
   const showFeelingLuckyLoading = status === 'loading'
 
   return (
@@ -317,7 +419,7 @@ export function GameLibraryPage() {
         )}
 
         {/* Search row with enabled Feeling Lucky button (Requirements 1.1, 1.4) */}
-        {status === 'success' && games.length > 0 && (
+        {status === 'success' && (games.length > 0 || debouncedSearch || activeFilterCount > 0) && (
           <div className="library-search-row">
             <div className="library-search-wrapper">
               <input
@@ -374,7 +476,7 @@ export function GameLibraryPage() {
             <button
               type="button"
               className="library-feeling-lucky-btn"
-              onClick={() => pickRandom(games)}
+              onClick={() => pickRandom(allGames.length > 0 ? allGames : games)}
             >
               🎲 Feeling Lucky
             </button>
@@ -444,7 +546,7 @@ export function GameLibraryPage() {
             <p className="library-error-message">{errorMessage}</p>
             <button
               type="button"
-              onClick={fetchGames}
+              onClick={() => fetchGamesPage(0)}
               className="library-retry-btn"
             >
               Retry
@@ -452,7 +554,7 @@ export function GameLibraryPage() {
           </div>
         )}
 
-        {status === 'success' && games.length === 0 && (
+        {status === 'success' && games.length === 0 && !debouncedSearch && activeFilterCount === 0 && (
           <div className="library-empty">
             <p className="library-empty-message">
               No games available. Upload a game first!
@@ -463,7 +565,7 @@ export function GameLibraryPage() {
           </div>
         )}
 
-        {status === 'success' && games.length > 0 && filteredGames.length === 0 && (
+        {status === 'success' && games.length === 0 && (debouncedSearch || activeFilterCount > 0) && (
           <div className="library-empty">
             <p className="library-empty-message">
               No games match your search or filters.
@@ -515,6 +617,13 @@ export function GameLibraryPage() {
           </MeltAwayList>
         )}
       </BackgroundGradient>
+
+      {/* Infinite scroll sentinel */}
+      {status === 'success' && hasMore && (
+        <div ref={sentinelRef} className="library-load-more-sentinel" style={{ height: '1px', margin: '2rem 0' }}>
+          {loadingMore && <Spinner />}
+        </div>
+      )}
 
       <GameDetailsDialog
         isOpen={selectedGame != null}

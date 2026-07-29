@@ -1,6 +1,6 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback, lazy, Suspense } from 'react'
 import type { ReactNode } from 'react'
-import ReactPlayer from 'react-player'
+const ReactPlayer = lazy(() => import('react-player'))
 import type { MediaData } from '../../utils/builderFormStructure'
 import { validateMediaFile, validateYouTubeUrl } from '../../utils/mediaApi'
 import { DeleteButton } from '../DeleteButton'
@@ -179,12 +179,14 @@ export function MediaAttachment({
 
           {media.type === 'youtube' && (
             <div className={isLarge ? 'flex-1' : ''} style={isLarge ? undefined : { width: '320px' }}>
-              <ReactPlayer
-                src={media.url}
-                controls
-                width="100%"
-                height={isLarge ? '400px' : '180px'}
-              />
+              <Suspense fallback={<div style={{ width: '100%', height: isLarge ? '400px' : '180px', background: '#1e293b', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8' }}>Loading player…</div>}>
+                <ReactPlayer
+                  url={media.url}
+                  controls
+                  width="100%"
+                  height={isLarge ? '400px' : '180px'}
+                />
+              </Suspense>
             </div>
           )}
 

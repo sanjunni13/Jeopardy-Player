@@ -234,8 +234,10 @@ describe('draftApi integration tests', () => {
   describe('deleteDraft', () => {
     it('returns success when storage remove and DB delete succeed', async () => {
       const removeFn = vi.fn().mockResolvedValue({ error: null });
+      const listFn = vi.fn().mockResolvedValue({ data: [], error: null });
       (supabase.storage.from as ReturnType<typeof vi.fn>).mockReturnValue({
         remove: removeFn,
+        list: listFn,
       });
 
       const eqFn = vi.fn().mockResolvedValue({ error: null });
@@ -271,8 +273,10 @@ describe('draftApi integration tests', () => {
 
     it('returns error when DB delete fails', async () => {
       const removeFn = vi.fn().mockResolvedValue({ error: null });
+      const listFn = vi.fn().mockResolvedValue({ data: [], error: null });
       (supabase.storage.from as ReturnType<typeof vi.fn>).mockReturnValue({
         remove: removeFn,
+        list: listFn,
       });
 
       const eqFn = vi.fn().mockResolvedValue({ error: { message: 'Row not found' } });
