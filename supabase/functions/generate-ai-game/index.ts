@@ -201,6 +201,8 @@ serve(async (req: Request) => {
 - All category names must be unique (no duplicates)
 - Include a Final Jeopardy round with a single category, clue, and solution
 - Scale the complexity of clues to match difficulty ${difficultyLevel}/10. Make sure the game is fun and engaging at this level — clues should be challenging enough to be satisfying but not so obscure that players can't reasonably guess.
+- CRITICAL: Every clue and solution MUST be factually accurate and verifiable. Do NOT invent facts, dates, names, or attributions. If you are uncertain about a fact, choose a different clue you are confident about. Accuracy is more important than obscurity.
+- For higher difficulty levels (7-10), make clues harder through clever wordplay, lateral thinking, misdirection, requiring connections between well-known facts, or referencing well-documented but less commonly recalled details. Do NOT make clues harder by using obscure, unverifiable, or niche trivia that you are not confident is correct.
 ${validatedParams.specialRequests ? `- Special requests: ${validatedParams.specialRequests}` : ''}
 
 Return a JSON object with this exact structure:
@@ -228,13 +230,13 @@ The "categories" array must contain exactly ${totalCategories} categories. Each 
 
     // Model fallback chain: try each model in order until one succeeds
     const MODELS = [
-      'gemini-2.5-flash-lite',
-      'gemini-2.5-flash',
-      'gemini-2.5-pro',
       'gemini-3.5-flash',
       'gemini-3.1-pro-preview',
       'gemini-3.1-flash-lite',
       'gemini-3-flash-preview',
+      'gemini-2.5-flash-lite',
+      'gemini-2.5-flash',
+      'gemini-2.5-pro',
       'gemini-2.0-flash',
       'gemini-2.0-flash-lite',
       'gemini-1.5-flash',
@@ -258,7 +260,10 @@ The "categories" array must contain exactly ${totalCategories} categories. Each 
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               contents: [{ parts: [{ text: prompt }] }],
-              generationConfig: { responseMimeType: 'application/json' },
+              generationConfig: {
+                responseMimeType: 'application/json',
+                temperature: difficultyLevel >= 7 ? 0.4 : 0.7,
+              },
             }),
             signal: controller.signal,
           }
