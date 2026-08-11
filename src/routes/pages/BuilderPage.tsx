@@ -16,6 +16,7 @@ import { BuilderForm } from '../../components/builder/BuilderForm'
 import { ExitGuardDialog } from '../../components/builder/ExitGuardDialog'
 import { DeleteConfirmationDialog } from '../../components/builder/DeleteConfirmationDialog'
 import { BackToTopFab } from '../../components/ui/framer-motion-animations'
+import { BuilderChatbot } from '../../components/builder/BuilderChatbot'
 import type { MediaData } from '../../utils/builderFormStructure'
 import './BuilderPage.css'
 
@@ -366,7 +367,7 @@ export function BuilderPage() {
     setIsDeleting(true)
 
     try {
-      await deleteDraft(activeDraftId, userEmail)
+      await deleteDraft(activeDraftId)
       setIsDeleteDialogOpen(false)
       setIsDeleting(false)
       resetDirty()
@@ -407,7 +408,7 @@ export function BuilderPage() {
         // 5. Delete draft if one exists
         const activeDraftId = currentDraftId ?? draftId
         if (activeDraftId && userEmail) {
-          await deleteDraft(activeDraftId, userEmail)
+          await deleteDraft(activeDraftId)
         }
 
         // 6. Show success and navigate
@@ -542,6 +543,7 @@ export function BuilderPage() {
         onCancel={handleDeleteCancel}
       />
 
+      <BuilderChatbot />
       <BackToTopFab />
     </div>
   )
