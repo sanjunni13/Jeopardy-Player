@@ -1,0 +1,41 @@
+/* ─── Collapsible Player Section ──────────────────────────────────────────── */
+/* Mirrors the CategoryAccuracy disclosure styling in AnalyticsBreakdown.css */
+
+.collapsible-player-section {
+  background: rgb(2 6 23); /* slate-950 */
+  border: 1px solid rgb(30 41 59); /* slate-800 */
+  border-radius: 0.75rem;
+  overflow: hidden;
+}
+
+.collapsible-player-section__toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.625rem 1rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: rgb(226 232 240); /* slate-200 */
+  transition: background 0.15s;
+}
+
+.collapsible-player-section__toggle:hover {
+  background: rgb(30 41 59 / 0.5);
+}
+
+.collapsible-player-section__name {
+  font-weight: 600;
+  font-size: 0.9375rem;
+  color: rgb(241 245 249); /* slate-100 */
+}
+
+.collapsible-player-section__chevron {
+  font-size: 0.75rem;
+  color: rgb(100 116 139); /* slate-500 */
+}
+
+.collapsible-player-section__content {
+  border-top: 1px solid rgb(30 41 59); /* slate-800 */
+}

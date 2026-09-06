@@ -1,0 +1,316 @@
+/* ─── Player Betting Panel ───────────────────────────────────────────────────── */
+
+.betting-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 100dvh;
+  padding: 1.5rem;
+  box-sizing: border-box;
+  background: #1a1a2e;
+  color: #fff;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+.betting-panel__header {
+  text-align: center;
+  margin-bottom: 1.5rem;
+  width: 100%;
+  max-width: 400px;
+}
+
+.betting-panel__title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0 0 0.25rem;
+}
+
+.betting-panel__balance {
+  font-size: 0.875rem;
+  color: #94a3b8;
+  margin: 0.25rem 0 0;
+}
+
+.betting-panel__available {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #e2e8f0;
+  margin: 0.25rem 0 0;
+}
+
+/* Requirement 1.7 — the Gambling_Allowance reads as a distinct, temporary
+   budget: accent colour, its own pill, set apart from the muted Real_Balance. */
+.betting-panel__allowance {
+  display: inline-block;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #f4a261;
+  margin: 0.375rem 0 0;
+  padding: 0.25rem 0.75rem;
+  border: 1px solid rgba(244, 162, 97, 0.5);
+  border-radius: 9999px;
+  background: rgba(244, 162, 97, 0.12);
+  letter-spacing: 0.01em;
+}
+
+.betting-panel__timer {
+  font-size: 0.875rem;
+  color: #f4a261;
+  margin: 0.5rem 0 0;
+  font-weight: 600;
+}
+
+.betting-panel__timer--expired {
+  color: #e63946;
+}
+
+/* ─── Placed Bets Summary ────────────────────────────────────────────────────── */
+
+.betting-panel__placed-bets {
+  width: 100%;
+  max-width: 400px;
+  margin-bottom: 1.25rem;
+}
+
+.betting-panel__placed-bets-title {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #94a3b8;
+  margin: 0 0 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.betting-panel__placed-bet-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0.75rem;
+  background: rgba(42, 157, 143, 0.1);
+  border: 1px solid #2a9d8f;
+  border-radius: 0.375rem;
+  margin-bottom: 0.375rem;
+  font-size: 0.8125rem;
+  gap: 0.5rem;
+}
+
+.betting-panel__placed-bet-label {
+  color: #2a9d8f;
+  font-weight: 500;
+  flex: 1;
+  min-width: 0;
+}
+
+.betting-panel__placed-bet-amount {
+  color: #2a9d8f;
+  font-weight: 600;
+}
+
+.betting-panel__remove-bet-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  margin-left: 0.5rem;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: rgba(230, 57, 70, 0.2);
+  color: #e63946;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease;
+  flex-shrink: 0;
+}
+
+.betting-panel__remove-bet-button:hover {
+  background: rgba(230, 57, 70, 0.4);
+}
+
+/* ─── Bet Form ───────────────────────────────────────────────────────────────── */
+
+.betting-panel__form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  width: 100%;
+  max-width: 400px;
+}
+
+.betting-panel__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.betting-panel__label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #ccc;
+}
+
+.betting-panel__select {
+  padding: 0.75rem 1rem;
+  border: 1px solid #42434a;
+  border-radius: 0.5rem;
+  background: rgba(36, 40, 50, 1);
+  color: #fff;
+  font-size: 1rem;
+  outline: none;
+  transition: border-color 0.2s ease;
+  appearance: none;
+  cursor: pointer;
+}
+
+.betting-panel__select:focus {
+  border-color: #5353ff;
+}
+
+.betting-panel__select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.betting-panel__input {
+  padding: 0.75rem 1rem;
+  border: 1px solid #42434a;
+  border-radius: 0.5rem;
+  background: rgba(36, 40, 50, 1);
+  color: #fff;
+  font-size: 1rem;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.betting-panel__input:focus {
+  border-color: #5353ff;
+}
+
+.betting-panel__input--error {
+  border-color: #e63946;
+}
+
+.betting-panel__input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.betting-panel__wager-hint {
+  font-size: 0.75rem;
+  color: #888;
+}
+
+.betting-panel__error {
+  font-size: 0.8rem;
+  color: #ff6b6b;
+  margin-top: 0.125rem;
+}
+
+/* ─── Buttons ────────────────────────────────────────────────────────────────── */
+
+.betting-panel__submit-button {
+  padding: 0.875rem 1.5rem;
+  border: none;
+  border-radius: 0.5rem;
+  background: #5353ff;
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  min-height: 44px;
+  transition: background 0.2s ease, opacity 0.2s ease;
+}
+
+.betting-panel__submit-button:hover:not(:disabled) {
+  background: #4040e0;
+}
+
+.betting-panel__submit-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.betting-panel__skip-button {
+  padding: 0.75rem 1.25rem;
+  border: 1px solid #42434a;
+  border-radius: 0.5rem;
+  background: transparent;
+  color: #94a3b8;
+  font-size: 0.875rem;
+  cursor: pointer;
+  min-height: 44px;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.betting-panel__skip-button:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: #5a5b6a;
+}
+
+.betting-panel__skip-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.betting-panel__submit-bets-button {
+  padding: 0.875rem 1.5rem;
+  border: none;
+  border-radius: 0.5rem;
+  background: #2a9d8f;
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  min-height: 44px;
+  transition: background 0.2s ease, opacity 0.2s ease;
+}
+
+.betting-panel__submit-bets-button:hover:not(:disabled) {
+  background: #238b7e;
+}
+
+.betting-panel__submit-bets-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.betting-panel__submit-hint {
+  font-size: 0.75rem;
+  color: #888;
+  margin-top: -0.5rem;
+}
+
+.betting-panel__submit-error {
+  font-size: 0.8rem;
+  color: #ff6b6b;
+  margin-top: -0.5rem;
+}
+
+.betting-panel__explanation {
+  font-size: 0.8125rem;
+  color: #94a3b8;
+  margin: -0.5rem 0 0;
+  padding: 0;
+  font-style: italic;
+}
+
+/* ─── Finalized State ────────────────────────────────────────────────────────── */
+
+.betting-panel__finalized {
+  text-align: center;
+  padding: 1.5rem;
+  border: 1px solid #2a9d8f;
+  border-radius: 0.75rem;
+  background: rgba(42, 157, 143, 0.1);
+  width: 100%;
+  max-width: 400px;
+}
+
+.betting-panel__finalized-text {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #2a9d8f;
+  margin: 0;
+}

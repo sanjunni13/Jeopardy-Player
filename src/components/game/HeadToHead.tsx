@@ -1,14 +1,14 @@
+import { orientComparison } from '../../utils/analyticsUtils'
 import type { HeadToHeadResult } from '../../utils/analyticsUtils'
+import { formatCurrency } from '../../utils/currency'
+import { CollapsiblePlayerSection } from './CollapsiblePlayerSection'
 
 interface HeadToHeadProps {
   comparisons: HeadToHeadResult[]
+  /** Section order — normally the sorted-players order from the analytics screen */
+  playerNames: string[]
   /** Maps player name → hex colour (from the score timeline palette) */
   playerColors: Map<string, string>
-}
-
-function formatDollar(value: number): string {
-  if (value < 0) return `-$${Math.abs(value).toLocaleString()}`
-  return `$${value.toLocaleString()}`
 }
 
 function StatRow({ label, valueA, valueB, colorA, colorB }: {
@@ -51,24 +51,57 @@ function ComparisonCard({ result, playerColors }: { result: HeadToHeadResult; pl
           <StatRow label="Incorrect"                 valueA={result.incorrectA}    valueB={result.incorrectB}    colorA={colorA} colorB={colorB} />
           <StatRow label="Daily Doubles Attempted"   valueA={result.ddAttemptedA}  valueB={result.ddAttemptedB}  colorA={colorA} colorB={colorB} />
           <StatRow label="Daily Doubles Won"         valueA={result.ddWonA}        valueB={result.ddWonB}        colorA={colorA} colorB={colorB} />
-          <StatRow label="Final Score"               valueA={formatDollar(result.finalScoreA)} valueB={formatDollar(result.finalScoreB)} colorA={colorA} colorB={colorB} />
+          <StatRow label="Final Score"               valueA={formatCurrency(result.finalScoreA)} valueB={formatCurrency(result.finalScoreB)} colorA={colorA} colorB={colorB} />
         </tbody>
       </table>
     </div>
   )
 }
 
-export function HeadToHead({ comparisons, playerColors }: HeadToHeadProps) {
+/**
+ * One Collapsible_Player_Section per player who has at least one comparison,
+ * with that player always on the left-hand side (Requirement 9.3). Mirroring is
+ * intentional: each unique pair appears twice, once under each participant, so
+ * a player's section is self-contained.
+ */
+export function HeadToHead({ comparisons, playerNames, playerColors }: HeadToHeadProps) {
   if (comparisons.length === 0) return null
+
+  // Section order follows playerNames; players named only in comparisons keep
+  // their first-seen order after the listed ones so nothing is silently dropped.
+  const orderedNames = [...playerNames]
+  for (const result of comparisons) {
+    for (const name of [result.playerA, result.playerB]) {
+      if (!orderedNames.includes(name)) orderedNames.push(name)
+    }
+  }
+
+  const sections = orderedNames
+    .map((playerName) => ({
+      playerName,
+      oriented: comparisons
+        .filter((result) => result.playerA === playerName || result.playerB === playerName)
+        .map((result) => orientComparison(result, playerName)),
+    }))
+    // Only players with at least one comparison get a section — Requirement 9.3
+    .filter((section) => section.oriented.length > 0)
+
+  if (sections.length === 0) return null
 
   return (
     <div className="head-to-head">
-      {comparisons.map((result) => (
-        <ComparisonCard
-          key={`${result.playerA}-${result.playerB}`}
-          result={result}
-          playerColors={playerColors}
-        />
+      {sections.map((section) => (
+        <CollapsiblePlayerSection key={section.playerName} playerName={section.playerName}>
+          <div className="head-to-head-section-content">
+            {section.oriented.map((result) => (
+              <ComparisonCard
+                key={`${result.playerA}-${result.playerB}`}
+                result={result}
+                playerColors={playerColors}
+              />
+            ))}
+          </div>
+        </CollapsiblePlayerSection>
       ))}
     </div>
   )

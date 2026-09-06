@@ -1,6 +1,10 @@
 import { useState } from 'react'
 import type { Player } from '../../types/game'
-import { computeWagerRange } from '../../utils/gameToggles'
+import {
+  computeBalanceRelativeWagerRange,
+  computeLowestPositiveBalance,
+} from '../../utils/gameToggles'
+import { formatCurrency } from '../../utils/currency'
 import './DailyDoubleScreen.css'
 import './WagerEntry.css'
 
@@ -15,6 +19,18 @@ interface PlayerWagerState {
   error: string | null
 }
 
+/**
+ * The wager phase snapshot. Both the Lowest_Positive_Balance and every
+ * player's balance are captured once, when the phase begins, so no permitted
+ * range shifts if a balance changes while wagers are being entered.
+ *
+ * Requirements: 4.9, 4.10
+ */
+interface WagerSnapshot {
+  lowestPositiveBalance: number | null
+  scores: Record<string, number>
+}
+
 export function WagerEntry({ players, wagerFloor, onReveal }: WagerEntryProps) {
   const [wagerStates, setWagerStates] = useState<Record<string, PlayerWagerState>>(
     () =>
@@ -23,6 +39,29 @@ export function WagerEntry({ players, wagerFloor, onReveal }: WagerEntryProps) {
       )
   )
 
+  // Frozen on mount: the field-relative cap is computed from the balances held
+  // at the instant the wager phase begins and never recomputed.
+  const [snapshot] = useState<WagerSnapshot>(() => ({
+    lowestPositiveBalance: computeLowestPositiveBalance(players),
+    scores: Object.fromEntries(players.map(p => [p.name, p.score])),
+  }))
+
+  /**
+   * The one shared balance-relative range, applied per player.
+   * A player absent from the snapshot (joined after the phase began) falls
+   * back to their current balance against the same frozen field cap.
+   *
+   * Requirements: 4.1, 4.2, 4.3, 4.4, 4.7, 4.8
+   */
+  function rangeFor(player: Player): { min: number; max: number } {
+    const score = snapshot.scores[player.name] ?? player.score
+    return computeBalanceRelativeWagerRange(
+      score,
+      wagerFloor,
+      snapshot.lowestPositiveBalance
+    )
+  }
+
   function validateWager(playerName: string, value: string): string | null {
     if (!value.trim()) return 'Enter a wager.'
 
@@ -30,10 +69,10 @@ export function WagerEntry({ players, wagerFloor, onReveal }: WagerEntryProps) {
     if (!Number.isInteger(num) || isNaN(num)) return 'Enter a whole number.'
 
     const player = players.find(p => p.name === playerName)!
-    const { min, max } = computeWagerRange(player.score, wagerFloor)
+    const { min, max } = rangeFor(player)
 
     if (num < min || num > max) {
-      return `Wager must be between ${min.toLocaleString()} and ${max.toLocaleString()}.`
+      return `Wager must be between ${formatCurrency(min)} and ${formatCurrency(max)}.`
     }
 
     return null
@@ -97,17 +136,17 @@ export function WagerEntry({ players, wagerFloor, onReveal }: WagerEntryProps) {
       <div className="wager-entry-rows">
         {players.map(player => {
           const state = wagerStates[player.name]
-          const { min, max } = computeWagerRange(player.score, wagerFloor)
+          const { min, max } = rangeFor(player)
 
           return (
             <div key={player.name} className="wager-entry-row">
               <div className="wager-entry-player-info">
                 <span className="wager-entry-player-name">{player.name}</span>
                 <span className="wager-entry-player-score">
-                  {player.score < 0 ? `-$${Math.abs(player.score).toLocaleString()}` : `$${player.score.toLocaleString()}`}
+                  {formatCurrency(player.score)}
                 </span>
                 <span className="wager-entry-range">
-                  Range: ${min.toLocaleString()} – ${max.toLocaleString()}
+                  Range: {formatCurrency(min)} – {formatCurrency(max)}
                 </span>
               </div>
 
@@ -120,7 +159,7 @@ export function WagerEntry({ players, wagerFloor, onReveal }: WagerEntryProps) {
                   value={state.value}
                   onChange={e => handleChange(player.name, e.target.value)}
                   onBlur={() => handleBlur(player.name)}
-                  className={`wager-entry-input${state.error ? ' wager-entry-input--error' : ''}`}
+                  className={`wager-entry-input monetary-input${state.error ? ' wager-entry-input--error' : ''}`}
                   placeholder="Enter wager..."
                   aria-label={`Wager for ${player.name}`}
                   aria-describedby={state.error ? `wager-error-${player.name}` : undefined}

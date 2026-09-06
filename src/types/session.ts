@@ -64,6 +64,17 @@ export interface FinalJeopardyState {
   submissions: FinalJeopardySubmission[];
   revealedIndex: number;    // -1 = none revealed, 0+ = revealing in sequence
   coopMode?: boolean;       // true when co-op mode is active (host-set, stored in DB)
+  /**
+   * Wager range inputs written once when the Final Jeopardy wager phase begins
+   * and read-only thereafter, so the host and player surfaces derive an
+   * identical range and a mid-phase reload restores it unchanged.
+   * Absent for sessions that started before this field existed.
+   */
+  wagerConfig?: {
+    wagerFloor: number;
+    /** Smallest Real_Balance strictly above $0 at wager-phase start, or null. */
+    lowestPositiveBalance: number | null;
+  };
 }
 
 export interface FinalJeopardySubmission {
@@ -71,6 +82,21 @@ export interface FinalJeopardySubmission {
   wager: number;
   answer: string;
   submittedAt: string;      // ISO timestamp
+}
+
+// ─── Gambling Budget Broadcast Types ──────────────────────────────────────────
+
+/**
+ * What a player device needs to render its spendable budget during the
+ * Auction_Phase and Betting_Phase.
+ *
+ * Canonical home per the design is `src/utils/gamblingAllowance.ts`; declared
+ * here until that module lands so the type modules stay dependency-free.
+ */
+export interface PlayerBudgetView {
+  realBalance: number;
+  unspent: number;
+  isAllowance: boolean;
 }
 
 // ─── Realtime Channel Message Types ───────────────────────────────────────────
@@ -95,4 +121,29 @@ export type ChannelMessage =
   | { type: 'fj_reveal'; index: number; submission: FinalJeopardySubmission }
   | { type: 'fj_score_update'; playerName: string; newScore: number }
   | { type: 'coop_pool_update'; teamPool: number; targetScore: number }
-  | { type: 'session_ended' };
+  | { type: 'session_ended' }
+  | { type: 'auction_start'; category: string; categoryIndex: number; roundName: string; timerDuration: number; playerBalances: Record<string, number>; budgets?: Record<string, PlayerBudgetView> }
+  | { type: 'auction_bid'; playerName: string; categoryIndex: number; amount: number }
+  | { type: 'auction_result'; categoryIndex: number; winner: string | null; winningBid: number }
+  | { type: 'auction_complete'; ownership: Record<string, string> }
+  | { type: 'betting_start'; availableBets: { betType: string; description: string }[]; timerDuration: number; playerBalances: Record<string, number>; budgets?: Record<string, PlayerBudgetView> }
+  | { type: 'betting_placed'; playerName: string; betType: string; wager: number; prediction: string }
+  | { type: 'betting_submitted'; playerName: string; bets: { betType: string; wager: number; prediction: string }[] }
+  | { type: 'betting_done'; playerName: string }
+  | { type: 'betting_complete' }
+  | { type: 'gambling_balance_update'; balances: Record<string, number> };
+
+// ─── Gambling Analytics Types ─────────────────────────────────────────────────
+
+export interface PlayerGamblingStats {
+  playerName: string;
+  categoriesOwned: number;
+  ownershipBonusEarned: number;
+  totalBidSpend: number;
+  betsPlaced: number;
+  betsWon: number;
+  betsLost: number;
+  /** Total bid and wager spend funded by a Gambling_Allowance, excluded from net profit. */
+  allowanceSpend: number;
+  netGamblingProfit: number;
+}

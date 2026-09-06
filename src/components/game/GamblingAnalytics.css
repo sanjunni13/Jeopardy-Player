@@ -1,0 +1,190 @@
+/* ─── Gambling Analytics ──────────────────────────────────────────────────── */
+
+.gambling-analytics {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* ─── Per-Player Stats Table ─────────────────────────────────────────────── */
+
+.gambling-stats {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.gambling-stats-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+  table-layout: auto;
+}
+
+.gambling-stats-th {
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  font-weight: 600;
+  color: rgb(148 163 184); /* slate-400 */
+  border-bottom: 1px solid rgb(30 41 59);
+  white-space: nowrap;
+}
+
+.gambling-stats-td {
+  padding: 0.5rem 0.75rem;
+  color: rgb(226 232 240); /* slate-200 */
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.gambling-stats-row {
+  border-bottom: 1px solid rgb(15 23 42);
+  transition: background 0.15s;
+}
+
+.gambling-stats-row:hover {
+  background: rgb(30 41 59 / 0.4);
+}
+
+.gambling-stats-player {
+  font-weight: 600;
+  color: rgb(241 245 249); /* slate-50 */
+}
+
+.gambling-stats-profit--positive {
+  color: rgb(74 222 128); /* green-400 */
+  font-weight: 600;
+  font-family: ui-monospace, SFMono-Regular, monospace;
+}
+
+.gambling-stats-profit--negative {
+  color: rgb(251 113 133); /* rose-400 */
+  font-weight: 600;
+  font-family: ui-monospace, SFMono-Regular, monospace;
+}
+
+.gambling-stats-profit--zero {
+  color: rgb(148 163 184); /* slate-400 */
+  font-weight: 600;
+  font-family: ui-monospace, SFMono-Regular, monospace;
+}
+
+/* ─── Per-Player Section Groups ──────────────────────────────────────────── */
+
+.gambling-section-group {
+  width: 100%;
+}
+
+.gambling-section-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+/* ─── Ledger Section ─────────────────────────────────────────────────────── */
+
+.gambling-ledger {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.gambling-ledger-title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: rgb(226 232 240); /* slate-200 */
+  margin-bottom: 0.75rem;
+}
+
+.gambling-ledger-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+  table-layout: auto;
+}
+
+.gambling-ledger-th {
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  font-weight: 600;
+  color: rgb(148 163 184); /* slate-400 */
+  border-bottom: 1px solid rgb(30 41 59);
+  white-space: nowrap;
+}
+
+.gambling-ledger-td {
+  padding: 0.5rem 0.75rem;
+  color: rgb(226 232 240); /* slate-200 */
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.gambling-ledger-row {
+  border-bottom: 1px solid rgb(15 23 42);
+  transition: background 0.15s;
+}
+
+.gambling-ledger-row:hover {
+  background: rgb(30 41 59 / 0.4);
+}
+
+.gambling-ledger-type-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.15rem 0.5rem;
+  border-radius: 100px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.gambling-ledger-type--bid {
+  background: rgb(147 197 253 / 0.15);
+  color: rgb(147 197 253); /* blue-300 */
+}
+
+.gambling-ledger-type--bet_placed {
+  background: rgb(253 186 116 / 0.15);
+  color: rgb(253 186 116); /* orange-300 */
+}
+
+.gambling-ledger-type--bet_won {
+  background: rgb(74 222 128 / 0.15);
+  color: rgb(74 222 128); /* green-400 */
+}
+
+.gambling-ledger-type--bet_lost {
+  background: rgb(251 113 133 / 0.15);
+  color: rgb(251 113 133); /* rose-400 */
+}
+
+.gambling-ledger-type--ownership_bonus {
+  background: rgb(196 181 253 / 0.15);
+  color: rgb(196 181 253); /* violet-300 */
+}
+
+.gambling-ledger-amount {
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  font-weight: 600;
+}
+
+.gambling-ledger-empty {
+  color: rgb(100 116 139); /* slate-500 */
+  font-style: italic;
+  text-align: center;
+  padding: 1.5rem;
+}
+
+/* ─── Responsive ──────────────────────────────────────────────────────────── */
+
+@media (max-width: 640px) {
+  .gambling-stats-table,
+  .gambling-ledger-table {
+    font-size: 0.8rem;
+  }
+
+  .gambling-stats-th,
+  .gambling-stats-td,
+  .gambling-ledger-th,
+  .gambling-ledger-td {
+    padding: 0.4rem 0.5rem;
+  }
+}

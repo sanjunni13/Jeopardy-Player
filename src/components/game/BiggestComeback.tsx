@@ -1,3 +1,5 @@
+import { formatCurrency, formatSignedChange } from '../../utils/currency'
+
 interface ComebackEntry {
   playerName: string
   delta: number
@@ -6,11 +8,6 @@ interface ComebackEntry {
 
 interface BiggestComebackProps {
   comebacks: ComebackEntry[]
-}
-
-function formatDollar(value: number): string {
-  if (value < 0) return `-$${Math.abs(value).toLocaleString()}`
-  return `$${value.toLocaleString()}`
 }
 
 export function BiggestComeback({ comebacks }: BiggestComebackProps) {
@@ -30,10 +27,10 @@ export function BiggestComeback({ comebacks }: BiggestComebackProps) {
         <div key={entry.playerName} className="biggest-comeback-card">
           <div className="biggest-comeback-player">{entry.playerName}</div>
           <div className="biggest-comeback-delta">
-            +{formatDollar(entry.delta)}
+            {formatSignedChange(entry.delta)}
           </div>
           <div className="biggest-comeback-low">
-            Lowest score: {formatDollar(entry.lowestScore)}
+            Lowest score: {formatCurrency(entry.lowestScore)}
           </div>
         </div>
       ))}

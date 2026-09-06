@@ -127,6 +127,23 @@
   text-shadow: 2px 2px black;
 }
 
+.board-category-header--owned {
+  border-color: #2a9d8f;
+  background-color: #001050;
+  box-shadow: inset 0 0 0 2px #2a9d8f;
+}
+
+.board-category-owner {
+  display: block;
+  font-size: 0.65rem;
+  font-weight: 500;
+  color: #2a9d8f;
+  text-transform: none;
+  text-shadow: none;
+  margin-top: 0.25rem;
+  letter-spacing: 0.02em;
+}
+
 .board-cell-chosen {
   border: 5px solid black;
   background-color: #000066;

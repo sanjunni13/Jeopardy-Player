@@ -1,0 +1,205 @@
+/* ─── Player Auction Panel ──────────────────────────────────────────────────── */
+
+.auction-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 100dvh;
+  padding: 1.5rem;
+  box-sizing: border-box;
+  background: #1a1a2e;
+  color: #fff;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+.auction-panel__header {
+  text-align: center;
+  margin-bottom: 2rem;
+  width: 100%;
+  max-width: 400px;
+}
+
+.auction-panel__category {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 0 0 0.5rem;
+  color: #fff;
+}
+
+.auction-panel__balance {
+  font-size: 0.875rem;
+  color: #94a3b8;
+  margin: 0 0 0.25rem;
+}
+
+.auction-panel__available {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #e2e8f0;
+  margin: 0 0 0.25rem;
+}
+
+/* Requirement 1.7 — the Gambling_Allowance reads as a distinct, temporary
+   budget: accent colour, its own pill, set apart from the muted Real_Balance. */
+.auction-panel__allowance {
+  display: inline-block;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #f4a261;
+  margin: 0 0 0.375rem;
+  padding: 0.25rem 0.75rem;
+  border: 1px solid rgba(244, 162, 97, 0.5);
+  border-radius: 9999px;
+  background: rgba(244, 162, 97, 0.12);
+  letter-spacing: 0.01em;
+}
+
+.auction-panel__timer {
+  font-size: 2rem;
+  font-weight: 700;
+  margin: 1rem 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.auction-panel__timer--warning {
+  color: #f4a261;
+}
+
+.auction-panel__timer--critical {
+  color: #e63946;
+  animation: auction-pulse 1s ease-in-out infinite;
+}
+
+@keyframes auction-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.auction-panel__form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  width: 100%;
+  max-width: 400px;
+}
+
+.auction-panel__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.auction-panel__label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #ccc;
+}
+
+.auction-panel__input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.auction-panel__currency-symbol {
+  position: absolute;
+  left: 0.75rem;
+  color: #94a3b8;
+  font-size: 1rem;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.auction-panel__input {
+  width: 100%;
+  padding: 0.75rem 1rem 0.75rem 1.5rem;
+  border: 1px solid #42434a;
+  border-radius: 0.5rem;
+  background: rgba(36, 40, 50, 1);
+  color: #fff;
+  font-size: 1rem;
+  text-align: right;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.auction-panel__input:focus {
+  border-color: #5353ff;
+}
+
+.auction-panel__input--error {
+  border-color: #e63946;
+}
+
+.auction-panel__input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.auction-panel__range-hint {
+  font-size: 0.75rem;
+  color: #888;
+  margin-top: 0.125rem;
+}
+
+.auction-panel__error {
+  font-size: 0.8rem;
+  color: #ff6b6b;
+  margin-top: 0.125rem;
+}
+
+.auction-panel__submit-button {
+  padding: 0.875rem 1.5rem;
+  border: none;
+  border-radius: 0.5rem;
+  background: #5353ff;
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  min-height: 44px;
+  transition: background 0.2s ease, opacity 0.2s ease;
+}
+
+.auction-panel__submit-button:hover:not(:disabled) {
+  background: #4040e0;
+}
+
+.auction-panel__submit-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.auction-panel__confirmation {
+  text-align: center;
+  padding: 1.5rem;
+  border: 1px solid #2a9d8f;
+  border-radius: 0.75rem;
+  background: rgba(42, 157, 143, 0.1);
+  width: 100%;
+  max-width: 400px;
+}
+
+.auction-panel__confirmation-text {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #2a9d8f;
+  margin: 0;
+}
+
+.auction-panel__abstained {
+  text-align: center;
+  padding: 1.5rem;
+  border: 1px solid #42434a;
+  border-radius: 0.75rem;
+  background: rgba(66, 67, 74, 0.2);
+  width: 100%;
+  max-width: 400px;
+}
+
+.auction-panel__abstained-text {
+  font-size: 1rem;
+  color: #94a3b8;
+  margin: 0;
+}

@@ -1,17 +1,8 @@
 import type { EnrichedDDRecord } from '../../utils/analyticsUtils'
+import { formatCurrency, formatSignedChange } from '../../utils/currency'
 
 interface DailyDoubleBreakdownProps {
   records: EnrichedDDRecord[]
-}
-
-function formatDollar(value: number): string {
-  if (value < 0) return `-$${Math.abs(value).toLocaleString()}`
-  return `$${value.toLocaleString()}`
-}
-
-function formatNetImpact(netImpact: number): string {
-  if (netImpact >= 0) return `+$${netImpact.toLocaleString()}`
-  return `-$${Math.abs(netImpact).toLocaleString()}`
 }
 
 export function DailyDoubleBreakdown({ records }: DailyDoubleBreakdownProps) {
@@ -40,14 +31,14 @@ export function DailyDoubleBreakdown({ records }: DailyDoubleBreakdownProps) {
               <td className="dd-breakdown-td">{record.roundDisplayName}</td>
               <td className="dd-breakdown-td">{record.categoryName}</td>
               <td className="dd-breakdown-td">{record.playerName}</td>
-              <td className="dd-breakdown-td">{formatDollar(record.wager)}</td>
+              <td className="dd-breakdown-td">{formatCurrency(record.wager)}</td>
               <td className="dd-breakdown-td dd-breakdown-outcome">
                 <span className={`dd-breakdown-outcome-badge dd-breakdown-outcome-badge--${record.outcome}`}>
                   {record.outcome === 'correct' ? '✓ Correct' : '✗ Incorrect'}
                 </span>
               </td>
               <td className={`dd-breakdown-td dd-breakdown-net ${record.netImpact >= 0 ? 'dd-breakdown-net--positive' : 'dd-breakdown-net--negative'}`}>
-                {formatNetImpact(record.netImpact)}
+                {formatSignedChange(record.netImpact)}
               </td>
             </tr>
           ))}

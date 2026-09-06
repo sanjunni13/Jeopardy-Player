@@ -111,6 +111,113 @@ export interface TimedClueConfig {
   timerDuration: number  // integer 5-120, default 30
 }
 
+// ─── Gambling Problem types ──────────────────────────────────────────────────
+
+export interface GamblingConfig {
+  enabled: boolean
+  /** Starting balance for each player in the gambling mode */
+  startingBalance: number  // integer 500-10000, default 1000
+  /** Seconds allowed per auction round for bidding */
+  auctionTimer: number  // integer 10-60, default 20
+}
+
+/**
+ * Where a bid or wager was funded from — the player's Real_Balance or a
+ * Gambling_Allowance. An absent value reads as `'balance'`, so sessions
+ * recorded before the allowance existed need no migration.
+ *
+ * Canonical home per the design is `src/utils/gamblingAllowance.ts`; declared
+ * here until that module lands so the type modules stay dependency-free.
+ */
+export type FundingSource = 'balance' | 'allowance'
+
+/** A single bet placed by a player during the betting side games phase */
+export interface SideBet {
+  playerName: string
+  betType: SideBetType
+  wager: number
+  prediction: string
+  /** Funding source for the wager. Absent reads as `'balance'`. */
+  fundedBy?: FundingSource
+}
+
+export type SideBetType =
+  | 'round_leader'
+  | 'daily_double_finder'
+  | 'most_incorrect'
+  | 'sweep_category'
+  | 'zero_score_round'
+  | 'no_wrong_answers'
+  | 'highest_single_clue'
+  | 'most_correct'
+  | 'first_incorrect'
+  | 'biggest_earner'
+  | 'bottom_feeder'
+
+/** Tracks category ownership from auctions */
+export interface CategoryOwnership {
+  /** Key: `${roundName}-${categoryIndex}`, Value: player name who owns it */
+  [categoryKey: string]: string
+}
+
+// ─── Round Tracking (for bet resolution) ─────────────────────────────────────
+
+export interface ClueAnswerEvent {
+  playerName: string
+  clueKey: string
+  result: 'correct' | 'incorrect'
+  pointValue: number
+  /**
+   * Points actually credited to the player for this event, including the
+   * category-ownership multiplier (Gambling Problem mode) and any
+   * modifier-adjusted base value. Falls back to `pointValue` when absent.
+   */
+  earnedPoints?: number
+  /** Monotonically increasing index representing chronological order */
+  chronologicalOrder: number
+  categoryIndex: number
+}
+
+export interface RoundTrackingData {
+  /** All players participating in this round */
+  players: Player[]
+  /** Scores at the START of the round (for computing score deltas) */
+  startOfRoundScores: Record<string, number>
+  /** Every answer event that occurred during the round, in chronological order */
+  answerEvents: ClueAnswerEvent[]
+  /** The player who selected the first Daily Double clue, or null */
+  dailyDoubleFinderPlayer: string | null
+  /** Number of clues per category (for sweep detection) */
+  cluesPerCategory: Record<number, number>
+}
+
+// ─── Gambling Ledger ─────────────────────────────────────────────────────────
+
+export type GamblingLedgerEntryType =
+  | 'bid'
+  | 'bet_placed'
+  | 'bet_won'
+  | 'bet_lost'
+  | 'ownership_bonus';
+
+export interface GamblingLedgerEntry {
+  type: GamblingLedgerEntryType;
+  playerName: string;
+  amount: number;
+  /** Contextual label — category name for bids/ownership, bet type for bets */
+  label: string;
+  /** Monotonically increasing index assigned at insertion time */
+  order: number;
+  /**
+   * Funding source for a `bid` or `bet_placed` entry. Absent reads as
+   * `'balance'`, so ledgers persisted before the Gambling_Allowance existed
+   * compute exactly as they do today.
+   */
+  fundedBy?: FundingSource;
+}
+
+export type GamblingLedger = GamblingLedgerEntry[];
+
 /**
  * Immutable snapshot of all toggle states captured at game-start (Play).
  * Stored in GameSession. Never mutated after the session begins.
@@ -120,6 +227,7 @@ export interface ToggleConfig {
   wagering: WageringConfig
   rulesEngine: RulesEngineConfig
   timedClues: TimedClueConfig
+  gambling: GamblingConfig
 }
 
 export const DEFAULT_TOGGLE_CONFIG: ToggleConfig = {
@@ -132,6 +240,7 @@ export const DEFAULT_TOGGLE_CONFIG: ToggleConfig = {
     penaltyDoubler: { enabled: false },
   },
   timedClues: { enabled: false, timerDuration: 30 },
+  gambling: { enabled: false, startingBalance: 1000, auctionTimer: 20 },
 }
 
 // ─── Session types ────────────────────────────────────────────────────────────
@@ -177,11 +286,19 @@ export interface GameSession {
   targetScore: number;
   /** Sum of all clue point values across all rounds (excluding Final Jeopardy) */
   boardTotal: number;
+  /** Ordered log of all gambling actions for analytics */
+  gamblingLedger: GamblingLedger;
+  /** Gambling Problem: category ownership map (key: `${roundName}-${catIdx}`) */
+  categoryOwnership: CategoryOwnership;
+  /** Gambling Problem: active side bets for the current round */
+  activeSideBets: SideBet[];
 }
 
 export type GamePhase =
   | 'player-entry'
   | 'category-reveal'
+  | 'category-auction'
+  | 'betting'
   | 'board'
   | 'daily-double'
   | 'daily-double-wager'

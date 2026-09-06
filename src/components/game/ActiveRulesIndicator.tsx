@@ -33,6 +33,10 @@ export function ActiveRulesIndicator({ config }: ActiveRulesIndicatorProps) {
     labels.push(`Timed: ${config.timedClues.timerDuration}s`)
   }
 
+  if (config.gambling.enabled) {
+    labels.push('Gambling Problem')
+  }
+
   if (labels.length === 0) {
     return null
   }

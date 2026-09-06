@@ -334,6 +334,39 @@ export function computeHeadToHead(
   return results;
 }
 
+// ─── orientComparison ────────────────────────────────────────────────────────
+
+/**
+ * Returns the comparison oriented so `player` is side A, swapping if needed.
+ *
+ * Pure: the input result is never mutated, and a comparison already naming
+ * `player` on side A is returned as-is, so orienting twice to the same
+ * participant is identical to orienting once.
+ *
+ * Requirement 9.3 — each per-player Head_To_Head section renders its own
+ * player on the left-hand side of every comparison it contains.
+ */
+export function orientComparison(
+  result: HeadToHeadResult,
+  player: string,
+): HeadToHeadResult {
+  if (result.playerA === player) return result;
+  return {
+    playerA: result.playerB,
+    playerB: result.playerA,
+    correctA: result.correctB,
+    correctB: result.correctA,
+    incorrectA: result.incorrectB,
+    incorrectB: result.incorrectA,
+    ddAttemptedA: result.ddAttemptedB,
+    ddAttemptedB: result.ddAttemptedA,
+    ddWonA: result.ddWonB,
+    ddWonB: result.ddWonA,
+    finalScoreA: result.finalScoreB,
+    finalScoreB: result.finalScoreA,
+  };
+}
+
 // ─── computeLongestLossStreaks ────────────────────────────────────────────────
 
 /**

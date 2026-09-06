@@ -12,12 +12,15 @@ import { BackgroundGradient } from '../../components/ui/background-gradient'
 import { BackButton } from '../../components/BackButton'
 import type {
   ActiveClue,
+  ClueAnswerEvent,
   ClueState,
   GamePhase,
   GameSession,
   NormalizedGame,
   Player,
   RoundName,
+  RoundTrackingData,
+  SideBetType,
   ToggleConfig,
 } from '../../types/game'
 import type { BuzzState, FinalJeopardyState, SessionPlayer, ChannelMessage } from '../../types/session'
@@ -39,12 +42,22 @@ import { CoopScoreboard } from '../../components/game/CoopScoreboard'
 import { CoopGameOver } from '../../components/game/CoopGameOver'
 import { CheatSheet } from '../../components/game/CheatSheet'
 import { shouldShowCheatSheet } from '../../utils/cheatSheetVisibility'
-import { applyModifiers } from '../../utils/gameToggles'
+import { applyModifiers, computeLowestPositiveBalance } from '../../utils/gameToggles'
 import { calculateBoardTotal, calculateTargetScore, applyCoopScoring, getCoopDailyDoubleMaxWager } from '../../utils/coopScoring'
 import { useClueTimer } from '../../hooks/useClueTimer'
 import { ActiveRulesIndicator } from '../../components/game/ActiveRulesIndicator'
 import { GameSettingsPanel } from '../../components/game/GameSettingsPanel'
 import { DEFAULT_TOGGLE_CONFIG } from '../../types/game'
+import { CategoryAuction } from '../../components/game/CategoryAuction'
+import { BettingSideGames } from '../../components/game/BettingSideGames'
+import { AuctionStatusView } from '../../components/host/AuctionStatusView'
+import { AuctionResultView } from '../../components/host/AuctionResultView'
+import type { AuctionResultSummary } from '../../components/host/AuctionResultView'
+import { BettingStatusView } from '../../components/host/BettingStatusView'
+import { initializeGamblingScores, getCategoryOwnerMultiplier, resolveAuctionBids, appendLedgerEntry, computeRoundResult, BET_DESCRIPTIONS, shouldAutoResolveAuction } from '../../utils/gamblingScoring'
+import { beginGamblingPhases, budgetViews, discardGamblingPhases, eligibleBidders, isAdmissibleCommitment, unspentBudget } from '../../utils/gamblingAllowance'
+import { fundingSourceOf, settlePlacedWagers, settleRoundBets, settleWinningBid } from '../../utils/gamblingSettlement'
+import type { GamblingBudgetState } from '../../utils/gamblingAllowance'
 
 const ROUND_LABELS: Record<RoundName | 'final', string> = {
   single: 'Jeopardy!',
@@ -58,6 +71,31 @@ const ROUND_LABELS: Record<RoundName | 'final', string> = {
 
 const ROUND_ORDER: RoundName[] = ['single', 'double', 'triple', 'quadruple', 'quintuple', 'sextuple']
 
+type SubmittedBet = { betType: string; wager: number; prediction: string }
+
+/**
+ * Runtime shape assertion for a `betting_submitted` payload.
+ *
+ * The `ChannelMessage` union member gives us the compile-time check, but the
+ * payload crosses the realtime wire, where a peer on an older build could still
+ * send a drifted shape. Both checks together are what caught the original bug.
+ */
+function isValidSubmittedBets(bets: unknown): bets is SubmittedBet[] {
+  return (
+    Array.isArray(bets) &&
+    bets.every((bet) => {
+      if (typeof bet !== 'object' || bet === null) return false
+      const b = bet as Partial<SubmittedBet>
+      return (
+        typeof b.betType === 'string' &&
+        typeof b.wager === 'number' &&
+        Number.isFinite(b.wager) &&
+        typeof b.prediction === 'string'
+      )
+    })
+  )
+}
+
 export function GamePage() {
   const { gameId } = useParams({ strict: false }) as { gameId: string }
   const navigate = useNavigate()
@@ -68,6 +106,9 @@ export function GamePage() {
   const [error, setError] = useState<string | null>(null)
   const [game, setGame] = useState<NormalizedGame | null>(null)
   const [session, setSession] = useState<GameSession | null>(null)
+  const sessionRef = useRef<GameSession | null>(null)
+  // Keep ref in sync so setTimeout callbacks always have latest session
+  useEffect(() => { sessionRef.current = session }, [session])
   const [phase, setPhase] = useState<GamePhase>('player-entry')
   const [activeClue, setActiveClue] = useState<ActiveClue | null>(null)
 
@@ -109,11 +150,45 @@ export function GamePage() {
   const [clueAnswerRevealed, setClueAnswerRevealed] = useState(false)
   const [fjAnswerRevealed, setFjAnswerRevealed] = useState(false)
 
+  // ─── Round tracking state for expanded bet resolution ────────────────────
+  const [roundAnswerEvents, setRoundAnswerEvents] = useState<ClueAnswerEvent[]>([])
+  const [startOfRoundScores, setStartOfRoundScores] = useState<Record<string, number>>({})
+  const [dailyDoubleFinderPlayer, setDailyDoubleFinderPlayer] = useState<string | null>(null)
+  const roundAnswerOrderRef = useRef(0)
+
   // Steal bonus tracking (Task 9.5)
   const [stealBonusAwardedTo, setStealBonusAwardedTo] = useState<string | null>(null)
 
   // Co-op Final Jeopardy wager tracking
   const coopFjWagerRef = useRef<number>(0)
+
+  // ─── Multiplayer auction state ───────────────────────────────────────────
+  const [auctionCategoryIndex, setAuctionCategoryIndex] = useState(0)
+  const [auctionReceivedBids, setAuctionReceivedBids] = useState<Record<string, number>>({})
+  const [auctionTimeRemaining, setAuctionTimeRemaining] = useState<number | null>(null)
+  const [auctionIsRetry, setAuctionIsRetry] = useState(false)
+  const [auctionResult, setAuctionResult] = useState<AuctionResultSummary | null>(null)
+  const auctionTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const auctionResolvedRef = useRef(false)
+  const startBettingRef = useRef<() => void>(() => {})
+
+  // ─── Gambling_Allowance budget state ─────────────────────────────────────
+  // One record covering a round's Auction_Phase + Betting_Phase. Classification
+  // and start-of-phase balances are frozen when the auction begins, so a
+  // mid-round balance change never moves a player between funding sources
+  // (Requirements 1.11, 1.12). The ref mirrors the state so the broadcast
+  // callbacks — which are stable and read only from refs — always see the
+  // latest budget.
+  const [budgetState, setBudgetState] = useState<GamblingBudgetState | null>(null)
+  const budgetStateRef = useRef<GamblingBudgetState | null>(null)
+  useEffect(() => { budgetStateRef.current = budgetState }, [budgetState])
+
+  // ─── Multiplayer betting state ───────────────────────────────────────────
+  const [bettingReceivedBets, setBettingReceivedBets] = useState<Record<string, { count: number; totalWagered: number }>>({})
+  const [bettingPlayersDone, setBettingPlayersDone] = useState<Set<string>>(new Set())
+  const bettingResolvedRef = useRef(false)
+  const bettingCollectedBetsRef = useRef<Array<{ playerName: string; betType: string; wager: number; prediction: string }>>([])
+
 
 
 
@@ -347,6 +422,64 @@ export function GamePage() {
                   prev.map(p => p.name === message.playerName ? { ...p, score: message.newScore } : p)
                 )
                 break
+              case 'auction_bid':
+                // Collect auction bids from player devices
+                setAuctionReceivedBids(prev => ({
+                  ...prev,
+                  [message.playerName]: message.amount,
+                }))
+                break
+              case 'betting_placed':
+                // Collect betting placed messages from player devices
+                bettingCollectedBetsRef.current = [
+                  ...bettingCollectedBetsRef.current,
+                  { playerName: message.playerName, betType: message.betType, wager: message.wager, prediction: message.prediction },
+                ]
+                setBettingReceivedBets(prev => {
+                  const existing = prev[message.playerName] ?? { count: 0, totalWagered: 0 }
+                  return {
+                    ...prev,
+                    [message.playerName]: {
+                      count: existing.count + 1,
+                      totalWagered: existing.totalWagered + message.wager,
+                    },
+                  }
+                })
+                break
+              case 'betting_submitted': {
+                // Batch submission: process all bets from a player at once.
+                // Shape is checked by the ChannelMessage union at compile time
+                // and re-checked here because the payload crosses the wire.
+                const { playerName, bets } = message
+                if (typeof playerName !== 'string' || !isValidSubmittedBets(bets)) {
+                  console.warn('[Session] Ignoring malformed betting_submitted payload:', message)
+                  break
+                }
+                for (const bet of bets) {
+                  bettingCollectedBetsRef.current = [
+                    ...bettingCollectedBetsRef.current,
+                    { playerName, betType: bet.betType, wager: bet.wager, prediction: bet.prediction },
+                  ]
+                }
+                setBettingReceivedBets(prev => {
+                  const existing = prev[playerName] ?? { count: 0, totalWagered: 0 }
+                  const totalNewWager = bets.reduce((sum, b) => sum + b.wager, 0)
+                  return {
+                    ...prev,
+                    [playerName]: {
+                      count: existing.count + bets.length,
+                      totalWagered: existing.totalWagered + totalNewWager,
+                    },
+                  }
+                })
+                // Auto-mark player as done after batch submission
+                setBettingPlayersDone(prev => new Set([...prev, playerName]))
+                break
+              }
+              case 'betting_done':
+                // Player finished betting (done or skipped)
+                setBettingPlayersDone(prev => new Set([...prev, message.playerName]))
+                break
               default:
                 break
             }
@@ -384,13 +517,28 @@ export function GamePage() {
     if (!sessionId) return
 
     if (phase === 'final-jeopardy') {
-      // For co-op: write coopMode to DB FIRST (before phase change), so players see it on fetchSession
+      // The wager range inputs, frozen for the whole phase. The
+      // Lowest_Positive_Balance is computed once here, from the balances held at
+      // the instant the wager phase begins, and persisted next to the configured
+      // floor so the host surface (`WagerEntry`) and the player surface
+      // (`FinalJeopardyEntryPage`) derive one identical range — including on a
+      // device that loads after the phase change. Never recomputed in-phase.
+      // Requirements: 4.7, 4.9, 4.10
+      const wagerConfig: NonNullable<FinalJeopardyState['wagerConfig']> | null = session
+        ? {
+            wagerFloor: session.toggleConfig.wagering.wagerFloor,
+            lowestPositiveBalance: computeLowestPositiveBalance(session.players),
+          }
+        : null
+
+      // Write the phase config to the DB FIRST (before the phase change), so players see it on fetchSession
       if (session?.toggleConfig.coop.enabled) {
         updateFinalJeopardyState(sessionId, {
           wagers: [],
           submissions: [],
           revealedIndex: -1,
           coopMode: true,
+          ...(wagerConfig ? { wagerConfig } : {}),
         }).then(() => {
           // Only broadcast phase change AFTER DB write completes
           updateSessionPhase(sessionId, 'final-jeopardy').catch(() => {})
@@ -409,8 +557,30 @@ export function GamePage() {
             broadcastMessage(sessionChannelRef.current, { type: 'phase_change', phase: 'final-jeopardy' }).catch(() => {})
           }
         })
+      } else if (wagerConfig) {
+        // Competitive mode: same sequencing as co-op — the frozen wagerConfig has
+        // to be in the DB before the phase change reaches a player device, or that
+        // device would fall back to its own locally computed range.
+        updateFinalJeopardyState(sessionId, {
+          wagers: [],
+          submissions: [],
+          revealedIndex: -1,
+          wagerConfig,
+        }).then(() => {
+          // Only broadcast phase change AFTER DB write completes
+          updateSessionPhase(sessionId, 'final-jeopardy').catch(() => {})
+          if (sessionChannelRef.current) {
+            broadcastMessage(sessionChannelRef.current, { type: 'phase_change', phase: 'final-jeopardy' }).catch(() => {})
+          }
+        }).catch(() => {
+          // Still broadcast even if DB write fails
+          updateSessionPhase(sessionId, 'final-jeopardy').catch(() => {})
+          if (sessionChannelRef.current) {
+            broadcastMessage(sessionChannelRef.current, { type: 'phase_change', phase: 'final-jeopardy' }).catch(() => {})
+          }
+        })
       } else {
-        // Competitive mode: no sequencing needed
+        // No session loaded, so there are no balances to freeze and nothing to write
         updateSessionPhase(sessionId, 'final-jeopardy').catch(() => {})
         if (sessionChannelRef.current) {
           broadcastMessage(sessionChannelRef.current, { type: 'phase_change', phase: 'final-jeopardy' }).catch(() => {})
@@ -425,7 +595,7 @@ export function GamePage() {
         }))
         updateSessionPlayers(sessionId, sessionPlayersWithScores).catch(() => {})
       }
-    } else if (phase === 'clue' || phase === 'board' || phase === 'category-reveal' || phase === 'daily-double' || phase === 'daily-double-wager' || phase === 'wager-entry' || phase === 'round-transition') {
+    } else if (phase === 'clue' || phase === 'board' || phase === 'category-reveal' || phase === 'daily-double' || phase === 'daily-double-wager' || phase === 'wager-entry' || phase === 'round-transition' || phase === 'category-auction' || phase === 'betting') {
       updateSessionPhase(sessionId, 'buzzer').catch(() => {})
       if (sessionChannelRef.current) {
         broadcastMessage(sessionChannelRef.current, { type: 'phase_change', phase: 'buzzer' }).catch(() => {})
@@ -593,10 +763,15 @@ export function GamePage() {
     const boardTotal = calculateBoardTotal(game)
     const targetScore = calculateTargetScore(boardTotal, config.coop.targetPercentage)
 
+    // Initialize player scores with gambling starting balance if Gambling Problem mode is enabled
+    const initializedPlayers = config.gambling.enabled
+      ? initializeGamblingScores(players, config.gambling.startingBalance)
+      : players
+
     setSession({
       game,
       gameId,
-      players,
+      players: initializedPlayers,
       currentRoundIndex: 0,
       orderedRoundNames,
       clueStates,
@@ -608,8 +783,27 @@ export function GamePage() {
       teamPool: 0,
       targetScore,
       boardTotal,
+      gamblingLedger: [],
+      categoryOwnership: {},
+      activeSideBets: [],
     })
-    setPhase('category-reveal')
+
+    // If gambling mode is on, go to auction first before category reveal
+    if (config.gambling.enabled) {
+      setPhase('category-auction')
+    } else {
+      setPhase('category-reveal')
+    }
+
+    // Snapshot start-of-round scores and reset round tracking for round 0
+    const scoreSnapshot: Record<string, number> = {}
+    for (const p of initializedPlayers) {
+      scoreSnapshot[p.name] = p.score
+    }
+    setStartOfRoundScores(scoreSnapshot)
+    setRoundAnswerEvents([])
+    setDailyDoubleFinderPlayer(null)
+    roundAnswerOrderRef.current = 0
 
     // Broadcast initial co-op state to player devices
     if (config.coop.enabled && sessionChannelRef.current) {
@@ -653,6 +847,10 @@ export function GamePage() {
   // Fix #7: DD player selection
   function handleDDPlayerSelect(playerName: string) {
     setDdSelectedPlayer(playerName)
+    // Track the DD finder for round result computation (only first DD per round)
+    if (dailyDoubleFinderPlayer === null) {
+      setDailyDoubleFinderPlayer(playerName)
+    }
     setPhase('daily-double-wager')
   }
 
@@ -749,10 +947,39 @@ export function GamePage() {
         }).catch(() => {})
       }
 
+      // ─── Track ClueAnswerEvent for round result computation (co-op) ───────
+      if (result === 'correct' || result === 'incorrect') {
+        setRoundAnswerEvents(prevEvents => {
+          const filtered = prevEvents.filter(e => !(e.playerName === playerName && e.clueKey === key))
+          const newEvent: ClueAnswerEvent = {
+            playerName,
+            clueKey: key,
+            result,
+            pointValue,
+            // Co-op applies no category-ownership multiplier, so the credited
+            // amount is the raw point value. Set explicitly rather than
+            // relying on the `earnedPoints ?? pointValue` fallback.
+            earnedPoints: pointValue,
+            chronologicalOrder: roundAnswerOrderRef.current++,
+            categoryIndex: activeClue.categoryIndex,
+          }
+          return [...filtered, newEvent]
+        })
+      } else {
+        setRoundAnswerEvents(prevEvents =>
+          prevEvents.filter(e => !(e.playerName === playerName && e.clueKey === key))
+        )
+      }
+
       return
     }
 
     // ─── Competitive Mode scoring (unchanged) ───────────────────────────────
+
+    // Apply category ownership multiplier (Gambling Problem mode)
+    const gamblingMultiplier = session.toggleConfig.gambling.enabled
+      ? getCategoryOwnerMultiplier(activeClue.roundName, activeClue.categoryIndex, playerName, session.categoryOwnership)
+      : 1
 
     // Determine whether to use applyModifiers (non-DD clues with any enabled modifier)
     const hasModifiers =
@@ -763,6 +990,21 @@ export function GamePage() {
     // Track updated streak and perRoundIncorrect for session state
     const updatedStreakCounts = { ...session.streakCounts }
     const updatedPerRoundIncorrect = { ...session.perRoundIncorrect }
+
+    // Points actually credited for this event, computed once here so the score
+    // update below and the recorded ClueAnswerEvent read the same number.
+    let creditedPointValue: number
+    if (useModifiers) {
+      // Determine base value: use wager if wagering is active and player has a recorded wager
+      let baseValue = clue.value
+      if (session.toggleConfig.wagering.enabled && session.activeWagers && session.activeWagers[playerName] != null) {
+        baseValue = session.activeWagers[playerName]
+      }
+      // Apply gambling ownership multiplier to base value
+      creditedPointValue = baseValue * gamblingMultiplier
+    } else {
+      creditedPointValue = pointValue * gamblingMultiplier
+    }
 
     // Update player score with reversal logic
     const updatedPlayers = session.players.map(p => {
@@ -776,11 +1018,8 @@ export function GamePage() {
       let newTotalEarned = p.totalEarned
 
       if (useModifiers) {
-        // Determine base value: use wager if wagering is active and player has a recorded wager
-        let baseValue = clue.value
-        if (session.toggleConfig.wagering.enabled && session.activeWagers && session.activeWagers[playerName] != null) {
-          baseValue = session.activeWagers[playerName]
-        }
+        // Modifier-adjusted base value, already multiplier-applied (hoisted above)
+        const baseValue = creditedPointValue
 
         const modResult = applyModifiers({
           playerName,
@@ -809,13 +1048,16 @@ export function GamePage() {
         if (result === 'incorrect') { newIncorrect++ }
       } else {
         // Standard scoring (DD clues or no modifiers active)
+        // Gambling multiplier already applied when hoisting creditedPointValue
+        const effectivePointValue = creditedPointValue
+
         // Reverse previous marking
-        if (prev === 'correct') { newScore -= pointValue; newCorrect--; newTotalEarned -= pointValue }
-        if (prev === 'incorrect') { newScore += pointValue; newIncorrect-- }
+        if (prev === 'correct') { newScore -= effectivePointValue; newCorrect--; newTotalEarned -= effectivePointValue }
+        if (prev === 'incorrect') { newScore += effectivePointValue; newIncorrect-- }
 
         // Apply new marking (null means unmark — only reverse was needed)
-        if (result === 'correct') { newScore += pointValue; newCorrect++; newTotalEarned += pointValue }
-        if (result === 'incorrect') { newScore -= pointValue; newIncorrect++ }
+        if (result === 'correct') { newScore += effectivePointValue; newCorrect++; newTotalEarned += effectivePointValue }
+        if (result === 'incorrect') { newScore -= effectivePointValue; newIncorrect++ }
       }
 
       // Track Daily Double stats
@@ -838,13 +1080,56 @@ export function GamePage() {
       },
     }
 
+    // ─── Ownership bonus ledger tracking ──────────────────────────────────
+    let updatedLedger = session.gamblingLedger
+    if (session.toggleConfig.gambling.enabled && gamblingMultiplier === 2 && result === 'correct') {
+      // The bonus is the extra points earned from the 2x multiplier (i.e., the base clue value)
+      const bonusAmount = clue.dailyDouble && ddWager != null ? ddWager : (
+        session.toggleConfig.wagering.enabled && session.activeWagers && session.activeWagers[playerName] != null
+          ? session.activeWagers[playerName]
+          : clue.value
+      )
+      const categoryName = session.game.rounds[activeClue.roundName][activeClue.categoryIndex].category
+      updatedLedger = appendLedgerEntry(updatedLedger, {
+        type: 'ownership_bonus',
+        playerName,
+        amount: bonusAmount,
+        label: categoryName,
+      })
+    }
+
     setSession({
       ...session,
       players: updatedPlayers,
       clueStates: updatedClueStates,
       streakCounts: updatedStreakCounts,
       perRoundIncorrect: updatedPerRoundIncorrect,
+      gamblingLedger: updatedLedger,
     })
+
+    // ─── Track ClueAnswerEvent for round result computation ─────────────────
+    if (result === 'correct' || result === 'incorrect') {
+      setRoundAnswerEvents(prevEvents => {
+        // Remove any existing event for this player+clue (handles re-marking)
+        const filtered = prevEvents.filter(e => !(e.playerName === playerName && e.clueKey === key))
+        const newEvent: ClueAnswerEvent = {
+          playerName,
+          clueKey: key,
+          result,
+          pointValue,
+          // Points actually credited, including the category-ownership multiplier
+          earnedPoints: creditedPointValue,
+          chronologicalOrder: roundAnswerOrderRef.current++,
+          categoryIndex: activeClue.categoryIndex,
+        }
+        return [...filtered, newEvent]
+      })
+    } else {
+      // result is null (unmarking) — remove any existing event for this player+clue
+      setRoundAnswerEvents(prevEvents =>
+        prevEvents.filter(e => !(e.playerName === playerName && e.clueKey === key))
+      )
+    }
   }
 
   function handleReturnToBoard() {
@@ -893,6 +1178,73 @@ export function GamePage() {
     )
 
     if (allChosen) {
+      // Resolve side bets if gambling mode is active
+      if (updatedSession.toggleConfig.gambling.enabled && updatedSession.activeSideBets.length > 0) {
+        const roundName2 = updatedSession.orderedRoundNames[updatedSession.currentRoundIndex]
+        const cats = updatedSession.game.rounds[roundName2]
+
+        // Build cluesPerCategory for round tracking data
+        const cluesPerCategory: Record<number, number> = {}
+        for (let catIdx = 0; catIdx < cats.length; catIdx++) {
+          cluesPerCategory[catIdx] = cats[catIdx].clues.length
+        }
+
+        // Construct RoundTrackingData from accumulated state
+        const trackingData: RoundTrackingData = {
+          players: updatedSession.players,
+          startOfRoundScores,
+          answerEvents: roundAnswerEvents,
+          dailyDoubleFinderPlayer,
+          cluesPerCategory,
+        }
+
+        // 1. Compute round result
+        const roundResult = computeRoundResult(trackingData)
+
+        // 2. Resolve round bets, funding-aware. A won bet funded from
+        // Real_Balance is credited `wager * 2` (its wager having been deducted
+        // when it was placed) and a won allowance-funded bet is credited
+        // `wager * 1`, so the net Real_Balance change is `+wager` either way. A
+        // lost bet applies no further change. Nothing is clamped at $0, so a
+        // player at -$1,000 who wins a $500 allowance-funded bet lands at -$500.
+        // `bet_won.amount` is the credit applied and `bet_lost.amount` is the
+        // wager (Requirements 2.4, 2.5, 2.6, 2.12).
+        const betSettlement = settleRoundBets(
+          {
+            players: updatedSession.players,
+            ledger: updatedSession.gamblingLedger,
+          },
+          updatedSession.activeSideBets,
+          roundResult,
+        )
+
+        // 3. `settleRoundBets` returns the ledger with every bet_won / bet_lost
+        // entry already appended in bet order.
+        const updatedPlayersWithPayouts = betSettlement.players
+        const updatedLedger = betSettlement.ledger
+
+        // 4. Update session with resolved players, updated ledger, and clear activeSideBets
+        setSession(prev => prev ? {
+          ...prev,
+          ...updatedSession,
+          players: updatedPlayersWithPayouts,
+          gamblingLedger: updatedLedger,
+          activeSideBets: [],
+        } : prev)
+
+        // 5. Broadcast gambling_balance_update with updated scores (multiplayer)
+        if (sessionChannelRef.current) {
+          const updatedBalances: Record<string, number> = {}
+          for (const p of updatedPlayersWithPayouts) {
+            updatedBalances[p.name] = p.score
+          }
+          broadcastMessage(sessionChannelRef.current, {
+            type: 'gambling_balance_update',
+            balances: updatedBalances,
+          }).catch(() => {})
+        }
+      }
+
       setPhase('round-transition')
     } else {
       setPhase('board')
@@ -918,7 +1270,23 @@ export function GamePage() {
     } else {
       // Reset perRoundIncorrect for the new round (Requirement 7.5)
       setSession({ ...session, currentRoundIndex: nextIndex, perRoundIncorrect: {} })
-      setPhase('category-reveal')
+
+      // Reset round tracking state for the new round
+      const scoreSnapshot: Record<string, number> = {}
+      for (const p of session.players) {
+        scoreSnapshot[p.name] = p.score
+      }
+      setStartOfRoundScores(scoreSnapshot)
+      setRoundAnswerEvents([])
+      setDailyDoubleFinderPlayer(null)
+      roundAnswerOrderRef.current = 0
+
+      // If gambling mode is active, resolve bets from previous round and go to auction
+      if (session.toggleConfig.gambling.enabled) {
+        setPhase('category-auction')
+      } else {
+        setPhase('category-reveal')
+      }
     }
   }
 
@@ -927,6 +1295,452 @@ export function GamePage() {
     setSession({ ...session, players: updatedPlayers })
     setPhase('game-over')
   }
+
+  // ─── Multiplayer Auction Logic ───────────────────────────────────────────
+
+  // Derived multiplayer check — reads ref; required for conditional rendering and effect guards.
+  // The ref read is safe: sessionChannelRef is set once during session creation and never mutates during gameplay.
+  /* eslint-disable react-hooks/refs */
+  const isMultiplayer = sessionId !== null && sessionChannelRef.current !== null
+
+  /**
+   * Start auctioning a specific category in multiplayer mode.
+   * Broadcasts auction_start and begins the countdown timer.
+   */
+  const startAuctionForCategory = useCallback((catIndex: number, isRetry: boolean) => {
+    const currentSession = sessionRef.current
+    if (!currentSession || !sessionChannelRef.current) return
+
+    const roundName = currentSession.orderedRoundNames[currentSession.currentRoundIndex]
+    const categories = currentSession.game.rounds[roundName]
+    const category = categories[catIndex]
+    const timerDuration = currentSession.toggleConfig.gambling.auctionTimer
+
+    setAuctionCategoryIndex(catIndex)
+    setAuctionReceivedBids({})
+    setAuctionIsRetry(isRetry)
+    setAuctionResult(null)
+    setAuctionTimeRemaining(timerDuration)
+    auctionResolvedRef.current = false
+
+    // Build player balances to send (from ref to get latest scores)
+    const playerBalances: Record<string, number> = {}
+    for (const p of currentSession.players) {
+      playerBalances[p.name] = p.score
+    }
+
+    // Spendable_Budget views for the bid panels (Requirements 1.3, 1.7, 1.13)
+    const currentBudgetState = budgetStateRef.current
+    const budgets = currentBudgetState
+      ? budgetViews(currentBudgetState, currentSession.players)
+      : undefined
+
+    // Broadcast auction_start to player devices
+    broadcastMessage(sessionChannelRef.current, {
+      type: 'auction_start',
+      category: category.category,
+      categoryIndex: catIndex,
+      roundName,
+      timerDuration,
+      playerBalances,
+      budgets,
+    }).catch(() => {})
+
+    // Start countdown timer
+    if (auctionTimerRef.current) {
+      clearInterval(auctionTimerRef.current)
+    }
+    auctionTimerRef.current = setInterval(() => {
+      setAuctionTimeRemaining(prev => {
+        if (prev === null) return null
+        if (prev <= 1) {
+          if (auctionTimerRef.current) {
+            clearInterval(auctionTimerRef.current)
+            auctionTimerRef.current = null
+          }
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
+  }, [])
+
+  /**
+   * Resolve the current auction after timer expires or force-end.
+   * Determines winner, applies deduction, appends ledger entry, broadcasts result.
+   */
+  const resolveCurrentAuction = useCallback(() => {
+    if (!session || auctionResolvedRef.current) return
+    auctionResolvedRef.current = true
+
+    // Clear timer
+    if (auctionTimerRef.current) {
+      clearInterval(auctionTimerRef.current)
+      auctionTimerRef.current = null
+    }
+
+    const roundName = session.orderedRoundNames[session.currentRoundIndex]
+    const categories = session.game.rounds[roundName]
+    const categoryName = categories[auctionCategoryIndex].category
+
+    // The controller's authoritative Spendable_Budget for this round. The frozen
+    // classification is normally created on entry to `category-auction`; the
+    // fallback keeps resolution well-defined if it is ever missing.
+    const authoritativeBudgetState = budgetStateRef.current ?? beginGamblingPhases(session.players)
+
+    // Requirements 2.10, 2.11 — re-validate every bid that arrived over the
+    // channel against that budget state before a winner is picked, so a bid of
+    // $0 or less, or one beyond the player's unspent budget, is dropped here:
+    // it cannot win, cannot force a tie, and leaves no ledger entry and no
+    // balance change behind.
+    const admissibleBids: Record<string, number> = {}
+    for (const [playerName, amount] of Object.entries(auctionReceivedBids)) {
+      if (isAdmissibleCommitment(amount, unspentBudget(authoritativeBudgetState, playerName))) {
+        admissibleBids[playerName] = amount
+      }
+    }
+
+    const result = resolveAuctionBids(admissibleBids, auctionIsRetry)
+
+    if (result.isTied && !auctionIsRetry) {
+      // First tie — show tie result, then trigger rebid
+      setAuctionResult({ winner: null, winningBid: result.winningBid, categoryName, isTied: true, isReleased: false })
+
+      setTimeout(() => {
+        setAuctionResult(null)
+        startAuctionForCategory(auctionCategoryIndex, true)
+      }, 2500)
+
+      // Broadcast result indicating tie/rebid
+      if (sessionChannelRef.current) {
+        broadcastMessage(sessionChannelRef.current, {
+          type: 'auction_result',
+          categoryIndex: auctionCategoryIndex,
+          winner: null,
+          winningBid: result.winningBid,
+        }).catch(() => {})
+      }
+      return
+    }
+
+    // Winner determined (or second tie = release).
+    // Settlement is funding-aware and lives in `gamblingSettlement`: an
+    // allowance-funded winning bid only draws the Gambling_Allowance down and
+    // leaves Real_Balance alone, a Real_Balance-funded bid is deducted and drawn
+    // down, ownership is recorded identically either way, and the `bid` ledger
+    // entry carries `fundedBy` (Requirements 2.1, 2.2, 2.9, 2.11).
+    const settlement = settleWinningBid(
+      {
+        budgetState: authoritativeBudgetState,
+        players: session.players,
+        ledger: session.gamblingLedger,
+        ownership: session.categoryOwnership,
+      },
+      {
+        winner: result.winner,
+        winningBid: result.winningBid,
+        category: categoryName,
+        roundName,
+        categoryIndex: auctionCategoryIndex,
+      },
+    )
+
+    const updatedPlayers = settlement.players
+    const updatedLedger = settlement.ledger
+    const updatedOwnership = { ...settlement.ownership }
+
+    // A losing or dropped bid commits nothing, so the pool stays spendable for
+    // the rest of the Auction_Phase and the Betting_Phase (Requirement 2.8).
+    budgetStateRef.current = settlement.budgetState
+    setBudgetState(settlement.budgetState)
+
+    // Update session state
+    setSession(prev => prev ? {
+      ...prev,
+      players: updatedPlayers,
+      gamblingLedger: updatedLedger,
+      categoryOwnership: updatedOwnership,
+    } : prev)
+
+    // Broadcast auction result
+    if (sessionChannelRef.current) {
+      broadcastMessage(sessionChannelRef.current, {
+        type: 'auction_result',
+        categoryIndex: auctionCategoryIndex,
+        winner: result.winner,
+        winningBid: result.winningBid,
+      }).catch(() => {})
+
+      // Broadcast updated balances after each category auction so player devices stay in sync
+      const updatedBalancesAfterBid: Record<string, number> = {}
+      for (const p of updatedPlayers) {
+        updatedBalancesAfterBid[p.name] = p.score
+      }
+      broadcastMessage(sessionChannelRef.current, {
+        type: 'gambling_balance_update',
+        balances: updatedBalancesAfterBid,
+      }).catch(() => {})
+    }
+
+    // Show auction result on host page
+    setAuctionResult({
+      winner: result.winner,
+      winningBid: result.winningBid,
+      categoryName,
+      isTied: result.isTied,
+      isReleased: result.isTied && !result.winner, // second tie = released
+    })
+
+    // Move to next category or complete auction phase
+    const nextCatIndex = auctionCategoryIndex + 1
+    if (nextCatIndex < categories.length) {
+      // Brief delay to show result before starting next category auction
+      setTimeout(() => {
+        setAuctionResult(null)
+        startAuctionForCategory(nextCatIndex, false)
+      }, 3000)
+    } else {
+      // All categories auctioned — broadcast auction_complete and move to betting
+      if (sessionChannelRef.current) {
+        broadcastMessage(sessionChannelRef.current, {
+          type: 'auction_complete',
+          ownership: updatedOwnership,
+        }).catch(() => {})
+
+        // Broadcast updated balances
+        const updatedBalances: Record<string, number> = {}
+        for (const p of updatedPlayers) {
+          updatedBalances[p.name] = p.score
+        }
+        broadcastMessage(sessionChannelRef.current, {
+          type: 'gambling_balance_update',
+          balances: updatedBalances,
+        }).catch(() => {})
+      }
+
+      // Transition to betting phase after showing result
+      setTimeout(() => {
+        setAuctionResult(null)
+        setPhase('betting')
+        // Directly start the multiplayer betting broadcast (don't rely on effect timing)
+        if (sessionChannelRef.current) {
+          startBettingRef.current()
+        }
+      }, 2500)
+    }
+  }, [session, auctionCategoryIndex, auctionReceivedBids, auctionIsRetry, startAuctionForCategory])
+
+  // Effect: auto-resolve auction when timer reaches 0
+  useEffect(() => {
+    if (phase !== 'category-auction' || !isMultiplayer) return
+    if (shouldAutoResolveAuction(auctionTimeRemaining) && !auctionResolvedRef.current && session) {
+      resolveCurrentAuction()
+    }
+  }, [auctionTimeRemaining, phase, isMultiplayer, session, resolveCurrentAuction])
+
+  // Effect: auto-resolve auction when all players have bid
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    if (phase !== 'category-auction' || !isMultiplayer || !session) return
+    if (auctionResolvedRef.current) return
+
+    // Only players who can still commit at least $1 gate the auction, so a
+    // player with no spendable budget left does not stall it (Requirement 1.8)
+    const bidders = budgetState ? eligibleBidders(budgetState, session.players) : session.players
+    const allPlayersBid = bidders.every(p => p.name in auctionReceivedBids)
+    if (allPlayersBid && Object.keys(auctionReceivedBids).length > 0) {
+      resolveCurrentAuction()
+    }
+  }, [auctionReceivedBids, phase, isMultiplayer, session, budgetState, resolveCurrentAuction])
+  /* eslint-enable react-hooks/set-state-in-effect */
+
+  // Effect: start auction for first category when entering auction phase in multiplayer
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    if (phase !== 'category-auction' || !isMultiplayer || !session) return
+
+    // Grant the Gambling_Allowance and freeze the classification before the
+    // first auction broadcast (Requirements 1.1, 1.2). The ref is set first so
+    // startAuctionForCategory sees the budget on this same tick.
+    const freshBudgetState = beginGamblingPhases(session.players)
+    budgetStateRef.current = freshBudgetState
+    setBudgetState(freshBudgetState)
+
+    // Start the auction for the first category
+    startAuctionForCategory(0, false)
+
+    return () => {
+      if (auctionTimerRef.current) {
+        clearInterval(auctionTimerRef.current)
+        auctionTimerRef.current = null
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, isMultiplayer])
+  /* eslint-enable react-hooks/set-state-in-effect */
+
+  // ─── Multiplayer Betting Logic ──────────────────────────────────────────────
+
+  /**
+   * Start the multiplayer betting phase.
+   * Broadcasts betting_start to player devices. No timer — ends when all players are done or host force-ends.
+   */
+  const startBetting = useCallback(() => {
+    const currentSession = sessionRef.current
+    if (!currentSession || !sessionChannelRef.current) return
+
+    const roundName = currentSession.orderedRoundNames[currentSession.currentRoundIndex]
+    const categories = currentSession.game.rounds[roundName]
+    const timerDuration = currentSession.toggleConfig.gambling.auctionTimer
+    const roundHasDailyDouble = categories.some(cat =>
+      cat.clues.some(clue => clue.dailyDouble)
+    )
+
+    // Reset betting state
+    setBettingReceivedBets({})
+    setBettingPlayersDone(new Set())
+    bettingResolvedRef.current = false
+    bettingCollectedBetsRef.current = []
+
+    // Build available bet types
+    const availableBets: { betType: string; description: string }[] = [
+      { betType: 'round_leader', description: BET_DESCRIPTIONS.round_leader },
+      { betType: 'most_incorrect', description: BET_DESCRIPTIONS.most_incorrect },
+      { betType: 'sweep_category', description: BET_DESCRIPTIONS.sweep_category },
+      { betType: 'zero_score_round', description: BET_DESCRIPTIONS.zero_score_round },
+      { betType: 'no_wrong_answers', description: BET_DESCRIPTIONS.no_wrong_answers },
+      { betType: 'highest_single_clue', description: BET_DESCRIPTIONS.highest_single_clue },
+      { betType: 'most_correct', description: BET_DESCRIPTIONS.most_correct },
+      { betType: 'first_incorrect', description: BET_DESCRIPTIONS.first_incorrect },
+      { betType: 'biggest_earner', description: BET_DESCRIPTIONS.biggest_earner },
+      { betType: 'bottom_feeder', description: BET_DESCRIPTIONS.bottom_feeder },
+    ]
+    if (roundHasDailyDouble) {
+      availableBets.push({ betType: 'daily_double_finder', description: BET_DESCRIPTIONS.daily_double_finder })
+    }
+
+    // Build player balances (from ref to get latest scores)
+    const playerBalances: Record<string, number> = {}
+    for (const p of currentSession.players) {
+      playerBalances[p.name] = p.score
+    }
+
+    // Budget views carry the post-auction pool, so the betting panel starts from
+    // the same $500 the auction already drew down (Requirement 1.4)
+    const currentBudgetState = budgetStateRef.current
+    const budgets = currentBudgetState
+      ? budgetViews(currentBudgetState, currentSession.players)
+      : undefined
+
+    // Broadcast betting_start to player devices
+    broadcastMessage(sessionChannelRef.current, {
+      type: 'betting_start',
+      availableBets,
+      timerDuration,
+      playerBalances,
+      budgets,
+    }).catch(() => {})
+  }, [])
+  startBettingRef.current = startBetting
+
+  /**
+   * Finalize the multiplayer betting phase.
+   * Applies wager deductions, appends ledger entries, stores bets, and broadcasts completion.
+   */
+  const finalizeBetting = useCallback(() => {
+    if (!session || bettingResolvedRef.current) return
+    bettingResolvedRef.current = true
+
+    const collectedBets = bettingCollectedBetsRef.current
+
+    // The controller's authoritative Spendable_Budget for this round, already
+    // drawn down by any winning bids. The fallback keeps settlement
+    // well-defined if the classification is ever missing.
+    const authoritativeBudgetState = budgetStateRef.current ?? beginGamblingPhases(session.players)
+
+    // Settle every collected wager in submission order. Each accepted wager
+    // draws the shared pool down before the next is checked, so the cumulative
+    // limit holds across the batch; a wager of $0 or less, or one beyond the
+    // player's unspent budget, is rejected with no ledger entry and no balance
+    // change. An allowance-funded wager only draws the Gambling_Allowance down
+    // and leaves Real_Balance alone; a Real_Balance-funded wager is deducted
+    // from `Player.score`. Both the `bet_placed` entry and the stored `SideBet`
+    // carry `fundedBy`, so round-end resolution and analytics stay
+    // funding-aware after the allowance is discarded
+    // (Requirements 1.4, 2.3, 2.9, 2.10, 2.11).
+    const settlement = settlePlacedWagers(
+      {
+        budgetState: authoritativeBudgetState,
+        players: session.players,
+        ledger: session.gamblingLedger,
+      },
+      collectedBets.map(bet => ({
+        playerName: bet.playerName,
+        betType: bet.betType as SideBetType,
+        wager: bet.wager,
+        prediction: bet.prediction,
+      })),
+    )
+
+    const updatedPlayers = settlement.players
+    const updatedLedger = settlement.ledger
+    const activeSideBets = settlement.bets
+
+    // Requirement 1.9 — the Betting_Phase has ended, so every unspent
+    // Gambling_Allowance is discarded. Real_Balance is untouched by the
+    // discard, and the next round's budgets come from a fresh
+    // `beginGamblingPhases` call on entry to that round's Auction_Phase.
+    const discardedBudgetState = discardGamblingPhases()
+    budgetStateRef.current = discardedBudgetState
+    setBudgetState(discardedBudgetState)
+
+    // Update session state
+    setSession(prev => prev ? {
+      ...prev,
+      players: updatedPlayers,
+      gamblingLedger: updatedLedger,
+      activeSideBets,
+    } : prev)
+
+    // Broadcast betting_complete
+    if (sessionChannelRef.current) {
+      broadcastMessage(sessionChannelRef.current, {
+        type: 'betting_complete',
+      }).catch(() => {})
+
+      // Broadcast updated balances
+      const updatedBalances: Record<string, number> = {}
+      for (const p of updatedPlayers) {
+        updatedBalances[p.name] = p.score
+      }
+      broadcastMessage(sessionChannelRef.current, {
+        type: 'gambling_balance_update',
+        balances: updatedBalances,
+      }).catch(() => {})
+    }
+
+    // Move to category reveal
+    setPhase('category-reveal')
+  }, [session])
+
+  // Effect: start betting when entering betting phase in multiplayer mode
+  useEffect(() => {
+    if (phase !== 'betting' || !isMultiplayer || !session) return
+
+    startBetting()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, isMultiplayer])
+
+  // Effect: auto-finalize betting when all players are done
+  useEffect(() => {
+    if (phase !== 'betting' || !isMultiplayer || !session) return
+    if (bettingResolvedRef.current) return
+
+    const allDone = session.players.every(p => bettingPlayersDone.has(p.name))
+    if (allDone && bettingPlayersDone.size > 0) {
+      finalizeBetting()
+    }
+  }, [bettingPlayersDone, phase, isMultiplayer, session, finalizeBetting])
 
   // ─── Render ──────────────────────────────────────────────────────────────
 
@@ -1076,7 +1890,7 @@ export function GamePage() {
   if (!session) return null
 
   // Fix #2: Full-screen overlay for all active game phases (after player-entry)
-  const hiddenPhases: GamePhase[] = ['player-entry', 'game-over']
+  const hiddenPhases: GamePhase[] = ['player-entry', 'game-over', 'category-auction', 'betting']
   const showCheatSheet = shouldShowCheatSheet(gameSource, fromLibrary) && !hiddenPhases.includes(phase)
   const gameContent = renderGamePhase()
 
@@ -1144,6 +1958,141 @@ export function GamePage() {
   )
 
   function renderGamePhase() {
+    if (phase === 'category-auction' && session) {
+      const roundName = session.orderedRoundNames[session.currentRoundIndex]
+      const categories = session.game.rounds[roundName]
+      const categoryNames = categories.map(c => c.category)
+
+      // Multiplayer: render AuctionStatusView (read-only host view)
+      if (isMultiplayer) {
+        // Show result screen after bidding resolves
+        if (auctionResult) {
+          return <AuctionResultView result={auctionResult} players={session.players} />
+        }
+
+        return (
+          <AuctionStatusView
+            category={categories[auctionCategoryIndex]?.category ?? ''}
+            categoryIndex={auctionCategoryIndex}
+            players={session.players}
+            receivedBids={auctionReceivedBids}
+            timerDuration={session.toggleConfig.gambling.auctionTimer}
+            timeRemaining={auctionTimeRemaining ?? 0}
+            onForceEnd={() => {
+              resolveCurrentAuction()
+            }}
+          />
+        )
+      }
+
+      // Solo: render the CategoryAuction component. It owns the Spendable_Budget
+      // for the solo Auction_Phase, so the classification is frozen here with a
+      // fresh `beginGamblingPhases` call (Requirements 1.1, 1.2) and each winning
+      // bid comes back carrying the funding source it was drawn from, which the
+      // handler writes onto the `bid` ledger entry (Requirements 2.9, 2.12).
+      return (
+        <CategoryAuction
+          categories={categoryNames}
+          roundName={roundName}
+          players={session.players}
+          budgetState={beginGamblingPhases(session.players)}
+          auctionTimer={session.toggleConfig.gambling.auctionTimer}
+          onAuctionComplete={(ownership, updatedBalances, winningBids) => {
+            setSession(prev => {
+              if (!prev) return prev
+              // Append ledger entries for each winning bid
+              let ledger = prev.gamblingLedger
+              for (const bid of winningBids) {
+                ledger = appendLedgerEntry(ledger, {
+                  type: 'bid',
+                  playerName: bid.playerName,
+                  amount: bid.amount,
+                  label: bid.categoryName,
+                  fundedBy: bid.fundedBy,
+                })
+              }
+              return {
+                ...prev,
+                categoryOwnership: { ...prev.categoryOwnership, ...ownership },
+                players: prev.players.map(p => ({
+                  ...p,
+                  score: updatedBalances[p.name] ?? p.score,
+                })),
+                gamblingLedger: ledger,
+              }
+            })
+            // Move to betting phase
+            setPhase('betting')
+          }}
+        />
+      )
+    }
+
+    if (phase === 'betting' && session) {
+      const roundName = session.orderedRoundNames[session.currentRoundIndex]
+      const categories = session.game.rounds[roundName]
+      // Check if this round has a Daily Double
+      const roundHasDailyDouble = categories.some(cat =>
+        cat.clues.some(clue => clue.dailyDouble)
+      )
+
+      // Multiplayer: render BettingStatusView (read-only host view)
+      if (isMultiplayer) {
+        return (
+          <BettingStatusView
+            players={session.players}
+            receivedBets={bettingReceivedBets}
+            playersDone={bettingPlayersDone}
+            onForceEnd={() => {
+              finalizeBetting()
+            }}
+          />
+        )
+      }
+
+      // Solo: render existing BettingSideGames component. It validates wagers
+      // against the Spendable_Budget and reports `fundedBy` on each completed bet;
+      // the handler below writes that source onto the ledger entry and
+      // `activeSideBets`, so round-end settlement is funding-aware. The solo path
+      // has no Auction_Phase broadcast, so the budget is derived here from the
+      // current player scores (Requirements 1.4, 2.3, 2.9, 2.12).
+      return (
+        <BettingSideGames
+          players={session.players}
+          budgetState={budgetState ?? beginGamblingPhases(session.players)}
+          roundHasDailyDouble={roundHasDailyDouble}
+          onBettingComplete={(bets, updatedBalances) => {
+            const fundedBets = bets.map(bet => ({ ...bet, fundedBy: fundingSourceOf(bet) }))
+            setSession(prev => {
+              if (!prev) return prev
+              // Append ledger entries for each bet placed
+              let ledger = prev.gamblingLedger
+              for (const bet of fundedBets) {
+                ledger = appendLedgerEntry(ledger, {
+                  type: 'bet_placed',
+                  playerName: bet.playerName,
+                  amount: bet.wager,
+                  label: bet.betType,
+                  fundedBy: bet.fundedBy,
+                })
+              }
+              return {
+                ...prev,
+                activeSideBets: fundedBets,
+                players: prev.players.map(p => ({
+                  ...p,
+                  score: updatedBalances[p.name] ?? p.score,
+                })),
+                gamblingLedger: ledger,
+              }
+            })
+            // Move to category reveal then board
+            setPhase('category-reveal')
+          }}
+        />
+      )
+    }
+
     if (phase === 'category-reveal' || phase === 'board') {
       const roundName = session!.orderedRoundNames[session!.currentRoundIndex]
       const categories = session!.game.rounds[roundName]
@@ -1195,6 +2144,7 @@ export function GamePage() {
               setCategoriesRevealed(prev => ({ ...prev, [roundIdx]: true }))
             }}
             customScoreboard={coopScoreboardEl}
+            categoryOwnership={session!.toggleConfig.gambling.enabled ? session!.categoryOwnership : undefined}
           />
           {/* For competitive mode, show buttons as fixed overlay since they're not in the scoreboard */}
           {!session!.toggleConfig.coop.enabled && (
@@ -1293,6 +2243,11 @@ export function GamePage() {
             stealBonusAwardedTo={stealBonusAwardedTo}
             timerRemaining={timer.remaining}
             isTimesUp={isTimesUp}
+            categoryOwnerName={
+              session!.toggleConfig.gambling.enabled
+                ? session!.categoryOwnership[`${activeClue.roundName}-${activeClue.categoryIndex}`] ?? null
+                : null
+            }
             onAnswerRevealed={() => {
               setClueAnswerRevealed(true)
               timer.stop()

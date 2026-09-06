@@ -1,4 +1,5 @@
 import type { GameSession, ClueState, RoundName, Category } from '../types/game'
+import { formatCurrency } from './currency'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -11,7 +12,9 @@ export interface HeatmapCell {
   status: HeatmapCellStatus
   /** True if this clue was a Daily Double */
   dailyDouble: boolean
-  /** Players who answered incorrectly (only populated when status is 'incorrect') */
+  /** Requirement 8.1 — all players marked `correct`, in session player order. */
+  correctPlayers: string[]
+  /** Requirement 8.1 — all players marked `incorrect`, in session player order. */
   incorrectPlayers: string[]
 }
 
@@ -66,20 +69,69 @@ export function getClueHeatmapStatus(clueState: ClueState | undefined): HeatmapC
 }
 
 /**
- * Returns the names of players who were marked incorrect for a given clue.
+ * Returns the names of players holding the given marking for a clue, ordered by
+ * `playerOrder` (which callers pass as `session.players.map(p => p.name)`).
+ *
+ * Filtering `playerOrder` rather than iterating `playerMarkings` gives session
+ * order for free and drops any marking for a player no longer in the session.
  */
-export function getIncorrectPlayers(clueState: ClueState | undefined): string[] {
+export function getMarkedPlayers(
+  clueState: ClueState | undefined,
+  marking: 'correct' | 'incorrect',
+  playerOrder: string[],
+): string[] {
+  if (!clueState) return []
+  return playerOrder.filter(name => clueState.playerMarkings[name] === marking)
+}
+
+/**
+ * Returns the names of players who were marked incorrect for a given clue.
+ *
+ * Thin wrapper over `getMarkedPlayers`. When no `playerOrder` is supplied the
+ * order falls back to `playerMarkings` key order.
+ */
+export function getIncorrectPlayers(
+  clueState: ClueState | undefined,
+  playerOrder?: string[],
+): string[] {
   if (!clueState) return []
 
-  return Object.entries(clueState.playerMarkings)
-    .filter(([, marking]) => marking === 'incorrect')
-    .map(([name]) => name)
+  return getMarkedPlayers(
+    clueState,
+    'incorrect',
+    playerOrder ?? Object.keys(clueState.playerMarkings),
+  )
+}
+
+/**
+ * Builds the single string used as both a heatmap cell's tooltip and its
+ * accessible label (Requirements 8.2–8.6, 8.8, 8.9). Names are joined with
+ * ', ' with no truncation.
+ */
+export function buildHeatmapCellLabel(cell: HeatmapCell): string {
+  const parts = [formatCurrency(cell.value)]
+
+  if (cell.correctPlayers.length > 0) {
+    parts.push(`Correct: ${cell.correctPlayers.join(', ')}`)
+  }
+  if (cell.incorrectPlayers.length > 0) {
+    parts.push(`Incorrect: ${cell.incorrectPlayers.join(', ')}`)
+  }
+  if (cell.correctPlayers.length === 0 && cell.incorrectPlayers.length === 0) {
+    parts.push('Not attempted')
+  }
+  if (cell.dailyDouble) {
+    parts.push('Daily Double')
+  }
+
+  return parts.join(' — ')
 }
 
 /**
  * Computes heatmap data for all rounds in a game session.
  */
 export function computeHeatmapData(session: GameSession): HeatmapRound[] {
+  const playerOrder = session.players.map(p => p.name)
   const rounds: HeatmapRound[] = []
 
   for (let roundIdx = 0; roundIdx < session.orderedRoundNames.length; roundIdx++) {
@@ -109,7 +161,8 @@ export function computeHeatmapData(session: GameSession): HeatmapRound[] {
           value: clue?.value ?? (clueIdx + 1) * 200 * roundNumber,
           status,
           dailyDouble: clue?.dailyDouble ?? false,
-          incorrectPlayers: status === 'incorrect' ? getIncorrectPlayers(clueState) : [],
+          correctPlayers: getMarkedPlayers(clueState, 'correct', playerOrder),
+          incorrectPlayers: getMarkedPlayers(clueState, 'incorrect', playerOrder),
         })
       }
 
