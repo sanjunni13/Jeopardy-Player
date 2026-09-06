@@ -15,6 +15,12 @@ export interface GameSessionRow {
   players: SessionPlayer[];
   buzz_state: BuzzState;
   final_jeopardy_state: FinalJeopardyState;
+  /**
+   * Persisted Gambling_Mode sub-phase, or `null`/absent when no auction or
+   * betting phase is active. Lets a player device recover the auction/betting
+   * screen from the DB after missing the broadcast or refreshing.
+   */
+  gambling_state?: GamblingState | null;
   team_pool?: number;
   target_score?: number;
   coop_mode?: boolean;
@@ -97,6 +103,47 @@ export interface PlayerBudgetView {
   realBalance: number;
   unspent: number;
   isAllowance: boolean;
+}
+
+// ─── Persisted Gambling Sub-Phase ─────────────────────────────────────────────
+
+/**
+ * Persisted auction sub-phase, mirroring the `auction_start` broadcast payload.
+ * `categoryIndex` identifies which category is currently up for bid so a device
+ * recovering from the DB lands on the same category the connected devices see.
+ */
+export interface GamblingAuctionState {
+  category: string;
+  categoryIndex: number;
+  roundName: string;
+  timerDuration: number;
+  playerBalances: Record<string, number>;
+  budgets?: Record<string, PlayerBudgetView>;
+}
+
+/** Persisted betting sub-phase, mirroring the `betting_start` broadcast payload. */
+export interface GamblingBettingState {
+  availableBets: { betType: string; description: string }[];
+  timerDuration: number;
+  playerBalances: Record<string, number>;
+  budgets?: Record<string, PlayerBudgetView>;
+}
+
+/**
+ * The persisted Gambling_Mode sub-phase for the current round.
+ *
+ * The DB `phase` column stays `'buzzer'` through the whole Auction_Phase and
+ * Betting_Phase, so this field is the DB record of which panel a player should
+ * be on. It exists specifically so a device that missed the ephemeral
+ * `auction_start` / `betting_start` broadcast — or that refreshed — can recover
+ * the correct screen instead of being stranded on the locked buzzer. `null`
+ * (or an absent column on an older session) means no gambling sub-phase is
+ * active and normal buzzer/board play applies.
+ */
+export interface GamblingState {
+  phase: 'auction' | 'betting';
+  auction?: GamblingAuctionState | null;
+  betting?: GamblingBettingState | null;
 }
 
 // ─── Realtime Channel Message Types ───────────────────────────────────────────

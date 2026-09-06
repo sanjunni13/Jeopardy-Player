@@ -207,6 +207,83 @@ export function PlaySessionPage() {
     onChannelMessage(channel, handler);
   }, [channel, playerName, sessionId]);
 
+  // Recover the auction/betting screen from persisted session state.
+  //
+  // The gambling sub-phase is both broadcast (fast path, handled above) and
+  // persisted to `session.gambling_state`. This effect is the safety net for a
+  // device that missed the ephemeral broadcast — mid-reconnect, subscribed a
+  // beat late, or a fresh mount after a refresh (which starts at 'idle'). The
+  // periodic reconcile in useGameSession refreshes `session`, so a stuck player
+  // recovers within a few seconds; a refresh recovers immediately.
+  //
+  // It only ever advances the player forward: idle → auction, idle/auction →
+  // betting, or following the auction to a category whose broadcast was missed.
+  // It never downgrades a panel — leaving the auction/betting screen stays
+  // driven by the `auction_complete` / `betting_complete` broadcasts, and a
+  // fresh mount with a null `gambling_state` simply starts on the buzzer.
+  //
+  // This effect deliberately syncs React state from an external system (the
+  // persisted session row), so the guarded setState calls are expected here.
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    if (!session || !playerName) return;
+    const gs = session.gambling_state;
+
+    if (gs?.phase === 'auction' && gs.auction) {
+      // Betting strictly follows the auction, so never fall back to it.
+      if (gamblingPhase === 'betting') return;
+      const a = gs.auction;
+      const categoryChanged =
+        !auctionData ||
+        auctionData.categoryIndex !== a.categoryIndex ||
+        auctionData.roundName !== a.roundName;
+      if (gamblingPhase !== 'auction' || categoryChanged) {
+        setAuctionData({
+          category: a.category,
+          categoryIndex: a.categoryIndex,
+          roundName: a.roundName,
+          timerDuration: a.timerDuration,
+          playerBalances: a.playerBalances,
+          budgets: a.budgets,
+        });
+        setAuctionKey(prev => prev + 1);
+        setAuctionWinMessage(null);
+        auctionCategoryRef.current = a.category;
+        if (localBalance === null) setLocalBalance(a.playerBalances[playerName] ?? null);
+        setGamblingPhase('auction');
+      }
+      return;
+    }
+
+    if (gs?.phase === 'betting' && gs.betting) {
+      const bettingPossible = session.phase !== 'ended' && session.phase !== 'final-jeopardy';
+      if (!bettingPossible) return;
+      if (gamblingPhase !== 'betting') {
+        const data: BettingData = {
+          availableBets: gs.betting.availableBets,
+          timerDuration: gs.betting.timerDuration,
+          playerBalances: gs.betting.playerBalances,
+          budgets: gs.betting.budgets,
+        };
+        bettingDataRef.current = data;
+        setBettingData(data);
+        setBettingSeed({ placedBets: [], finalized: false });
+        if (localBalance === null) setLocalBalance(gs.betting.playerBalances[playerName] ?? null);
+        // Survive a subsequent reload during betting, same as the broadcast path.
+        persistBettingSnapshot(sessionId, {
+          availableBets: data.availableBets,
+          timerDuration: data.timerDuration,
+          playerBalances: data.playerBalances,
+          placedBets: [],
+          finalized: false,
+        });
+        setGamblingPhase('betting');
+      }
+      return;
+    }
+  }, [session, playerName, sessionId, gamblingPhase, auctionData, localBalance]);
+  /* eslint-enable react-hooks/set-state-in-effect */
+
   // The panel owns the placed bets / finalized flag; the page owns the rest of the
   // snapshot, so persistence lives here.
   const handleBettingSnapshotChange = useCallback(

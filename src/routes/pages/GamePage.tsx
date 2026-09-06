@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams, useRouterState } from '@tanstack/react-router'
 import { supabase } from '../../utils/supabase'
 import { normalizeGame } from '../../utils/gameNormalizer'
-import { createSession, endSession, updateSessionPhase, updateBuzzState, fetchSession, cleanupStaleSessions, updateSessionPlayers, updateFinalJeopardyState } from '../../utils/sessionApi'
+import { createSession, endSession, updateSessionPhase, updateBuzzState, fetchSession, cleanupStaleSessions, updateSessionPlayers, updateFinalJeopardyState, updateGamblingState } from '../../utils/sessionApi'
 import { createSessionChannel, subscribeToChannel, unsubscribeFromChannel, broadcastMessage, onChannelMessage, onPresenceChange } from '../../utils/sessionChannel'
 import { SessionQRCode } from '../../components/host/SessionQRCode'
 
@@ -123,6 +123,10 @@ export function GamePage() {
 
   // Session system state
   const [sessionId, setSessionId] = useState<string | null>(null)
+  // Mirror of `sessionId` for the auction/betting callbacks, which are memoised
+  // with empty deps and read their inputs off refs.
+  const sessionIdRef = useRef<string | null>(null)
+  useEffect(() => { sessionIdRef.current = sessionId }, [sessionId])
   const [hostUserId, setHostUserId] = useState<string | null>(null)
   const sessionChannelRef = useRef<RealtimeChannel | null>(null)
   const playerEntryNamesRef = useRef<string[]>([])
@@ -517,6 +521,10 @@ export function GamePage() {
     if (!sessionId) return
 
     if (phase === 'final-jeopardy') {
+      // Final Jeopardy is not a gambling sub-phase, so clear any persisted
+      // auction/betting state left from the previous round.
+      updateGamblingState(sessionId, null).catch(() => {})
+
       // The wager range inputs, frozen for the whole phase. The
       // Lowest_Positive_Balance is computed once here, from the balances held at
       // the instant the wager phase begins, and persisted next to the configured
@@ -597,6 +605,12 @@ export function GamePage() {
       }
     } else if (phase === 'clue' || phase === 'board' || phase === 'category-reveal' || phase === 'daily-double' || phase === 'daily-double-wager' || phase === 'wager-entry' || phase === 'round-transition' || phase === 'category-auction' || phase === 'betting') {
       updateSessionPhase(sessionId, 'buzzer').catch(() => {})
+      // Clear the persisted gambling sub-phase whenever normal play resumes, but
+      // NOT on entry to 'category-auction' / 'betting' themselves — those phases
+      // persist their own gambling_state via startAuctionForCategory / startBetting.
+      if (phase !== 'category-auction' && phase !== 'betting') {
+        updateGamblingState(sessionId, null).catch(() => {})
+      }
       if (sessionChannelRef.current) {
         broadcastMessage(sessionChannelRef.current, { type: 'phase_change', phase: 'buzzer' }).catch(() => {})
       }
@@ -1335,6 +1349,17 @@ export function GamePage() {
       ? budgetViews(currentBudgetState, currentSession.players)
       : undefined
 
+    // Persist the auction sub-phase before broadcasting (persist-then-broadcast,
+    // mirroring the Final Jeopardy path), so a device that misses the ephemeral
+    // broadcast — or refreshes — recovers this same category from the DB instead
+    // of being stranded on the locked buzzer.
+    if (sessionIdRef.current) {
+      updateGamblingState(sessionIdRef.current, {
+        phase: 'auction',
+        auction: { category: category.category, categoryIndex: catIndex, roundName, timerDuration, playerBalances, budgets },
+      }).catch(() => {})
+    }
+
     // Broadcast auction_start to player devices
     broadcastMessage(sessionChannelRef.current, {
       type: 'auction_start',
@@ -1632,6 +1657,16 @@ export function GamePage() {
       ? budgetViews(currentBudgetState, currentSession.players)
       : undefined
 
+    // Persist the betting sub-phase before broadcasting, so a device that misses
+    // the ephemeral broadcast — or refreshes — recovers the betting panel from
+    // the DB instead of being stranded on the locked buzzer.
+    if (sessionIdRef.current) {
+      updateGamblingState(sessionIdRef.current, {
+        phase: 'betting',
+        betting: { availableBets, timerDuration, playerBalances, budgets },
+      }).catch(() => {})
+    }
+
     // Broadcast betting_start to player devices
     broadcastMessage(sessionChannelRef.current, {
       type: 'betting_start',
@@ -1701,6 +1736,14 @@ export function GamePage() {
       gamblingLedger: updatedLedger,
       activeSideBets,
     } : prev)
+
+    // The Betting_Phase has ended and normal play resumes, so clear the
+    // persisted gambling sub-phase. A device that misses `betting_complete` then
+    // recovers to the board on its next reconcile instead of staying on the
+    // betting panel.
+    if (sessionIdRef.current) {
+      updateGamblingState(sessionIdRef.current, null).catch(() => {})
+    }
 
     // Broadcast betting_complete
     if (sessionChannelRef.current) {
