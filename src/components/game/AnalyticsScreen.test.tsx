@@ -104,6 +104,11 @@ const MOCK_GAME: NormalizedGame = {
         ],
       },
     ],
+    double: [],
+    triple: [],
+    quadruple: [],
+    quintuple: [],
+    sextuple: [],
   },
   final: { category: 'Final', clue: 'Final Q', solution: 'Final A', html: false },
   totalRounds: 1,
@@ -137,6 +142,7 @@ function makeSession(players: Player[]): GameSession {
         penaltyDoubler: { enabled: false },
       },
       timedClues: { enabled: false, timerDuration: 30 },
+      gambling: { enabled: false, startingBalance: 1000, auctionTimer: 20 },
     },
     streakCounts: {},
     perRoundIncorrect: {},
@@ -144,6 +150,25 @@ function makeSession(players: Player[]): GameSession {
     teamPool: 0,
     targetScore: 0,
     boardTotal: 0,
+    gamblingLedger: [],
+    categoryOwnership: {},
+    activeSideBets: [],
+  }
+}
+
+/** A session with Gambling_Mode enabled and a populated ledger. */
+function makeGamblingSession(players: Player[]): GameSession {
+  return {
+    ...makeSession(players),
+    toggleConfig: {
+      ...makeSession(players).toggleConfig,
+      gambling: { enabled: true, startingBalance: 1000, auctionTimer: 20 },
+    },
+    gamblingLedger: [
+      { type: 'bid', playerName: players[0].name, amount: 300, label: 'Science', order: 0 },
+    ],
+    categoryOwnership: {},
+    activeSideBets: [],
   }
 }
 
@@ -445,6 +470,51 @@ describe('AnalyticsScreen', () => {
       fireEvent.click(btn)
 
       expect(onBackToHome).toHaveBeenCalledTimes(2)
+    })
+  })
+
+  // ─── Gambling sections gated on Gambling_Mode (Requirement 9.13) ──────────
+
+  describe('Gambling sections with Gambling_Mode disabled (Req 9.13)', () => {
+    function expandBreakdown() {
+      fireEvent.click(screen.getByRole('button', { name: /View Full Breakdown/i }))
+    }
+
+    it('renders neither the bet type breakdown nor the ledger sections', () => {
+      const session = makeSession([makePlayer('Alice', 1000), makePlayer('Bob', 400)])
+
+      render(<AnalyticsScreen session={session} gameId="game-1" onBackToHome={vi.fn()} />)
+      expandBreakdown()
+
+      expect(screen.queryByText('Bet Type Breakdown')).not.toBeInTheDocument()
+      expect(screen.queryByText('Gambling Ledger')).not.toBeInTheDocument()
+      expect(screen.queryByText('Gambling Breakdown')).not.toBeInTheDocument()
+    })
+
+    it('renders no gambling stats table and no per-player gambling toggles', () => {
+      const session = makeSession([makePlayer('Alice', 1000), makePlayer('Bob', 400)])
+
+      render(<AnalyticsScreen session={session} gameId="game-1" onBackToHome={vi.fn()} />)
+      expandBreakdown()
+
+      expect(
+        screen.queryByRole('table', { name: 'Gambling statistics per player' }),
+      ).not.toBeInTheDocument()
+      expect(document.querySelectorAll('.collapsible-player-section')).toHaveLength(0)
+    })
+
+    it('renders both sections when Gambling_Mode is enabled', () => {
+      const session = makeGamblingSession([makePlayer('Alice', 1000), makePlayer('Bob', 400)])
+
+      render(<AnalyticsScreen session={session} gameId="game-1" onBackToHome={vi.fn()} />)
+      expandBreakdown()
+
+      expect(screen.getByText('Gambling Breakdown')).toBeInTheDocument()
+      expect(screen.getByText('Bet Type Breakdown')).toBeInTheDocument()
+      expect(screen.getByText('Gambling Ledger')).toBeInTheDocument()
+      expect(
+        screen.getByRole('table', { name: 'Gambling statistics per player' }),
+      ).toBeInTheDocument()
     })
   })
 

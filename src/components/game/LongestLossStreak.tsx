@@ -1,3 +1,5 @@
+import { formatCurrency, formatSignedChange } from '../../utils/currency'
+
 interface LossStreakEntry {
   playerName: string
   streakLength: number
@@ -7,11 +9,6 @@ interface LossStreakEntry {
 
 interface LongestLossStreakProps {
   streaks: LossStreakEntry[]
-}
-
-function formatDollar(value: number): string {
-  if (value < 0) return `-$${Math.abs(value).toLocaleString()}`
-  return `$${value.toLocaleString()}`
 }
 
 export function LongestLossStreak({ streaks }: LongestLossStreakProps) {
@@ -30,10 +27,12 @@ export function LongestLossStreak({ streaks }: LongestLossStreakProps) {
             {entry.streakLength} wrong in a row
           </div>
           <div className="loss-streak-lost">
-            -{formatDollar(entry.totalLost)} lost
+            {/* `totalLost` is a positive magnitude, so negate it and let the
+                formatter own the sign — Requirement 5.10 */}
+            {formatSignedChange(-entry.totalLost)} lost
           </div>
           <div className="loss-streak-low">
-            Lowest score: {formatDollar(entry.lowestScore)}
+            Lowest score: {formatCurrency(entry.lowestScore)}
           </div>
         </div>
       ))}

@@ -14,6 +14,12 @@ export interface CoopScoringResult {
   newPool: number
 }
 
+/** An inclusive whole-dollar wager range. */
+export interface CoopWagerRange {
+  min: number
+  max: number
+}
+
 // ─── Utility Functions ───────────────────────────────────────────────────────
 
 /**
@@ -70,14 +76,24 @@ export function applyCoopScoring(opts: CoopScoringOptions): CoopScoringResult {
   }
 }
 
+/** The co-op wager floor: a team can always wager up to $1,000. */
+export const COOP_WAGER_FLOOR = 1000
+
 /**
- * Returns the maximum wager for a Daily Double in co-op mode.
- * If the team pool is positive, the max wager is the greater of teamPool or $1000.
- * Otherwise, the max wager is $1000 (allowing the team to recover).
+ * The permitted co-op team wager range: a minimum of $1 through a maximum of
+ * the greater of the team pool and $1,000 (Requirement 4.11).
+ *
+ * The team pool is the only input. No Lowest_Positive_Balance rule and no
+ * configured wager floor influence the co-op range.
+ */
+export function computeCoopWagerRange(teamPool: number): CoopWagerRange {
+  return { min: 1, max: Math.max(teamPool, COOP_WAGER_FLOOR) }
+}
+
+/**
+ * Returns the maximum wager for a Daily Double in co-op mode: the greater of
+ * the team pool and $1,000, so a team at or below $0 can still recover.
  */
 export function getCoopDailyDoubleMaxWager(teamPool: number): number {
-  if (teamPool > 0) {
-    return Math.max(teamPool, 1000)
-  }
-  return 1000
+  return computeCoopWagerRange(teamPool).max
 }

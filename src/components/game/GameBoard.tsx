@@ -13,6 +13,8 @@ interface GameBoardProps {
   skipReveal?: boolean
   /** Optional custom scoreboard element to render instead of the default Scoreboard */
   customScoreboard?: React.ReactNode
+  /** Category ownership map (key: `${roundName}-${catIdx}`, value: player name) */
+  categoryOwnership?: Record<string, string>
 }
 
 export function GameBoard({
@@ -24,6 +26,7 @@ export function GameBoard({
   onAllRevealed,
   skipReveal,
   customScoreboard,
+  categoryOwnership,
 }: GameBoardProps) {
   const [revealedCount, setRevealedCount] = useState(() =>
     skipReveal ? categories.length + 1 : 0
@@ -123,14 +126,21 @@ export function GameBoard({
           <table className="board-table">
             <thead>
               <tr>
-                {categories.map((cat, i) => (
-                  <th
-                    key={i}
-                    className="board-category-header"
-                  >
-                    {cat.category}
-                  </th>
-                ))}
+                {categories.map((cat, i) => {
+                  const ownerKey = `${roundName}-${i}`
+                  const owner = categoryOwnership?.[ownerKey]
+                  return (
+                    <th
+                      key={i}
+                      className={`board-category-header${owner ? ' board-category-header--owned' : ''}`}
+                    >
+                      {cat.category}
+                      {owner && (
+                        <span className="board-category-owner">🏆 {owner}</span>
+                      )}
+                    </th>
+                  )
+                })}
               </tr>
             </thead>
             <tbody>

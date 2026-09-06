@@ -3,6 +3,7 @@ import confetti from 'canvas-confetti'
 import { toast } from 'react-toastify'
 import type { GameSession } from '../../types/game'
 import { computeAllAnalytics } from '../../utils/analyticsUtils'
+import { formatCurrency } from '../../utils/currency'
 import { updateGameStats } from '../../utils/gameApi'
 import { usePlayerProfileContext } from '../../hooks/usePlayerProfileContext'
 import { RatingPrompt } from '../RatingPrompt'
@@ -14,6 +15,7 @@ import { DailyDoubleBreakdown } from './DailyDoubleBreakdown'
 import { BiggestComeback } from './BiggestComeback'
 import { LongestLossStreak } from './LongestLossStreak'
 import { HeadToHead } from './HeadToHead'
+import { GamblingAnalytics } from './GamblingAnalytics'
 import './AnalyticsScreen.css'
 import './AnalyticsBreakdown.css'
 
@@ -157,10 +159,10 @@ export function AnalyticsScreen({ session, gameId, onBackToHome }: AnalyticsScre
                     </span>
                     {isWinner && <span className="analytics-trophy">🏆</span>}
                   </div>
+                  {/* Requirement 5.8 — a final standing is a balance, so the
+                      Currency_Formatter owns the sign and the grouping. */}
                   <span className={player.score < 0 ? 'analytics-score analytics-score--negative' : 'analytics-score'}>
-                    {player.score < 0
-                      ? `-$${Math.abs(player.score).toLocaleString()}`
-                      : `$${player.score.toLocaleString()}`}
+                    {formatCurrency(player.score)}
                   </span>
                 </li>
               )
@@ -265,7 +267,19 @@ export function AnalyticsScreen({ session, gameId, onBackToHome }: AnalyticsScre
               {analytics.headToHeads.length > 0 && (
                 <section className="analytics-section">
                   <h2 className="analytics-section-title">Head to Head</h2>
-                  <HeadToHead comparisons={analytics.headToHeads} playerColors={playerColorMap} />
+                  <HeadToHead
+                    comparisons={analytics.headToHeads}
+                    playerNames={sortedPlayers.map(p => p.name)}
+                    playerColors={playerColorMap}
+                  />
+                </section>
+              )}
+
+              {/* Gambling Analytics (only when gambling mode was enabled) */}
+              {session.toggleConfig.gambling.enabled && (
+                <section className="analytics-section">
+                  <h2 className="analytics-section-title">Gambling Breakdown</h2>
+                  <GamblingAnalytics session={session} />
                 </section>
               )}
             </div>

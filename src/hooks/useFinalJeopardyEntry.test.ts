@@ -32,7 +32,7 @@ function createMockSession(overrides: Partial<GameSessionRow> = {}): GameSession
     is_locked: false,
     players: [{ name: 'Alice', score: 500, joinedAt: '2024-01-01T00:00:00Z' }],
     buzz_state: { clueActive: false, queue: [], lockedOut: [], systemLocked: false },
-    final_jeopardy_state: { submissions: [], revealedIndex: -1 },
+    final_jeopardy_state: { wagers: [], submissions: [], revealedIndex: -1 },
     created_at: '2024-01-01T00:00:00Z',
     updated_at: '2024-01-01T00:00:00Z',
     ...overrides,
@@ -181,6 +181,7 @@ describe('useFinalJeopardyEntry', () => {
       expect(result.current.status).toBe('submitted');
       expect(result.current.hasSubmitted).toBe(true);
       expect(updateFinalJeopardyState).toHaveBeenCalledWith('test-session-id', {
+        wagers: [],
         submissions: [
           {
             playerName: 'Alice',
@@ -201,6 +202,7 @@ describe('useFinalJeopardyEntry', () => {
       const channel = createMockChannel();
       const session = createMockSession({
         final_jeopardy_state: {
+          wagers: [],
           submissions: [
             { playerName: 'Alice', wager: 100, answer: 'Test', submittedAt: '2024-01-01T00:00:00Z' },
           ],

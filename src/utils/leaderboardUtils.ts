@@ -39,13 +39,9 @@ export function computeRate(numerator: number, denominator: number): number {
 /**
  * Formats an integer as US dollar currency with no decimals.
  * Negative values display as `-$X,XXX`.
+ * Re-exported from the shared currency module (Requirement 5 criterion 4).
  */
-export function formatCurrency(value: number): string {
-  if (value < 0) {
-    return `-$${Math.abs(value).toLocaleString('en-US')}`
-  }
-  return `$${value.toLocaleString('en-US')}`
-}
+export { formatCurrency } from './currency'
 
 /**
  * Returns the raw or derived sort value for a given column.

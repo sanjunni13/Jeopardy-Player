@@ -208,6 +208,18 @@ export function useGameSession(sessionId: string | undefined): UseGameSessionRes
         case 'session_ended':
           return { ...prev, phase: 'ended', updated_at: new Date().toISOString() };
 
+        case 'auction_start':
+        case 'auction_bid':
+        case 'auction_result':
+        case 'auction_complete':
+        case 'betting_start':
+        case 'betting_placed':
+        case 'betting_complete':
+        case 'gambling_balance_update':
+          // These messages are informational for player devices; no state change needed
+          // The player-side UI reacts to these via separate handlers in PlaySessionPage
+          return prev;
+
         default:
           return prev;
       }

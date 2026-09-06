@@ -6,6 +6,7 @@ import type {
   SessionPhase,
   BuzzState,
   FinalJeopardyState,
+  GamblingState,
   SessionPlayer,
 } from '../types/session';
 
@@ -200,6 +201,28 @@ export async function updateFinalJeopardyState(
     throw new Error(`Failed to update Final Jeopardy state: ${error.message}`);
   }
   logInfo('final_jeopardy', 'updateFinalJeopardyState', 'Final Jeopardy state updated', { sessionId, submissionCount: fjState.submissions?.length });
+}
+
+/**
+ * Persists the Gambling_Mode sub-phase (auction / betting), or clears it with
+ * `null` when normal play resumes. Written by the host before it broadcasts the
+ * matching `auction_start` / `betting_start` message, so a player device that
+ * misses the broadcast — or refreshes — can recover the correct screen from the
+ * DB via the periodic reconcile instead of being stranded on the locked buzzer.
+ */
+export async function updateGamblingState(
+  sessionId: string,
+  gamblingState: GamblingState | null
+): Promise<void> {
+  const { error } = await supabase
+    .from('game_sessions')
+    .update({ gambling_state: gamblingState, updated_at: new Date().toISOString() })
+    .eq('id', sessionId);
+
+  if (error) {
+    logError('gambling', 'updateGamblingState', `Failed to update gambling state: ${error.message}`, { sessionId });
+    throw new Error(`Failed to update gambling state: ${error.message}`);
+  }
 }
 
 /**

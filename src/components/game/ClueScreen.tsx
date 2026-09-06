@@ -18,6 +18,8 @@ interface ClueScreenProps {
   stealBonusAwardedTo?: string | null
   timerRemaining?: number
   isTimesUp?: boolean
+  /** Player name who owns this category (gets 2x multiplier). Undefined if no owner. */
+  categoryOwnerName?: string | null
 }
 
 export function ClueScreen({
@@ -36,6 +38,7 @@ export function ClueScreen({
   stealBonusAwardedTo,
   timerRemaining,
   isTimesUp,
+  categoryOwnerName,
 }: ClueScreenProps) {
   const [answerRevealed, setAnswerRevealed] = useState(false)
 
@@ -76,10 +79,17 @@ export function ClueScreen({
   }
 
   function getPointValue(playerName: string): number {
+    let value: number
     if (wagers && wagers[playerName] != null) {
-      return wagers[playerName]
+      value = wagers[playerName]
+    } else {
+      value = clue.value
     }
-    return clue.value
+    // Apply 2x ownership multiplier for the category owner
+    if (categoryOwnerName && playerName === categoryOwnerName) {
+      value = value * 2
+    }
+    return value
   }
 
   const scoringPlayers = ddPlayer
@@ -143,7 +153,10 @@ export function ClueScreen({
               >
                 <span className="clue-player-name">{player.name}</span>
                 <span className="clue-player-total">{player.score < 0 ? `-$${Math.abs(player.score).toLocaleString()}` : `$${player.score.toLocaleString()}`}</span>
-                <span className="clue-player-value">${pointValue}</span>
+                <span className="clue-player-value">
+                  ${pointValue}
+                  {categoryOwnerName === player.name && <span style={{ color: '#2a9d8f', fontSize: '0.7em', marginLeft: '0.25rem' }}>(2×)</span>}
+                </span>
                 {streakActive && (
                   <span className="clue-streak-badge">
                     🔥 {playerStreak}×{modifierConfig!.rulesEngine.streakMultiplier.multiplier}

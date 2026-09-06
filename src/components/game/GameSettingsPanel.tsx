@@ -54,6 +54,20 @@ function validateTimerDuration(value: string): string | null {
   return null
 }
 
+function validateStartingBalance(value: string): string | null {
+  if (value === '') return 'Enter a value between 500 and 10,000.'
+  const n = Number(value)
+  if (!Number.isInteger(n) || n < 500 || n > 10000) return 'Must be an integer between 500 and 10,000.'
+  return null
+}
+
+function validateAuctionTimer(value: string): string | null {
+  if (value === '') return 'Enter a value between 10 and 60.'
+  const n = Number(value)
+  if (!Number.isInteger(n) || n < 10 || n > 60) return 'Must be an integer between 10 and 60.'
+  return null
+}
+
 // ─── Filter non-integer keystrokes ───────────────────────────────────────────
 function filterInt(value: string): string {
   return /^\d*$/.test(value) ? value : value.replace(/[^\d]/g, '')
@@ -93,6 +107,13 @@ export function GameSettingsPanel({ onConfigChange, boardTotal }: GameSettingsPa
   const [timerDuration, setTimerDuration] = useState('30')
   const [timerDurationError, setTimerDurationError] = useState<string | null>(null)
 
+  // ── Gambling Problem sub-section ──
+  const [gamblingEnabled, setGamblingEnabled] = useState(false)
+  const [startingBalance, setStartingBalance] = useState('1000')
+  const [startingBalanceError, setStartingBalanceError] = useState<string | null>(null)
+  const [auctionTimer, setAuctionTimer] = useState('20')
+  const [auctionTimerError, setAuctionTimerError] = useState<string | null>(null)
+
   // ─── Build config and report to parent ───────────────────────────────────
 
   const buildAndReport = useCallback((overrides: {
@@ -115,6 +136,11 @@ export function GameSettingsPanel({ onConfigChange, boardTotal }: GameSettingsPa
     penaltyEnabled?: boolean
     timerDuration?: string
     timerDurationError?: string | null
+    gamblingEnabled?: boolean
+    startingBalance?: string
+    startingBalanceError?: string | null
+    auctionTimer?: string
+    auctionTimerError?: string | null
   }) => {
     const ce = overrides.coopEnabled ?? coopEnabled
     const tp = overrides.targetPercentage ?? targetPercentage
@@ -135,6 +161,11 @@ export function GameSettingsPanel({ onConfigChange, boardTotal }: GameSettingsPa
     const pe = overrides.penaltyEnabled ?? penaltyEnabled
     const td = overrides.timerDuration ?? timerDuration
     const tdErr = overrides.timerDurationError !== undefined ? overrides.timerDurationError : timerDurationError
+    const ge = overrides.gamblingEnabled ?? gamblingEnabled
+    const sb = overrides.startingBalance ?? startingBalance
+    const sbError = overrides.startingBalanceError !== undefined ? overrides.startingBalanceError : startingBalanceError
+    const at = overrides.auctionTimer ?? auctionTimer
+    const atErr = overrides.auctionTimerError !== undefined ? overrides.auctionTimerError : auctionTimerError
 
     const config: ToggleConfig = {
       coop: {
@@ -166,6 +197,11 @@ export function GameSettingsPanel({ onConfigChange, boardTotal }: GameSettingsPa
         enabled: te,
         timerDuration: te ? (Number(td) || 30) : DEFAULT_TOGGLE_CONFIG.timedClues.timerDuration,
       },
+      gambling: {
+        enabled: ge,
+        startingBalance: ge ? (Number(sb) || 1000) : DEFAULT_TOGGLE_CONFIG.gambling.startingBalance,
+        auctionTimer: ge ? (Number(at) || 20) : DEFAULT_TOGGLE_CONFIG.gambling.auctionTimer,
+      },
     }
 
     const hasErrors =
@@ -173,7 +209,9 @@ export function GameSettingsPanel({ onConfigChange, boardTotal }: GameSettingsPa
       (we && wfe !== null) ||
       (!ce && re && sbe && sbErr !== null) ||
       (!ce && re && ske && (sktErr !== null || skmErr !== null)) ||
-      (te && tdErr !== null)
+      (te && tdErr !== null) ||
+      (ge && sbError !== null) ||
+      (ge && atErr !== null)
 
     onConfigChange(config, hasErrors)
   }, [
@@ -184,6 +222,8 @@ export function GameSettingsPanel({ onConfigChange, boardTotal }: GameSettingsPa
     streakEnabled, streakThreshold, streakThresholdError, streakMultiplier, streakMultiplierError,
     penaltyEnabled,
     timerDuration, timerDurationError,
+    gamblingEnabled, startingBalance, startingBalanceError,
+    auctionTimer, auctionTimerError,
     onConfigChange,
   ])
 
@@ -203,6 +243,12 @@ export function GameSettingsPanel({ onConfigChange, boardTotal }: GameSettingsPa
       setStreakMultiplier('2')
       setStreakMultiplierError(null)
       setPenaltyEnabled(false)
+      // Disable and reset Gambling Problem
+      setGamblingEnabled(false)
+      setStartingBalance('1000')
+      setStartingBalanceError(null)
+      setAuctionTimer('20')
+      setAuctionTimerError(null)
       buildAndReport({
         coopEnabled: true,
         rulesEnabled: false,
@@ -215,6 +261,11 @@ export function GameSettingsPanel({ onConfigChange, boardTotal }: GameSettingsPa
         streakMultiplier: '2',
         streakMultiplierError: null,
         penaltyEnabled: false,
+        gamblingEnabled: false,
+        startingBalance: '1000',
+        startingBalanceError: null,
+        auctionTimer: '20',
+        auctionTimerError: null,
       })
     } else {
       // Hide co-op sub-section, re-enable Rules Engine toggle (stays disabled by default)
@@ -440,9 +491,79 @@ export function GameSettingsPanel({ onConfigChange, boardTotal }: GameSettingsPa
     buildAndReport({ timerDurationError: err })
   }
 
+  // ─── Gambling Problem handlers ────────────────────────────────────────────
+
+  function handleGamblingToggle(checked: boolean) {
+    setGamblingEnabled(checked)
+    if (checked) {
+      // Disable and reset Co-op Mode (incompatible with gambling)
+      setCoopEnabled(false)
+      setTargetPercentage('75')
+      setTargetPercentageError(null)
+      buildAndReport({
+        gamblingEnabled: true,
+        coopEnabled: false,
+        targetPercentage: '75',
+        targetPercentageError: null,
+        startingBalance,
+        startingBalanceError,
+        auctionTimer,
+        auctionTimerError,
+      })
+    } else {
+      setStartingBalance('1000')
+      setStartingBalanceError(null)
+      setAuctionTimer('20')
+      setAuctionTimerError(null)
+      buildAndReport({
+        gamblingEnabled: false,
+        startingBalance: '1000',
+        startingBalanceError: null,
+        auctionTimer: '20',
+        auctionTimerError: null,
+      })
+    }
+  }
+
+  function handleStartingBalanceChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const filtered = filterInt(e.target.value)
+    setStartingBalance(filtered)
+    if (startingBalanceError !== null) {
+      const err = validateStartingBalance(filtered)
+      setStartingBalanceError(err)
+      buildAndReport({ startingBalance: filtered, startingBalanceError: err })
+    } else {
+      buildAndReport({ startingBalance: filtered })
+    }
+  }
+
+  function handleStartingBalanceBlur() {
+    const err = validateStartingBalance(startingBalance)
+    setStartingBalanceError(err)
+    buildAndReport({ startingBalanceError: err })
+  }
+
+  function handleAuctionTimerChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const filtered = filterInt(e.target.value)
+    setAuctionTimer(filtered)
+    if (auctionTimerError !== null) {
+      const err = validateAuctionTimer(filtered)
+      setAuctionTimerError(err)
+      buildAndReport({ auctionTimer: filtered, auctionTimerError: err })
+    } else {
+      buildAndReport({ auctionTimer: filtered })
+    }
+  }
+
+  function handleAuctionTimerBlur() {
+    const err = validateAuctionTimer(auctionTimer)
+    setAuctionTimerError(err)
+    buildAndReport({ auctionTimerError: err })
+  }
+
   // ─── Summary strip ────────────────────────────────────────────────────────
 
-  const anyEnabled = coopEnabled || wageringEnabled || rulesEnabled || timedEnabled
+  const anyEnabled = coopEnabled || wageringEnabled || rulesEnabled || timedEnabled || gamblingEnabled
 
   // ─── Render ───────────────────────────────────────────────────────────────
 
@@ -450,7 +571,8 @@ export function GameSettingsPanel({ onConfigChange, boardTotal }: GameSettingsPa
     <div className="gsp-container">
       <h2 className="gsp-title">Game Settings</h2>
 
-      {/* ── Co-op Mode ── */}
+      {/* ── Co-op Mode (hidden when Gambling Problem is enabled) ── */}
+      {!gamblingEnabled && (
       <div className="gsp-section">
         <label className="gsp-toggle-row">
           <input
@@ -505,6 +627,7 @@ export function GameSettingsPanel({ onConfigChange, boardTotal }: GameSettingsPa
           </div>
         )}
       </div>
+      )}
 
       {/* ── Wagering Mode ── */}
       <div className="gsp-section">
@@ -756,6 +879,78 @@ export function GameSettingsPanel({ onConfigChange, boardTotal }: GameSettingsPa
         )}
       </div>
 
+      {/* ── Gambling Problem ── */}
+      {!coopEnabled && (
+      <div className="gsp-section">
+        <label className="gsp-toggle-row">
+          <input
+            type="checkbox"
+            className="gsp-toggle-checkbox"
+            checked={gamblingEnabled}
+            onChange={e => handleGamblingToggle(e.target.checked)}
+            aria-label="Enable Gambling Problem mode"
+          />
+          <span className="gsp-toggle-track" aria-hidden="true">
+            <span className="gsp-toggle-thumb" />
+          </span>
+          <span className="gsp-toggle-label">Gambling Problem</span>
+        </label>
+
+        {gamblingEnabled && (
+          <div className="gsp-subsection">
+            <p className="gsp-coop-info-note">
+              Players bid on category ownership for double points and place side bets between rounds.
+            </p>
+            <div className="gsp-field">
+              <label htmlFor="gsp-starting-balance" className="gsp-field-label">
+                Starting balance
+              </label>
+              <div className="gsp-input-wrapper">
+                <span className="gsp-input-prefix">$</span>
+                <input
+                  id="gsp-starting-balance"
+                  type="text"
+                  inputMode="numeric"
+                  className={`gsp-input gsp-input-with-prefix${startingBalanceError ? ' gsp-input-error' : ''}`}
+                  value={startingBalance}
+                  onChange={handleStartingBalanceChange}
+                  onBlur={handleStartingBalanceBlur}
+                  aria-describedby={startingBalanceError ? 'gsp-starting-balance-error' : undefined}
+                  aria-invalid={!!startingBalanceError}
+                />
+              </div>
+              {startingBalanceError && (
+                <p id="gsp-starting-balance-error" className="gsp-error" role="alert">
+                  {startingBalanceError}
+                </p>
+              )}
+            </div>
+            <div className="gsp-field">
+              <label htmlFor="gsp-auction-timer" className="gsp-field-label">
+                Auction timer (seconds)
+              </label>
+              <input
+                id="gsp-auction-timer"
+                type="text"
+                inputMode="numeric"
+                className={`gsp-input${auctionTimerError ? ' gsp-input-error' : ''}`}
+                value={auctionTimer}
+                onChange={handleAuctionTimerChange}
+                onBlur={handleAuctionTimerBlur}
+                aria-describedby={auctionTimerError ? 'gsp-auction-timer-error' : undefined}
+                aria-invalid={!!auctionTimerError}
+              />
+              {auctionTimerError && (
+                <p id="gsp-auction-timer-error" className="gsp-error" role="alert">
+                  {auctionTimerError}
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+      )}
+
       {/* ── Settings Summary ── */}
       {anyEnabled && (
         <div className="gsp-summary">
@@ -789,6 +984,11 @@ export function GameSettingsPanel({ onConfigChange, boardTotal }: GameSettingsPa
             {timedEnabled && (
               <li className="gsp-summary-item">
                 Timed: {timerDuration || '30'}s per clue
+              </li>
+            )}
+            {gamblingEnabled && (
+              <li className="gsp-summary-item">
+                Gambling: ${startingBalance || '1000'} start, {auctionTimer || '20'}s auctions
               </li>
             )}
           </ul>

@@ -3,7 +3,13 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
 import { useFinalJeopardyEntry } from '../../hooks/useFinalJeopardyEntry';
 import { fetchSession, updateFinalJeopardyState } from '../../utils/sessionApi';
 import { broadcastMessage } from '../../utils/sessionChannel';
-import type { FinalJeopardyWager, SessionPlayer } from '../../types/session';
+import type { FinalJeopardyState, FinalJeopardyWager, SessionPlayer } from '../../types/session';
+import { DEFAULT_TOGGLE_CONFIG } from '../../types/game';
+import {
+  computeBalanceRelativeWagerRange,
+  computeLowestPositiveBalance,
+} from '../../utils/gameToggles';
+import { formatCurrency } from '../../utils/currency';
 import { ScoreboardStrip } from './ScoreboardStrip';
 import './FinalJeopardyEntryPage.css';
 
@@ -20,6 +26,9 @@ interface FinalJeopardyEntryPageProps {
 }
 
 const MAX_ANSWER_LENGTH = 200;
+
+/** The wager range inputs the host persists at wager-phase start. */
+type WagerConfig = NonNullable<FinalJeopardyState['wagerConfig']>;
 
 export function FinalJeopardyEntryPage({
   sessionId,
@@ -38,7 +47,38 @@ export function FinalJeopardyEntryPage({
   const [wagerSubmitting, setWagerSubmitting] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
 
-  const maxWager = playerScore > 0 ? playerScore : 1000;
+  /**
+   * The wager range the host persisted into `FinalJeopardyState` when the
+   * phase began. Read once from the mount fetch and held for the rest of the
+   * phase, so a mid-phase reload restores the identical range.
+   *
+   * Requirements: 4.9, 4.10
+   */
+  const [persistedConfig, setPersistedConfig] = useState<WagerConfig | null>(null);
+
+  /**
+   * Used only when the session carries no `wagerConfig` — an older session or
+   * a host that has not written it yet. Frozen on mount for the same reason
+   * the persisted config is read-only.
+   */
+  const [fallbackConfig] = useState<WagerConfig>(() => ({
+    wagerFloor: DEFAULT_TOGGLE_CONFIG.wagering.wagerFloor,
+    lowestPositiveBalance: computeLowestPositiveBalance(players),
+  }));
+
+  // Frozen on mount: a balance change during the wager phase leaves the
+  // already-computed range untouched (Requirement 4.10).
+  const [frozenScore] = useState(playerScore);
+
+  const wagerConfig = persistedConfig ?? fallbackConfig;
+
+  // The one shared balance-relative range, identical to the host surface's
+  // (Requirements 4.1–4.4, 4.7, 4.8).
+  const { min: minWager, max: maxWager } = computeBalanceRelativeWagerRange(
+    frozenScore,
+    wagerConfig.wagerFloor,
+    wagerConfig.lowestPositiveBalance,
+  );
 
   // Check on mount if wager was already submitted (reconnect case)
   const [coopDetectedFromDb, setCoopDetectedFromDb] = useState(false);
@@ -51,6 +91,8 @@ export function FinalJeopardyEntryPage({
       if ((session.final_jeopardy_state as { coopMode?: boolean }).coopMode) {
         setCoopDetectedFromDb(true);
       }
+      const config = session.final_jeopardy_state.wagerConfig;
+      if (config) setPersistedConfig(config);
       const wagers = session.final_jeopardy_state.wagers ?? [];
       const existing = wagers.find(w => w.playerName.toLowerCase() === playerName.toLowerCase());
       if (existing) {
@@ -70,16 +112,15 @@ export function FinalJeopardyEntryPage({
       setWagerError('Enter a valid number');
       return;
     }
-    if (num < 0) {
-      setWagerError('Wager cannot be negative');
-      return;
-    }
-    if (num > maxWager) {
-      setWagerError(`Maximum wager is $${maxWager.toLocaleString()}`);
-      return;
-    }
     if (!Number.isInteger(num)) {
       setWagerError('Wager must be a whole number');
+      return;
+    }
+    // Requirement 4.6 — the rejection names both bounds of the permitted range.
+    if (num < minWager || num > maxWager) {
+      setWagerError(
+        `Wager must be between ${formatCurrency(minWager)} and ${formatCurrency(maxWager)}.`
+      );
       return;
     }
 
@@ -117,7 +158,7 @@ export function FinalJeopardyEntryPage({
     } finally {
       setWagerSubmitting(false);
     }
-  }, [sessionId, playerName, wagerValue, maxWager, channel]);
+  }, [sessionId, playerName, wagerValue, minWager, maxWager, channel]);
 
   // Answer entry hook (only used after wager is submitted and clue is revealed)
   const {
@@ -175,9 +216,7 @@ export function FinalJeopardyEntryPage({
   // ─── Wager phase ──────────────────────────────────────────────────────────
 
   if (!wagerSubmitted) {
-    const scoreDisplay = playerScore < 0
-      ? `-$${Math.abs(playerScore).toLocaleString()}`
-      : `$${playerScore.toLocaleString()}`;
+    const scoreDisplay = formatCurrency(frozenScore);
 
     return (
       <div className="fj-entry">
@@ -187,7 +226,7 @@ export function FinalJeopardyEntryPage({
             Final Jeopardy — Enter Your Wager
           </p>
           <p style={{ fontSize: '0.8125rem', color: '#64748b', margin: '0.25rem 0 0' }}>
-            Your score: {scoreDisplay} • Max wager: ${maxWager.toLocaleString()}
+            Your score: {scoreDisplay} • Wager range: {formatCurrency(minWager)} – {formatCurrency(maxWager)}
           </p>
         </div>
 
@@ -205,8 +244,8 @@ export function FinalJeopardyEntryPage({
                 type="text"
                 inputMode="numeric"
                 pattern="[0-9]*"
-                className={`fj-entry__textarea${wagerError ? ' fj-entry__textarea--error' : ''}`}
-                style={{ width: '100%', height: 'auto', minHeight: '3rem', resize: 'none', paddingLeft: '1.5rem', textAlign: 'right' }}
+                className={`fj-entry__textarea monetary-input${wagerError ? ' fj-entry__textarea--error' : ''}`}
+                style={{ width: '100%', height: 'auto', minHeight: '3rem', resize: 'none', paddingLeft: '1.5rem' }}
                 value={wagerValue}
                 onChange={(e) => {
                   const val = e.target.value;

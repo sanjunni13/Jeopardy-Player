@@ -16,18 +16,57 @@ import type { ToggleConfig } from '../types/game'
  * - When `score ≤ wagerFloor`: permitted range is `[1, wagerFloor]`
  *   (so players with low or negative scores can still participate)
  *
+ * Delegates to `computeBalanceRelativeWagerRange` with no Lowest_Positive_Balance,
+ * which reproduces this behaviour exactly.
+ *
  * Requirements: 3.3, 3.4, 3.5
  */
 export function computeWagerRange(
   score: number,
   wagerFloor: number,
 ): { min: number; max: number } {
-  // If the player's score is negative or zero, range is $1 to wagerFloor
-  if (score <= 0) {
-    return { min: 1, max: wagerFloor }
+  return computeBalanceRelativeWagerRange(score, wagerFloor, null)
+}
+
+/**
+ * Returns the smallest score strictly greater than $0 among the given players,
+ * or `null` when no player holds a positive score.
+ *
+ * Pure: the input array and its elements are never mutated.
+ *
+ * Requirements: 4.9
+ */
+export function computeLowestPositiveBalance(
+  players: { score: number }[],
+): number | null {
+  const positives = players.map(p => p.score).filter(s => s > 0)
+  return positives.length === 0 ? null : Math.min(...positives)
+}
+
+/**
+ * The one shared wager range calculation used by both Final Jeopardy wager
+ * surfaces (host `WagerEntry` and player `FinalJeopardyEntryPage`).
+ *
+ * - `score > 0`: `[wagerFloor, max(wagerFloor, score)]`
+ * - `score <= 0`: `[1, lowestPositiveBalance ?? wagerFloor]`, so a player at or
+ *   below $0 may wager up to the lowest positive balance in the field, and up
+ *   to the configured wager floor when every balance is non-positive.
+ *
+ * The ordering guarantee holds structurally: a positive-balance player's max is
+ * `>= score >= lowestPositiveBalance`, which is the max handed to every
+ * non-positive-balance player.
+ *
+ * Requirements: 4.1, 4.2, 4.3, 4.4, 4.8, 4.9
+ */
+export function computeBalanceRelativeWagerRange(
+  score: number,
+  wagerFloor: number,
+  lowestPositiveBalance: number | null,
+): { min: number; max: number } {
+  if (score > 0) {
+    return { min: wagerFloor, max: Math.max(wagerFloor, score) }
   }
-  // Otherwise, min is wagerFloor, max is the player's current score
-  return { min: wagerFloor, max: Math.max(wagerFloor, score) }
+  return { min: 1, max: lowestPositiveBalance ?? wagerFloor }
 }
 
 // ─── Penalty Doubler ─────────────────────────────────────────────────────────

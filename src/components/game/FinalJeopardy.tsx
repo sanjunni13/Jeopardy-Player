@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import type { FinalRound, Player } from '../../types/game'
 import type { FinalJeopardyWager, FinalJeopardySubmission } from '../../types/session'
 import { Component as EtherealShadows } from '../ui/framer-motion-animations/etherealShadows'
+import { computeCoopWagerRange } from '../../utils/coopScoring'
+import { formatCurrency } from '../../utils/currency'
 import './FinalJeopardy.css'
 
 interface FinalJeopardyProps {
@@ -33,9 +35,9 @@ export function FinalJeopardy({ finalRound, players, onComplete, onClueRevealed,
   const [coopWagerError, setCoopWagerError] = useState<string>('')
   const [coopMarking, setCoopMarking] = useState<'correct' | 'incorrect' | null>(null)
 
-  // Co-op wager constraints
-  const coopMaxWager = teamPool > 0 ? Math.max(teamPool, 1000) : 1000
-  const coopMinWager = teamPool > 0 ? 1 : 0
+  // Co-op wager constraints (Requirement 4.11): $1 through max(teamPool, $1,000),
+  // with no Lowest_Positive_Balance influence.
+  const { min: coopMinWager, max: coopMaxWager } = computeCoopWagerRange(teamPool)
 
   function revealAnswer() {
     if (!answerRevealed && allAnswersSubmitted) {
@@ -61,7 +63,7 @@ export function FinalJeopardy({ finalRound, players, onComplete, onClueRevealed,
   function handleCoopWagerSubmit() {
     const num = parseInt(coopWager, 10)
     if (isNaN(num) || num < coopMinWager || num > coopMaxWager) {
-      setCoopWagerError(`Wager must be between $${coopMinWager.toLocaleString()} and $${coopMaxWager.toLocaleString()}`)
+      setCoopWagerError(`Wager must be between ${formatCurrency(coopMinWager)} and ${formatCurrency(coopMaxWager)}.`)
       return
     }
     setCoopWagerSubmitted(true)
@@ -167,20 +169,20 @@ export function FinalJeopardy({ finalRound, players, onComplete, onClueRevealed,
             {!coopWagerSubmitted ? (
               <div className="fj-coop-wager-section" onClick={(e) => e.stopPropagation()}>
                 <p className="fj-coop-pool-display">
-                  Team Pool: <strong>${teamPool.toLocaleString()}</strong>
+                  Team Pool: <strong>{formatCurrency(teamPool)}</strong>
                 </p>
                 <div className="fj-coop-wager-form">
                   <label className="fj-coop-wager-label" htmlFor="coop-wager-input">
-                    Team Wager (max ${coopMaxWager.toLocaleString()})
+                    Team Wager (max {formatCurrency(coopMaxWager)})
                   </label>
                   <input
                     id="coop-wager-input"
                     type="text"
                     inputMode="numeric"
-                    className="fj-wager-input"
+                    className="fj-wager-input monetary-input"
                     value={coopWager}
                     onChange={(e) => handleCoopWagerChange(e.target.value)}
-                    placeholder={`$${coopMinWager} – $${coopMaxWager.toLocaleString()}`}
+                    placeholder={`${formatCurrency(coopMinWager)} – ${formatCurrency(coopMaxWager)}`}
                     aria-invalid={!!coopWagerError}
                     aria-describedby={coopWagerError ? 'coop-wager-error' : undefined}
                   />
@@ -369,7 +371,7 @@ export function FinalJeopardy({ finalRound, players, onComplete, onClueRevealed,
               return (
                 <div key={player.name} className="fj-player-card">
                   <span className="fj-player-name">{player.name}</span>
-                  <span className="fj-player-wager">Wager: ${wagerAmount.toLocaleString()}</span>
+                  <span className="fj-player-wager">Wager: {formatCurrency(wagerAmount)}</span>
                   <div className="fj-player-actions">
                     <button
                       type="button"

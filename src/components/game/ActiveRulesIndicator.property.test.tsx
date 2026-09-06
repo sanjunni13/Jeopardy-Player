@@ -37,6 +37,11 @@ const toggleConfigArb: fc.Arbitrary<ToggleConfig> = fc.record({
     enabled: fc.boolean(),
     timerDuration: fc.integer({ min: 5, max: 120 }),
   }),
+  gambling: fc.record({
+    enabled: fc.boolean(),
+    startingBalance: fc.integer({ min: 500, max: 10000 }),
+    auctionTimer: fc.integer({ min: 10, max: 60 }),
+  }),
 })
 
 // ─── Property 18: Active rules summary lists exactly the active modifiers ─────
@@ -101,6 +106,13 @@ describe('Property 18: Active rules summary lists exactly the active modifiers w
         } else {
           expect(textContent).not.toContain('Timed:')
         }
+
+        // Gambling label
+        if (config.gambling.enabled) {
+          expect(textContent).toContain('Gambling Problem')
+        } else {
+          expect(textContent).not.toContain('Gambling Problem')
+        }
       }),
       { numRuns: 100 }
     )
@@ -115,6 +127,7 @@ describe('Property 18: Active rules summary lists exactly the active modifiers w
           wagering: { ...config.wagering, enabled: false },
           rulesEngine: { ...config.rulesEngine, enabled: false },
           timedClues: { ...config.timedClues, enabled: false },
+          gambling: { ...config.gambling, enabled: false },
         }
 
         cleanup()
@@ -135,7 +148,8 @@ describe('Property 18: Active rules summary lists exactly the active modifiers w
             config.rulesEngine.stealBonus.enabled ||
             config.rulesEngine.streakMultiplier.enabled
           )) ||
-          config.timedClues.enabled
+          config.timedClues.enabled ||
+          config.gambling.enabled
         ),
         (config) => {
           cleanup()

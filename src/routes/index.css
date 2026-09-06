@@ -121,3 +121,11 @@ code {
   padding: 4px 8px;
   background: var(--code-bg);
 }
+/* ─── Shared: monetary inputs are right-aligned, value and placeholder ─────── */
+.monetary-input {
+  text-align: right;
+}
+
+.monetary-input::placeholder {
+  text-align: right;
+}

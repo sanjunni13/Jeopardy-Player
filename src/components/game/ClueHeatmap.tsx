@@ -1,6 +1,11 @@
 import type { GameSession } from '../../types/game'
-import { computeHeatmapData, computeHeatmapSummary } from '../../utils/heatmapUtils'
+import {
+  buildHeatmapCellLabel,
+  computeHeatmapData,
+  computeHeatmapSummary,
+} from '../../utils/heatmapUtils'
 import type { HeatmapRound, HeatmapCell } from '../../utils/heatmapUtils'
+import { formatCurrency } from '../../utils/currency'
 import { useMemo } from 'react'
 import './ClueHeatmap.css'
 
@@ -10,25 +15,13 @@ interface ClueHeatmapProps {
 
 function HeatmapCellDisplay({ cell }: { cell: HeatmapCell }) {
   const statusClass = `clue-heatmap-cell clue-heatmap-cell--${cell.status}`
-  const label = `$${cell.value.toLocaleString()}`
-
-  let ariaLabel = `$${cell.value} - ${cell.status === 'correct'
-    ? 'answered correctly'
-    : cell.status === 'incorrect'
-      ? 'answered incorrectly'
-      : 'not attempted'}${cell.dailyDouble ? ' (Daily Double)' : ''}`
-
-  // Build tooltip: for incorrect cells, show who got it wrong
-  let tooltip = ariaLabel
-  if (cell.status === 'incorrect' && cell.incorrectPlayers.length > 0) {
-    const playerList = cell.incorrectPlayers.join(', ')
-    tooltip = `$${cell.value} — Incorrect: ${playerList}${cell.dailyDouble ? ' (Daily Double)' : ''}`
-    ariaLabel = tooltip
-  }
+  // One string for both the tooltip and the accessible label, so they cannot
+  // diverge (Requirement 8.6).
+  const label = buildHeatmapCellLabel(cell)
 
   return (
-    <td className={statusClass} aria-label={ariaLabel} title={tooltip}>
-      {label}
+    <td className={statusClass} aria-label={label} title={label}>
+      {formatCurrency(cell.value)}
       {cell.dailyDouble && (
         <span className="clue-heatmap-dd-badge" aria-hidden="true">★</span>
       )}

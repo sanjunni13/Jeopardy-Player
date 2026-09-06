@@ -8,6 +8,7 @@ import {
   ResponsiveContainer,
 } from 'recharts'
 import type { ScoreTimelinePoint } from '../../utils/analyticsUtils'
+import { formatCurrency } from '../../utils/currency'
 
 interface ScoreTimelineChartProps {
   timelines: Map<string, ScoreTimelinePoint[]>
@@ -24,11 +25,6 @@ export const PALETTE = [
   '#D32F2F', // red
   '#00838F', // teal
 ]
-
-function formatDollar(value: number): string {
-  if (value < 0) return `-$${Math.abs(value).toLocaleString()}`
-  return `$${value.toLocaleString()}`
-}
 
 export function ScoreTimelineChart({ timelines, playerNames }: ScoreTimelineChartProps) {
   // Merge all timelines into one array of objects keyed by ordinal.
@@ -66,12 +62,12 @@ export function ScoreTimelineChart({ timelines, playerNames }: ScoreTimelineChar
           tick={{ fill: '#94a3b8', fontSize: 11 }}
         />
         <YAxis
-          tickFormatter={formatDollar}
+          tickFormatter={formatCurrency}
           tick={{ fill: '#94a3b8', fontSize: 11 }}
           width={72}
         />
         <Tooltip
-          formatter={(value: number, name: string) => [formatDollar(value), name]}
+          formatter={(value: number, name: string) => [formatCurrency(value), name]}
           contentStyle={{ background: '#1e1e2e', border: '1px solid #444', borderRadius: '6px', color: '#e2e8f0' }}
           labelStyle={{ color: '#94a3b8', fontSize: 11 }}
         />
