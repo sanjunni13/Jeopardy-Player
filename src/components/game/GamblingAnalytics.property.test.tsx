@@ -75,6 +75,7 @@ function makeSession(playerNames: readonly string[], ledger: GamblingLedger): Ga
       },
       timedClues: { enabled: false, timerDuration: 30 },
       gambling: { enabled: true, startingBalance: 1000, auctionTimer: 20 },
+      buzzer: { enabled: false },
     },
     streakCounts: {},
     perRoundIncorrect: {},

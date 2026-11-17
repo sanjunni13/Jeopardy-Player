@@ -219,6 +219,22 @@ export interface GamblingLedgerEntry {
 export type GamblingLedger = GamblingLedgerEntry[];
 
 /**
+ * Buzzer (multiplayer) configuration.
+ *
+ * The Buzzer toggle is the master switch for the real-time multiplayer session
+ * system. When enabled, a session is created, the buzzer code (QR) is shown on
+ * the player entry screen so players can join from their phones, and all
+ * buzzer-related functionality is active (buzz queue, lock/unlock, Final
+ * Jeopardy device submissions, multiplayer gambling). When disabled (the
+ * default), the game is played on a single host screen with no phone-based
+ * interaction: the host marks answers, drives gambling solo, and enters Final
+ * Jeopardy wagers directly.
+ */
+export interface BuzzerConfig {
+  enabled: boolean
+}
+
+/**
  * Immutable snapshot of all toggle states captured at game-start (Play).
  * Stored in GameSession. Never mutated after the session begins.
  */
@@ -228,6 +244,7 @@ export interface ToggleConfig {
   rulesEngine: RulesEngineConfig
   timedClues: TimedClueConfig
   gambling: GamblingConfig
+  buzzer: BuzzerConfig
 }
 
 export const DEFAULT_TOGGLE_CONFIG: ToggleConfig = {
@@ -241,6 +258,7 @@ export const DEFAULT_TOGGLE_CONFIG: ToggleConfig = {
   },
   timedClues: { enabled: false, timerDuration: 30 },
   gambling: { enabled: false, startingBalance: 1000, auctionTimer: 20 },
+  buzzer: { enabled: false },
 }
 
 // ─── Session types ────────────────────────────────────────────────────────────

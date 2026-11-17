@@ -3,6 +3,7 @@ import type { FinalRound, Player } from '../../types/game'
 import type { FinalJeopardyWager, FinalJeopardySubmission } from '../../types/session'
 import { Component as EtherealShadows } from '../ui/framer-motion-animations/etherealShadows'
 import { computeCoopWagerRange } from '../../utils/coopScoring'
+import { computeBalanceRelativeWagerRange, computeLowestPositiveBalance } from '../../utils/gameToggles'
 import { formatCurrency } from '../../utils/currency'
 import './FinalJeopardy.css'
 
@@ -21,11 +22,19 @@ interface FinalJeopardyProps {
   onCoopWagerSubmit?: (wager: number) => void
   onCoopMarkAnswer?: (result: 'correct' | 'incorrect') => void
   submissions?: FinalJeopardySubmission[]
+  /**
+   * Host-driven Final Jeopardy wagers. True when the buzzer (multiplayer) is
+   * off, so the host enters each player's wager on this screen instead of
+   * collecting them from player devices.
+   */
+  allowHostWagers?: boolean
+  /** Wager floor used to derive the host-entered wager range (mirrors the player surface). */
+  wagerFloor?: number
 }
 
 type FJPhase = 'category' | 'clue' | 'scoring'
 
-export function FinalJeopardy({ finalRound, players, onComplete, onClueRevealed, onAnswerRevealed, wagers = [], allWagersSubmitted = false, allAnswersSubmitted = false, coopMode = false, teamPool = 0, onCoopWagerSubmit, onCoopMarkAnswer, submissions = [] }: FinalJeopardyProps) {
+export function FinalJeopardy({ finalRound, players, onComplete, onClueRevealed, onAnswerRevealed, wagers = [], allWagersSubmitted = false, allAnswersSubmitted = false, coopMode = false, teamPool = 0, onCoopWagerSubmit, onCoopMarkAnswer, submissions = [], allowHostWagers = false, wagerFloor = 100 }: FinalJeopardyProps) {
   const [phase, setPhase] = useState<FJPhase>('category')
   const [answerRevealed, setAnswerRevealed] = useState(false)
 
@@ -34,6 +43,10 @@ export function FinalJeopardy({ finalRound, players, onComplete, onClueRevealed,
   const [coopWagerSubmitted, setCoopWagerSubmitted] = useState(false)
   const [coopWagerError, setCoopWagerError] = useState<string>('')
   const [coopMarking, setCoopMarking] = useState<'correct' | 'incorrect' | null>(null)
+
+  // Host-driven wagers (buzzer off): one wager input per player, entered on the
+  // category screen before the clue is revealed.
+  const [hostWagers, setHostWagers] = useState<Record<string, string>>({})
 
   // Co-op wager constraints (Requirement 4.11): $1 through max(teamPool, $1,000),
   // with no Lowest_Positive_Balance influence.
@@ -86,6 +99,9 @@ export function FinalJeopardy({ finalRound, players, onComplete, onClueRevealed,
 
   // Helper: get wager amount for a player from the session wagers
   function getPlayerWager(playerName: string): number {
+    if (allowHostWagers) {
+      return Number(hostWagers[playerName]) || 0
+    }
     const w = wagers.find(w => w.playerName.toLowerCase() === playerName.toLowerCase())
     return w?.wager ?? 0
   }
@@ -105,7 +121,7 @@ export function FinalJeopardy({ finalRound, players, onComplete, onClueRevealed,
             onAnswerRevealed?.()
           }
         } else {
-          if (phase === 'category' && allWagersSubmitted) {
+          if (phase === 'category' && allWagersSubmitted && !allowHostWagers) {
             setPhase('clue')
             onClueRevealed?.()
           } else if (phase === 'clue' && !answerRevealed && allAnswersSubmitted) {
@@ -118,7 +134,7 @@ export function FinalJeopardy({ finalRound, players, onComplete, onClueRevealed,
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [phase, answerRevealed, allWagersSubmitted, allAnswersSubmitted, onClueRevealed, onAnswerRevealed, coopMode, coopWagerSubmitted])
+  }, [phase, answerRevealed, allWagersSubmitted, allAnswersSubmitted, onClueRevealed, onAnswerRevealed, coopMode, coopWagerSubmitted, allowHostWagers])
 
   function handleMark(playerName: string, result: 'correct' | 'incorrect') {
     const wagerAmount = getPlayerWager(playerName)
@@ -305,6 +321,88 @@ export function FinalJeopardy({ finalRound, players, onComplete, onClueRevealed,
 
   // Category phase — styled like regular round category reveal
   if (phase === 'category') {
+    // Host-driven wagers (buzzer off): the host enters each player's wager here,
+    // then reveals the clue. Wagers default to empty; the Reveal button is gated
+    // until every wager is a whole number within that player's range.
+    if (allowHostWagers) {
+      const lowestPositiveBalance = computeLowestPositiveBalance(players)
+      const rows = players.map(p => {
+        const range = computeBalanceRelativeWagerRange(p.score, wagerFloor, lowestPositiveBalance)
+        const raw = hostWagers[p.name] ?? ''
+        let error: string | null = null
+        if (raw === '') {
+          error = `Enter ${formatCurrency(range.min)}–${formatCurrency(range.max)}`
+        } else if (!/^\d+$/.test(raw)) {
+          error = 'Whole numbers only'
+        } else {
+          const n = Number(raw)
+          if (n < range.min || n > range.max) {
+            error = `${formatCurrency(range.min)}–${formatCurrency(range.max)}`
+          }
+        }
+        return { p, range, raw, error }
+      })
+      const allValid = rows.every(r => r.error === null)
+      return (
+        <div className="fj-category-wrapper">
+          <div className="fj-category-bg">
+            <EtherealShadows
+              color="rgba(0, 22, 153, 1)"
+              animation={{ scale: 100, speed: 90 }}
+              noise={{ opacity: 1, scale: 1.2 }}
+              sizing="fill"
+            />
+          </div>
+          <div className="fj-category-content">
+            <p className="fj-category-label">Final Jeopardy Category</p>
+            <h1 className="fj-category-name">{finalRound.category}</h1>
+            <div className="fj-coop-wager-section" onClick={(e) => e.stopPropagation()}>
+              <p className="fj-coop-pool-display">Enter each player's wager, then reveal the clue.</p>
+              <div className="fj-coop-answers-list">
+                {rows.map(({ p, range, raw, error }) => (
+                  <div key={p.name} className="fj-coop-answer-item" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                      <span className="fj-coop-answer-player">{p.name}</span>
+                      <span style={{ fontSize: '0.8125rem', color: '#64748b' }}>{formatCurrency(p.score)}</span>
+                    </div>
+                    <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                      <span style={{ position: 'absolute', left: '0.75rem', color: '#94a3b8', fontSize: '1rem', pointerEvents: 'none', zIndex: 1 }}>$</span>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        className="fj-wager-input monetary-input"
+                        style={{ width: '100%', paddingLeft: '1.5rem' }}
+                        value={raw}
+                        onChange={(e) => {
+                          const val = e.target.value
+                          if (/^\d*$/.test(val)) {
+                            setHostWagers(prev => ({ ...prev, [p.name]: val }))
+                          }
+                        }}
+                        placeholder={String(range.max)}
+                        aria-label={`${p.name} wager, range ${formatCurrency(range.min)} to ${formatCurrency(range.max)}`}
+                        aria-invalid={error !== null && raw !== ''}
+                      />
+                    </div>
+                    {raw !== '' && error && (
+                      <p className="fj-wager-error" role="alert">{error}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+              <button
+                type="button"
+                className="fj-reveal-btn"
+                disabled={!allValid}
+                onClick={() => { setPhase('clue'); onClueRevealed?.() }}
+              >
+                Reveal Clue
+              </button>
+            </div>
+          </div>
+        </div>
+      )
+    }
     return (
       <div
         className="fj-category-wrapper"

@@ -218,7 +218,13 @@ export function GamePage() {
     setHasSettingsErrors(hasErrors)
   }
 
-
+  // Whether the buzzer (real-time multiplayer session) system is active.
+  // During player entry this follows the live toggle; once Play is pressed it
+  // freezes to the snapshot captured in the session. When off, the game is
+  // played on a single host screen with no phone-based interaction: the host
+  // marks answers, drives gambling solo, and enters Final Jeopardy wagers
+  // directly instead of collecting them from player devices.
+  const buzzerEnabled = session ? session.toggleConfig.buzzer.enabled : toggleConfig.buzzer.enabled
 
   // Load game from Supabase Storage on mount
   useEffect(() => {
@@ -1325,8 +1331,11 @@ export function GamePage() {
 
   // Derived multiplayer check — reads ref; required for conditional rendering and effect guards.
   // The ref read is safe: sessionChannelRef is set once during session creation and never mutates during gameplay.
+  // The buzzer toggle gates the whole multiplayer session system: when the host has the Buzzer
+  // option off, the game runs single-screen (solo gambling, host-driven Final Jeopardy) even though
+  // a session row may exist, so `isMultiplayer` must read false in that case.
   /* eslint-disable react-hooks/refs */
-  const isMultiplayer = sessionId !== null && sessionChannelRef.current !== null
+  const isMultiplayer = buzzerEnabled && sessionId !== null && sessionChannelRef.current !== null
 
   /**
    * Start auctioning a specific category in multiplayer mode.
@@ -1884,7 +1893,7 @@ export function GamePage() {
             }}
           />
         </div>
-        {sessionId && (
+        {buzzerEnabled && sessionId && (
           <div style={{ flex: '0 0 auto', paddingTop: '2rem' }}>
             <BackgroundGradient>
               <div style={{ maxWidth: '18rem', padding: '2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', borderRadius: '1.5rem', border: '1px solid rgb(30 41 59)', background: 'rgb(15 23 42 / 0.95)', boxShadow: '0 25px 50px -12px rgb(15 23 42 / 0.3)' }}>
@@ -1952,7 +1961,7 @@ export function GamePage() {
     <div style={{ position: 'fixed', inset: 0, zIndex: 50, background: 'black' }}>
       {gameContent}
       {/* Buzzer host panel — top right on clue page, hidden when answer revealed or daily double */}
-      {sessionId && phase === 'clue' && !clueAnswerRevealed && !isDailyDouble && (
+      {buzzerEnabled && sessionId && phase === 'clue' && !clueAnswerRevealed && !isDailyDouble && (
         <div style={{ position: 'fixed', top: 8, right: 8, zIndex: 60, maxWidth: 280 }}>
           <BuzzerHostPanel
             buzzState={buzzState}
@@ -1963,7 +1972,7 @@ export function GamePage() {
           />
         </div>
       )}
-      {sessionId && phase === 'final-jeopardy' && (
+      {buzzerEnabled && sessionId && phase === 'final-jeopardy' && (
         <div style={{ position: 'fixed', top: 8, right: 8, zIndex: 60, maxWidth: 400, maxHeight: 'calc(100vh - 80px)', overflowY: 'auto' }}>
           <FinalJeopardyHostPanel
             players={sessionPlayers}
@@ -1974,7 +1983,7 @@ export function GamePage() {
         </div>
       )}
       {/* QR Code popup overlay */}
-      {qrPopupOpen && sessionId && (
+      {qrPopupOpen && buzzerEnabled && sessionId && (
         <div
           style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.7)' }}
           onClick={() => setQrPopupOpen(false)}
@@ -2155,7 +2164,7 @@ export function GamePage() {
 
       const actionButtons = (
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexShrink: 0, paddingRight: '0.5rem' }}>
-          {sessionId && (
+          {buzzerEnabled && sessionId && (
             <button
               type="button"
               onClick={() => setQrPopupOpen(true)}
@@ -2203,7 +2212,7 @@ export function GamePage() {
           {/* For competitive mode, show buttons as fixed overlay since they're not in the scoreboard */}
           {!session!.toggleConfig.coop.enabled && (
             <div style={{ position: 'fixed', bottom: '1rem', right: '1rem', zIndex: 45, display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-              {sessionId && (
+              {buzzerEnabled && sessionId && (
                 <button type="button" onClick={() => setQrPopupOpen(true)} className="rounded-full bg-[#6A1B9A] px-4 py-2 text-sm font-semibold text-white shadow-lg transition hover:bg-[#7B1FA2] hover:shadow-xl">Buzzer Code</button>
               )}
               {showCheatSheet && (
@@ -2340,7 +2349,7 @@ export function GamePage() {
       return (
         <>
           <RoundTransition label={label} onContinue={handleContinueRound} />
-          {isFinalJeopardyNext && sessionId && (
+          {isFinalJeopardyNext && buzzerEnabled && sessionId && (
             <div style={{ position: 'fixed', bottom: '18%', left: '50%', transform: 'translateX(-50%)', zIndex: 60, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, padding: '1.5rem', borderRadius: '1rem', background: 'rgba(15, 23, 42, 0.95)', border: '1px solid rgb(51 65 85)', maxWidth: '22rem'}}>
               <p style={{ color: '#f1f5f9', fontSize: '0.875rem', textAlign: 'center', margin: 0, lineHeight: 1.5 }}>
                 <strong>Last chance to join!</strong> Scan this QR code to submit your Final Jeopardy answer on your phone.
@@ -2368,9 +2377,11 @@ export function GamePage() {
           onComplete={handleFJComplete}
           onClueRevealed={handleFJClueRevealed}
           wagers={finalJeopardyState.wagers}
-          allWagersSubmitted={isCoopActive ? true : finalJeopardyState.wagers.length >= session!.players.length}
-          allAnswersSubmitted={isCoopActive ? true : finalJeopardyState.submissions.length >= session!.players.length}
+          allWagersSubmitted={isCoopActive ? true : buzzerEnabled ? finalJeopardyState.wagers.length >= session!.players.length : true}
+          allAnswersSubmitted={isCoopActive ? true : buzzerEnabled ? finalJeopardyState.submissions.length >= session!.players.length : true}
           coopMode={isCoopActive}
+          allowHostWagers={!isCoopActive && !buzzerEnabled}
+          wagerFloor={session!.toggleConfig.wagering.wagerFloor}
           teamPool={isCoopActive ? session!.teamPool : undefined}
           onCoopWagerSubmit={isCoopActive ? (wager: number) => {
             coopFjWagerRef.current = wager

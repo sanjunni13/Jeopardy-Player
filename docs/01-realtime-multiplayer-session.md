@@ -4,6 +4,8 @@
 
 The Real-Time Multiplayer Session System enables live, multi-device gameplay where a host runs the game on one device while players buzz in from their phones or tablets. It manages the full lifecycle of a game session — from creation and player joining, through real-time buzzer interactions, to session cleanup — ensuring all participants stay synchronized in real time.
 
+> **Opt-in.** This system is gated on the **Buzzer** toggle in Game Settings (`BuzzerConfig.enabled`, off by default). When the toggle is off, `GamePage` treats the game as single-screen: no buzzer code (QR) is shown, `isMultiplayer` reads false, gambling runs its solo host-driven path, and Final Jeopardy wagers are entered by the host directly instead of collected from player devices. All of the behavior below applies only when the Buzzer toggle is on.
+
 ## Architecture Overview
 
 The system is built on three pillars:

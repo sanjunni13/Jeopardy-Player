@@ -17,6 +17,7 @@ The Game Scoring & Special Toggles System provides a modular, composable set of 
 
 | Toggle | Composes With | Mutually Exclusive With |
 |--------|--------------|------------------------|
+| Buzzer | Co-op, Wagering, Rules Engine, Timed Clues, Gambling Problem | — |
 | Co-op Mode | Wagering, Timed Clues | Rules Engine |
 | Wagering Mode | Co-op, Rules Engine, Timed Clues | — |
 | Rules Engine | Wagering, Timed Clues | Co-op Mode |
@@ -35,6 +36,20 @@ When Co-op is enabled, the Rules Engine section is disabled, hidden, and its con
 | `src/types/game.ts` | `ToggleConfig`, `CoopConfig`, `WageringConfig`, `RulesEngineConfig`, `TimedClueConfig` |
 
 ## Toggle Details
+
+### Buzzer (`BuzzerConfig`)
+
+```typescript
+interface BuzzerConfig {
+  enabled: boolean  // default false
+}
+```
+
+**Behavior**: The master switch for the Real-Time Multiplayer Session System (see `01-realtime-multiplayer-session.md`). When enabled, the host creates a session, displays the buzzer code (QR) on the player entry screen, and all phone-based interaction is active — players buzz in from their devices, gambling auctions/betting run multiplayer, and Final Jeopardy collects wagers and answers from devices. When disabled (the default), the game is played on a single host screen: the host marks answers on the clue screen, gambling runs in its solo host-driven path, and Final Jeopardy wagers are entered by the host directly.
+
+In `GamePage`, `isMultiplayer` is derived as `buzzerEnabled && sessionId !== null && sessionChannelRef.current !== null`, so every multiplayer-only code path (buzz-queue host panel, multiplayer auction/betting status views, device-driven Final Jeopardy) is gated on this toggle. The buzzer code QR card, the "Buzzer Code" buttons, the QR popup, and the Final Jeopardy "last chance to join" QR are all rendered only when the toggle is on.
+
+Composes with every other toggle (e.g. Buzzer + Co-op lets connected players buzz in a collaborative game; Buzzer + Gambling Problem runs multiplayer auctions/betting).
 
 ### Wagering Mode (`WageringConfig`)
 

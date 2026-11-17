@@ -62,6 +62,7 @@ function makeSession(players: Player[], ledger: GamblingLedger = []): GameSessio
       },
       timedClues: { enabled: false, timerDuration: 30 },
       gambling: { enabled: true, startingBalance: 1000, auctionTimer: 20 },
+      buzzer: { enabled: false },
     },
     streakCounts: {},
     perRoundIncorrect: {},

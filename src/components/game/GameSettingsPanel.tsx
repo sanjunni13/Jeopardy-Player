@@ -114,6 +114,9 @@ export function GameSettingsPanel({ onConfigChange, boardTotal }: GameSettingsPa
   const [auctionTimer, setAuctionTimer] = useState('20')
   const [auctionTimerError, setAuctionTimerError] = useState<string | null>(null)
 
+  // ── Buzzer (multiplayer) ──
+  const [buzzerEnabled, setBuzzerEnabled] = useState(false)
+
   // ─── Build config and report to parent ───────────────────────────────────
 
   const buildAndReport = useCallback((overrides: {
@@ -141,6 +144,7 @@ export function GameSettingsPanel({ onConfigChange, boardTotal }: GameSettingsPa
     startingBalanceError?: string | null
     auctionTimer?: string
     auctionTimerError?: string | null
+    buzzerEnabled?: boolean
   }) => {
     const ce = overrides.coopEnabled ?? coopEnabled
     const tp = overrides.targetPercentage ?? targetPercentage
@@ -166,6 +170,7 @@ export function GameSettingsPanel({ onConfigChange, boardTotal }: GameSettingsPa
     const sbError = overrides.startingBalanceError !== undefined ? overrides.startingBalanceError : startingBalanceError
     const at = overrides.auctionTimer ?? auctionTimer
     const atErr = overrides.auctionTimerError !== undefined ? overrides.auctionTimerError : auctionTimerError
+    const be = overrides.buzzerEnabled ?? buzzerEnabled
 
     const config: ToggleConfig = {
       coop: {
@@ -202,6 +207,9 @@ export function GameSettingsPanel({ onConfigChange, boardTotal }: GameSettingsPa
         startingBalance: ge ? (Number(sb) || 1000) : DEFAULT_TOGGLE_CONFIG.gambling.startingBalance,
         auctionTimer: ge ? (Number(at) || 20) : DEFAULT_TOGGLE_CONFIG.gambling.auctionTimer,
       },
+      buzzer: {
+        enabled: be,
+      },
     }
 
     const hasErrors =
@@ -224,10 +232,16 @@ export function GameSettingsPanel({ onConfigChange, boardTotal }: GameSettingsPa
     timerDuration, timerDurationError,
     gamblingEnabled, startingBalance, startingBalanceError,
     auctionTimer, auctionTimerError,
+    buzzerEnabled,
     onConfigChange,
   ])
 
   // ─── Toggle handlers ──────────────────────────────────────────────────────
+
+  function handleBuzzerToggle(checked: boolean) {
+    setBuzzerEnabled(checked)
+    buildAndReport({ buzzerEnabled: checked })
+  }
 
   function handleCoopToggle(checked: boolean) {
     setCoopEnabled(checked)
@@ -563,13 +577,38 @@ export function GameSettingsPanel({ onConfigChange, boardTotal }: GameSettingsPa
 
   // ─── Summary strip ────────────────────────────────────────────────────────
 
-  const anyEnabled = coopEnabled || wageringEnabled || rulesEnabled || timedEnabled || gamblingEnabled
+  const anyEnabled = coopEnabled || wageringEnabled || rulesEnabled || timedEnabled || gamblingEnabled || buzzerEnabled
 
   // ─── Render ───────────────────────────────────────────────────────────────
 
   return (
     <div className="gsp-container">
       <h2 className="gsp-title">Game Settings</h2>
+
+      {/* ── Buzzer (multiplayer) ── */}
+      <div className="gsp-section">
+        <label className="gsp-toggle-row">
+          <input
+            type="checkbox"
+            className="gsp-toggle-checkbox"
+            checked={buzzerEnabled}
+            onChange={e => handleBuzzerToggle(e.target.checked)}
+            aria-label="Enable Buzzer"
+          />
+          <span className="gsp-toggle-track" aria-hidden="true">
+            <span className="gsp-toggle-thumb" />
+          </span>
+          <span className="gsp-toggle-label">Buzzer</span>
+        </label>
+
+        {buzzerEnabled && (
+          <div className="gsp-subsection">
+            <p className="gsp-coop-info-note">
+              Players join from their own phones to buzz in, place gambling bids, and submit Final Jeopardy answers. Display the buzzer code (QR) on this screen for players to scan.
+            </p>
+          </div>
+        )}
+      </div>
 
       {/* ── Co-op Mode (hidden when Gambling Problem is enabled) ── */}
       {!gamblingEnabled && (
@@ -956,6 +995,11 @@ export function GameSettingsPanel({ onConfigChange, boardTotal }: GameSettingsPa
         <div className="gsp-summary">
           <p className="gsp-summary-title">Active settings</p>
           <ul className="gsp-summary-list">
+            {buzzerEnabled && (
+              <li className="gsp-summary-item">
+                Buzzer: players join from their phones
+              </li>
+            )}
             {coopEnabled && (
               <li className="gsp-summary-item">
                 Co-op Mode: Target {targetPercentage || '75'}%

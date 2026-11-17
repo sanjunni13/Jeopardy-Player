@@ -62,6 +62,7 @@ function makeSession(clueStates: Record<string, ClueState>): GameSession {
       },
       timedClues: { enabled: false, timerDuration: 30 },
       gambling: { enabled: false, startingBalance: 1000, auctionTimer: 20 },
+      buzzer: { enabled: false },
     },
     streakCounts: {},
     perRoundIncorrect: {},

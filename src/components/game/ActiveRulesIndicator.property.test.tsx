@@ -42,6 +42,9 @@ const toggleConfigArb: fc.Arbitrary<ToggleConfig> = fc.record({
     startingBalance: fc.integer({ min: 500, max: 10000 }),
     auctionTimer: fc.integer({ min: 10, max: 60 }),
   }),
+  buzzer: fc.record({
+    enabled: fc.boolean(),
+  }),
 })
 
 // ─── Property 18: Active rules summary lists exactly the active modifiers ─────
@@ -128,6 +131,7 @@ describe('Property 18: Active rules summary lists exactly the active modifiers w
           rulesEngine: { ...config.rulesEngine, enabled: false },
           timedClues: { ...config.timedClues, enabled: false },
           gambling: { ...config.gambling, enabled: false },
+          buzzer: { ...config.buzzer, enabled: false },
         }
 
         cleanup()

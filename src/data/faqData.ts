@@ -17,9 +17,14 @@ const buzzerFAQ: FAQItem[] = [
       'The buzzer system allows players to buzz in from their own phones during gameplay. When a clue is displayed, the host unlocks the buzzers, and players can tap the BUZZ button on their device. The host sees a Buzz Queue showing who buzzed in and in what order.',
   },
   {
+    question: 'Is the buzzer required to play?',
+    answer:
+      'No. The Buzzer option in Game Settings is off by default. With it off, the game runs on a single host screen: the host marks answers correct or incorrect, drives any gambling rounds, and enters Final Jeopardy wagers directly. Turn the Buzzer option on when you want players to buzz in, place gambling bids, and submit Final Jeopardy answers from their own phones.',
+  },
+  {
     question: 'How do players connect to the buzzer?',
     answer:
-      'A QR code is displayed on the player entry screen and is also accessible via the "Buzzer Code" button during the game. Players scan the QR code on their phone, enter their name, and they are connected to the session. Their phone will show the buzzer interface.',
+      'First enable the Buzzer option in Game Settings. A QR code (the "buzzer code") is then displayed on the player entry screen and is also accessible via the "Buzzer Code" button during the game. Players scan the QR code on their phone, enter their name, and they are connected to the session. Their phone will show the buzzer interface.',
   },
   {
     question: 'What do the buttons in the Buzz Queue do?',
@@ -222,7 +227,8 @@ export const gameLibraryFAQ: FAQCategory[] = [
       {
         question: 'What do the Game Settings options do?',
         answer:
-          'The Game Settings panel appears on the player entry screen and offers three optional modifiers:\n\n' +
+          'The Game Settings panel appears on the player entry screen and offers several optional settings, all off by default:\n\n' +
+          '• Buzzer — Lets players join from their own phones to buzz in, place gambling bids, and submit Final Jeopardy answers. With it off, the host runs the entire game on the main screen.\n\n' +
           '• Wagering Mode — Instead of fixed point values, all players place a wager before each clue is revealed. You set a minimum wager amount, and players can wager between that minimum and their current score.\n\n' +
           '• Rules Engine — Enables bonus and penalty modifiers:\n' +
           '   Steal Bonus: Awards extra points to a player who answers correctly after another player got it wrong.\n' +
