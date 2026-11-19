@@ -6,7 +6,7 @@ import { useBuilderState } from '../../hooks/useBuilderState'
 import { useDraftPersistence } from '../../hooks/useDraftPersistence'
 import { saveGame } from '../../utils/gameApi'
 import { deleteDraft } from '../../utils/draftApi'
-import { uploadClueMedia, deleteClueMedia, refreshMediaUrl } from '../../utils/mediaApi'
+import { uploadClueMedia, deleteClueMedia, refreshMediaUrl, migrateClueMediaToGame } from '../../utils/mediaApi'
 import { validateDraftForPublish } from '../../utils/draftValidation'
 import { usePlayerProfileContext } from '../../hooks/usePlayerProfileContext'
 import { BackButton } from '../../components/BackButton'
@@ -394,44 +394,144 @@ export function BuilderPage() {
       return
     }
 
-    // 2. Start publishing
     setIsPublishing(true)
 
     try {
-      // 3. Convert to normalized game
+      // 3. Convert to normalized game (using current draft-path URLs — temporary)
       const normalizedGame = toNormalizedGame()
 
-      // 4. Save game
+      // 4. Save game record to get the permanent game ID
       const result = await saveGame(formState.gameName, normalizedGame, profile?.playerId)
 
-      if ('success' in result && result.success) {
-        // 5. Delete draft if one exists
-        const activeDraftId = currentDraftId ?? draftId
-        if (activeDraftId && userEmail) {
-          await deleteDraft(activeDraftId)
+      if (!('success' in result && result.success)) {
+        if ('alreadyExists' in result && result.alreadyExists) {
+          toast.error('A game with this name already exists. Please choose a different name.')
+          const gameNameInput = document.getElementById('builder-game-name')
+          gameNameInput?.focus()
+        } else {
+          const errorText = 'error' in result ? result.error : 'Publish failed.'
+          toast.error(errorText)
+        }
+        return
+      }
+
+      const gameId = result.id
+
+      // 5. Migrate all uploaded media files from draft paths to permanent game paths.
+      //    Build a lookup from old storagePath -> { newStoragePath, newUrl }.
+      const mediaMigrationMap = new Map<string, { newStoragePath: string; newUrl: string }>()
+      const migrationErrors: string[] = []
+
+      const collectMediaPaths = () => {
+        const entries: Array<{ storagePath: string; positionKey: string }> = []
+        for (let rIdx = 0; rIdx < formState.rounds.length; rIdx++) {
+          for (let cIdx = 0; cIdx < formState.rounds[rIdx].length; cIdx++) {
+            for (let qIdx = 0; qIdx < formState.rounds[rIdx][cIdx].clues.length; qIdx++) {
+              const media = formState.rounds[rIdx][cIdx].clues[qIdx].media
+              if (media && (media.type === 'image' || media.type === 'audio') && media.storagePath) {
+                entries.push({ storagePath: media.storagePath, positionKey: `${rIdx}-${cIdx}-${qIdx}` })
+              }
+            }
+          }
+        }
+        const finalMedia = formState.finalRound.media
+        if (finalMedia && (finalMedia.type === 'image' || finalMedia.type === 'audio') && finalMedia.storagePath) {
+          entries.push({ storagePath: finalMedia.storagePath, positionKey: 'final' })
+        }
+        return entries
+      }
+
+      const entriesToMigrate = collectMediaPaths()
+
+      await Promise.all(
+        entriesToMigrate.map(async ({ storagePath, positionKey }) => {
+          const migResult = await migrateClueMediaToGame(storagePath, gameId, positionKey)
+          if (migResult.success) {
+            mediaMigrationMap.set(storagePath, {
+              newStoragePath: migResult.newStoragePath,
+              newUrl: migResult.newUrl,
+            })
+          } else {
+            migrationErrors.push(migResult.error)
+          }
+        })
+      )
+
+      if (migrationErrors.length > 0) {
+        // Non-fatal: media migration failed for some files. The game was already
+        // saved. Log and warn, but don't block publishing — the draft media may
+        // still be accessible during this session.
+        console.warn('[publish] Some media files could not be migrated:', migrationErrors)
+      }
+
+      // 6. If any media was migrated, rebuild the normalized game with the new
+      //    permanent URLs and overwrite the game JSON in storage.
+      if (mediaMigrationMap.size > 0) {
+        // Patch the form state's media objects with the new paths/URLs for conversion
+        const patchedFormState = {
+          ...formState,
+          rounds: formState.rounds.map(round =>
+            round.map(cat => ({
+              ...cat,
+              clues: cat.clues.map(clue => {
+                if (clue.media && (clue.media.type === 'image' || clue.media.type === 'audio') && clue.media.storagePath) {
+                  const migrated = mediaMigrationMap.get(clue.media.storagePath)
+                  if (migrated) {
+                    return { ...clue, media: { ...clue.media, url: migrated.newUrl, storagePath: migrated.newStoragePath } }
+                  }
+                }
+                return clue
+              }) as typeof cat.clues,
+            }))
+          ),
+          finalRound: (() => {
+            const fm = formState.finalRound.media
+            if (fm && (fm.type === 'image' || fm.type === 'audio') && fm.storagePath) {
+              const migrated = mediaMigrationMap.get(fm.storagePath)
+              if (migrated) {
+                return { ...formState.finalRound, media: { ...fm, url: migrated.newUrl, storagePath: migrated.newStoragePath } }
+              }
+            }
+            return formState.finalRound
+          })(),
         }
 
-        // 6. Show success and navigate
-        toast.success('Game published successfully!')
-        resetDirty() // Clear dirty state so navigation isn't blocked
-        setTimeout(() => {
-          navigate({ to: '/home/library' })
-        }, 2000)
-      } else if ('alreadyExists' in result && result.alreadyExists) {
-        toast.error('A game with this name already exists. Please choose a different name.')
-        // Focus the game name field
-        const gameNameInput = document.getElementById('builder-game-name')
-        gameNameInput?.focus()
-      } else {
-        const errorText = 'error' in result ? result.error : 'Publish failed.'
-        toast.error(errorText)
+        // Re-import the conversion function locally since toNormalizedGame() closes over the original formState
+        const { builderStateToNormalizedGame } = await import('../../utils/builderConversion')
+        const patchedGame = builderStateToNormalizedGame(patchedFormState)
+
+        // Overwrite the game JSON in storage with the permanent media URLs
+        const { supabase: supabaseClient } = await import('../../utils/supabase')
+        const { data: { user } } = await supabaseClient.auth.getUser()
+        if (user) {
+          const storagePath = `${user.id}/${formState.gameName}.json`
+          await supabaseClient.storage
+            .from('games')
+            .upload(storagePath, JSON.stringify(patchedGame), {
+              contentType: 'application/json',
+              upsert: true,
+            })
+        }
       }
+
+      // 7. Delete draft if one exists (this also removes the original draft media folder)
+      const activeDraftId = currentDraftId ?? draftId
+      if (activeDraftId && userEmail) {
+        await deleteDraft(activeDraftId)
+      }
+
+      // 8. Show success and navigate
+      toast.success('Game published successfully!')
+      resetDirty()
+      setTimeout(() => {
+        navigate({ to: '/home/library' })
+      }, 2000)
     } catch {
       toast.error('Network error. Please try again.')
     } finally {
       setIsPublishing(false)
     }
-  }, [validateForPublish, toBuildDraft, toNormalizedGame, formState.gameName, profile, currentDraftId, draftId, userEmail, resetDirty, navigate])
+  }, [validateForPublish, toBuildDraft, toNormalizedGame, formState, profile, currentDraftId, draftId, userEmail, resetDirty, navigate])
 
   // ─── Render: Loading state ───────────────────────────────────────────────
   if (isLoadingDraft) {

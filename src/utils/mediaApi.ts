@@ -190,3 +190,70 @@ export async function refreshMediaUrl(
     return null;
   }
 }
+
+/**
+ * Copies a single media file from its draft storage path to a permanent
+ * game-media path, then returns the new path and a fresh signed URL.
+ *
+ * Because Supabase Storage has no server-side copy, this downloads the file
+ * and re-uploads it to the new location.
+ */
+export async function migrateClueMediaToGame(
+  draftStoragePath: string,
+  gameId: string,
+  positionKey: string // e.g. "0-1-2" (roundIdx-catIdx-clueIdx) or "final"
+): Promise<{ success: true; newStoragePath: string; newUrl: string } | { success: false; error: string }> {
+  const timer = logTimed('media', 'migrateClueMediaToGame', { draftStoragePath, gameId, positionKey });
+  try {
+    const user = await getAuthUser();
+    if (!user) {
+      timer.done({ success: false, error: 'Not authenticated' });
+      return { success: false, error: 'Not authenticated.' };
+    }
+
+    // Download the file from its current draft location
+    const { data: blob, error: downloadErr } = await supabase.storage
+      .from('games')
+      .download(draftStoragePath);
+
+    if (downloadErr || !blob) {
+      timer.done({ success: false, error: `Download failed: ${downloadErr?.message ?? 'File not found'}` });
+      return { success: false, error: `Download failed: ${downloadErr?.message ?? 'File not found'}` };
+    }
+
+    // Build the permanent destination path
+    const fileName = draftStoragePath.split('/').pop() ?? 'media';
+    const newStoragePath = `${user.id}/game-media/${gameId}/${positionKey}/${fileName}`;
+
+    // Upload to the permanent location
+    const { error: uploadErr } = await supabase.storage
+      .from('games')
+      .upload(newStoragePath, blob, {
+        contentType: blob.type || 'application/octet-stream',
+        upsert: true,
+      });
+
+    if (uploadErr) {
+      timer.done({ success: false, error: `Upload failed: ${uploadErr.message}` });
+      return { success: false, error: `Upload failed: ${uploadErr.message}` };
+    }
+
+    // Generate a long-lived signed URL for the permanent path
+    const { data: signedData, error: signedErr } = await supabase.storage
+      .from('games')
+      .createSignedUrl(newStoragePath, 60 * 60 * 24 * 365 * 10, { download: false }); // 10 years
+
+    if (signedErr || !signedData?.signedUrl) {
+      // Fall back to public URL
+      const { data: urlData } = supabase.storage.from('games').getPublicUrl(newStoragePath);
+      timer.done({ success: true });
+      return { success: true, newStoragePath, newUrl: urlData.publicUrl };
+    }
+
+    timer.done({ success: true });
+    return { success: true, newStoragePath, newUrl: signedData.signedUrl };
+  } catch {
+    timer.done({ success: false, error: 'Network error' });
+    return { success: false, error: 'Network error. Please try again.' };
+  }
+}
