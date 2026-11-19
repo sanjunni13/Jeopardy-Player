@@ -135,6 +135,9 @@ The Settings page has three sections:
 ### Profile Section
 - Current player name display
 - Change player name (with validation)
+- **Your Games list**: shows all games the user has published or uploaded
+  - **Edit** button: opens a confirmation modal warning that the original game and all its data (play history, ratings, favorites) will be permanently deleted, then creates a draft copy in the builder and navigates there
+  - **Delete** button: permanently deletes the game
 
 ### Support Section
 - Delete account (with confirmation dialog)
@@ -144,7 +147,8 @@ The Settings page has three sections:
 | Function | Purpose |
 |----------|---------|
 | `updatePlayerName(newName)` | Updates `player_name` in players table |
-| `deleteGame(gameId)` | Deletes a game from storage + DB |
+| `deleteGame(gameId, authUuid, gameName)` | Deletes a game from storage + DB |
+| `editGame(gameId, gameName, authUuid)` | Downloads published game JSON, creates a draft copy, then deletes the original game row (cascade removes ratings + favorites). Returns the new draft ID. |
 | `deleteAccount()` | Calls `delete-user` edge function |
 
 ## Dependencies
@@ -159,6 +163,8 @@ The Settings page has three sections:
 - `src/components/ToggleSwitch.tsx` — Reusable toggle for boolean preferences
 - `src/components/RoundsSelector.tsx` — Round count selector
 - `src/components/DeleteAccountDialog.tsx` — Account deletion confirmation
+- `src/components/DeleteGameDialog.tsx` — Game deletion confirmation
+- `src/components/EditGameDialog.tsx` — Edit-game confirmation (warns about data loss, initiates draft creation)
 - `src/components/LogoutDialog.tsx` — Sign-out confirmation
 - `src/components/SettingsIcon.tsx` — Settings gear icon in navigation
 
@@ -170,4 +176,5 @@ The Settings page has three sections:
 - **Default timer**: Pre-fills timer duration when enabling Timed Clues toggle
 - **Persistence feedback**: Silently persists on change; warns only on failure
 - **Profile update**: Inline validation, success toast on save
+- **Edit published game**: Clicking Edit on a game in Your Games opens a confirmation modal. The modal displays the game name and an amber warning block explaining that all associated data (play history, ratings, favorites) will be permanently deleted. Confirming downloads the published game JSON, creates a draft copy, deletes the original game and its data, then navigates to the builder with the new draft loaded.
 - **Account deletion**: Multi-step confirmation dialog explaining irreversibility

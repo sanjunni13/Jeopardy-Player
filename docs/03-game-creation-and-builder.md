@@ -46,6 +46,7 @@ Raw Input → Validation → Normalization → Storage Upload → Database Inser
 | `src/utils/draftApi.ts` | Draft CRUD (Supabase storage + drafts table) |
 | `src/utils/draftValidation.ts` | Draft data validation |
 | `src/utils/gameApi.ts` | `saveGame()` — final persist to games table + storage |
+| `src/utils/settingsApi.ts` | `editGame()` — converts a published game to a draft for re-editing |
 | `src/utils/mediaApi.ts` | Clue media upload/delete/refresh |
 | `src/utils/generateApi.ts` | AI generation API calls |
 | `src/utils/gameNameUtils.ts` | Game name formatting/validation utilities |
@@ -113,6 +114,37 @@ The builder supports attaching media to individual clues:
 **Storage path**: `{authUuid}/clue-media/{draftId}/{roundIndex}-{categoryIndex}-{clueIndex}/{sanitizedFileName}`
 
 **URL handling**: Media uses signed URLs (7-day expiry) that are refreshed on access via `refreshMediaUrl()`.
+
+## Editing a Published Game
+
+Users can re-edit any game they have published (via upload, builder, or AI generation) from the **Your Games** list in the Settings page.
+
+### Flow
+1. User clicks **Edit** next to a game in Your Games.
+2. A modal appears showing the game name and an amber warning: editing permanently deletes the original game and all its data (play history, ratings, favorites).
+3. If the user confirms:
+   - `editGame(gameId, gameName, authUuid)` in `settingsApi.ts` runs:
+     1. Downloads the published game JSON from Storage (`{authUuid}/{gameName}.json`).
+     2. Converts the `NormalizedGame` to a `BuilderDraft`.
+     3. Calls `createDraft()` to persist the draft (Storage + `drafts` table).
+     4. Deletes the original `games` row — `ON DELETE CASCADE` on `game_ratings` and `game_favorites` automatically removes all ratings and favorites.
+     5. Removes the original storage file (best-effort).
+   - On success, the game is removed from the Your Games list and the user is navigated to `/home/create/builder/$draftId`.
+4. The user edits the draft and republishes via the builder's Publish button.
+
+### Data Deleted by editGame
+
+| Data | Mechanism |
+|------|-----------|
+| `games` row | Direct DELETE |
+| `game_ratings` rows | Cascaded via FK |
+| `game_favorites` rows | Cascaded via FK |
+| Storage file `{authUuid}/{gameName}.json` | Best-effort DELETE after row removal |
+
+### Error Handling
+- If the storage download fails (file missing or moved), the original game is left untouched and an error is shown.
+- If draft creation fails, the original game is left untouched.
+- If the original game DELETE fails (DB error or RLS block), the newly created draft is rolled back (storage + DB row deleted) before returning the error.
 
 ## AI Game Generation
 

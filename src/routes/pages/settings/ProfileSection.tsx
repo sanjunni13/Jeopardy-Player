@@ -3,9 +3,10 @@ import { useNavigate } from '@tanstack/react-router'
 import { useAuth } from '../../../hooks/useAuth'
 import { usePlayerProfileContext } from '../../../hooks/usePlayerProfileContext'
 import { supabase } from '../../../utils/supabase'
-import { updatePlayerName, deleteGame, deleteAccount } from '../../../utils/settingsApi'
+import { updatePlayerName, deleteGame, deleteAccount, editGame } from '../../../utils/settingsApi'
 import { DeleteAccountDialog } from '../../../components/DeleteAccountDialog'
 import { DeleteGameDialog } from '../../../components/DeleteGameDialog'
+import { EditGameDialog } from '../../../components/EditGameDialog'
 import './ProfileSection.css'
 
 interface Game {
@@ -62,6 +63,11 @@ export function ProfileSection() {
   const [deleteAccountDialogOpen, setDeleteAccountDialogOpen] = useState(false)
   const [deleteAccountLoading, setDeleteAccountLoading] = useState(false)
   const [deleteAccountError, setDeleteAccountError] = useState<string | null>(null)
+
+  // Edit game dialog state
+  const [editGameDialogOpen, setEditGameDialogOpen] = useState(false)
+  const [gameToEdit, setGameToEdit] = useState<Game | null>(null)
+  const [editGameLoading, setEditGameLoading] = useState(false)
 
   // Initialize player name from profile
   const displayedPlayerName = nameOverride ?? profile?.playerName ?? ''
@@ -307,6 +313,41 @@ export function ProfileSection() {
     setGameToDelete(null)
   }
 
+  function handleEditGameClick(game: Game) {
+    setGameToEdit(game)
+    setEditGameDialogOpen(true)
+  }
+
+  async function handleEditGameConfirm() {
+    if (!gameToEdit || !session?.user?.id) return
+
+    setEditGameLoading(true)
+
+    const result = await editGame(gameToEdit.id, gameToEdit.game_name, session.user.id)
+
+    setEditGameLoading(false)
+    setEditGameDialogOpen(false)
+
+    if (result.success) {
+      // Remove the original game from the list immediately
+      deletedGameIds.add(gameToEdit.id)
+      setGames((prev) => prev.filter((g) => g.id !== gameToEdit.id))
+      setGameToEdit(null)
+      // Navigate to the builder with the newly created draft
+      navigate({ to: '/home/create/builder/$draftId', params: { draftId: result.draftId } })
+    } else {
+      setGameToEdit(null)
+      setGamesError(result.error ?? 'Failed to open game for editing')
+    }
+  }
+
+  function handleEditGameCancel() {
+    if (!editGameLoading) {
+      setEditGameDialogOpen(false)
+      setGameToEdit(null)
+    }
+  }
+
   function handleDeleteAccountClick() {
     setDeleteAccountDialogOpen(true)
   }
@@ -469,14 +510,24 @@ export function ProfileSection() {
             {games.map((game) => (
               <li key={game.id} className="profile-section__game-item">
                 <span className="profile-section__game-name">{game.game_name}</span>
-                <button
-                  type="button"
-                  onClick={() => handleDeleteGameClick(game)}
-                  className="profile-section__btn profile-section__btn--delete-game"
-                  aria-label={`Delete game ${game.game_name}`}
-                >
-                  Delete
-                </button>
+                <div className="profile-section__game-actions">
+                  <button
+                    type="button"
+                    onClick={() => handleEditGameClick(game)}
+                    className="profile-section__btn profile-section__btn--edit-game"
+                    aria-label={`Edit game ${game.game_name}`}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteGameClick(game)}
+                    className="profile-section__btn profile-section__btn--delete-game"
+                    aria-label={`Delete game ${game.game_name}`}
+                  >
+                    Delete
+                  </button>
+                </div>
               </li>
             ))}
           </ul>
@@ -533,6 +584,13 @@ export function ProfileSection() {
         gameName={gameToDelete?.game_name ?? ''}
         onConfirm={handleDeleteGameConfirm}
         onCancel={handleDeleteGameCancel}
+      />
+      <EditGameDialog
+        isOpen={editGameDialogOpen}
+        gameName={gameToEdit?.game_name ?? ''}
+        isLoading={editGameLoading}
+        onConfirm={handleEditGameConfirm}
+        onCancel={handleEditGameCancel}
       />
       <DeleteAccountDialog
         isOpen={deleteAccountDialogOpen}
